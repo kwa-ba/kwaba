@@ -86,11 +86,17 @@ export function listeLogements(locale: Langue, logements: Pick<Hebergement, "id"
   };
 }
 
+/**
+ * Spellings people type without the hyphen ("kwaba"): Google does not always join them to "Kwa-Ba" by itself,
+ * alternateName tells it they are the same brand (site name in results).
+ */
+export const AUTRES_NOMS = ["Kwaba", "KwaBa", "Kwa Ba"];
+
 /** Kwa-Ba and its site (home page): name, logo and slogan in search results. */
 export function donneesSite(locale: Langue, slogan: string): Objet[] {
   const organisation = `${SITE_URL}/#organisation`;
   return [
-    { "@context": CONTEXTE, "@type": "Organization", "@id": organisation, name: "Kwa-Ba", url: `${SITE_URL}/`, logo: absolue("/brand/kwaba-icone-512.png"), slogan },
-    { "@context": CONTEXTE, "@type": "WebSite", "@id": `${SITE_URL}/#site`, name: "Kwa-Ba", url: `${SITE_URL}/`, inLanguage: locale, publisher: { "@id": organisation } },
+    { "@context": CONTEXTE, "@type": "Organization", "@id": organisation, name: "Kwa-Ba", alternateName: AUTRES_NOMS, url: `${SITE_URL}/`, logo: absolue("/brand/kwaba-icone-512.png"), slogan },
+    { "@context": CONTEXTE, "@type": "WebSite", "@id": `${SITE_URL}/#site`, name: "Kwa-Ba", alternateName: AUTRES_NOMS, url: `${SITE_URL}/`, inLanguage: locale, publisher: { "@id": organisation } },
   ];
 }
