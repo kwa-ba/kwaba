@@ -2,7 +2,8 @@ from django.urls import path
 
 from .admin_views import (AuxiliairesView, BalanceView, ClotureMoisView, ClotureView, ComptesView,
                           ExportComptableView, GrandLivreCompteView, GrandLivreView, LivreJournalView, MouvementsView,
-                          PilotageView, RapportExportView, RapportResultatView, RapportsView, ReferentielsView)
+                          PilotageView, RapportExportView, RapportResultatView, RapportsView, ReferentielsView,
+                          ValidationDecisionView, ValidationsView)
 
 urlpatterns = [
     path('grand-livre/', GrandLivreView.as_view(), name='admin-finance-grand-livre'),
@@ -20,4 +21,6 @@ urlpatterns = [
     path('rapports/', RapportsView.as_view(), name='admin-finance-rapports'),
     path('rapports/resultat/', RapportResultatView.as_view(), name='admin-finance-rapport-resultat'),
     path('rapports/export/', RapportExportView.as_view(), name='admin-finance-rapport-export'),
+    path('validations/', ValidationsView.as_view(), name='admin-finance-validations'),
+    path('validations/<uuid:pk>/<str:decision>/', ValidationDecisionView.as_view(), name='admin-finance-validation'),
 ]

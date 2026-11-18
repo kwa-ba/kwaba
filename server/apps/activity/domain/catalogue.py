@@ -81,6 +81,15 @@ def _rates(details: dict, target: str) -> str:
     return f"{len(changed)} taux modifié{'s' if len(changed) > 1 else ''}"
 
 
+OPERATIONS_FINANCE = {'remboursement_sejour': 'Remboursement de séjour', 'versement_hote': "Versement à l'hôte"}
+
+
+def _validation(details: dict, target: str) -> str:
+    montant = details.get('montant')
+    return _join(OPERATIONS_FINANCE.get(details.get('operation', ''), details.get('operation', '')),
+                 f"{montant:,} F".replace(',', ' ') if isinstance(montant, int) else '', details.get('motif', ''))
+
+
 def _export(details: dict, target: str) -> str:
     return _join(str(details.get('format', '')).upper(), f"{details.get('debut', '')} → {details.get('fin', '')}")
 
@@ -93,7 +102,7 @@ def _rights(details: dict, target: str) -> str:
 
 OBJECT_NAMES = {
     'projet': 'Projet Give', 'reversements': 'Reversements Give', 'reversement': 'Reversement Give',
-    'lancement': 'Lancement', 'societe': 'Société', 'contrats_hotes': 'Contrats des hôtes', 'facture': 'Facture',
+    'lancement': 'Lancement', 'societe': 'Société', 'contrats_hotes': 'Contrats des hôtes', 'facture': 'Facture', 'avoir': 'Avoir',
     'regles_location': 'Règles de location', 'categorie_vehicule': 'Catégorie de véhicule', 'location': 'Location',
     'tarifs_transfert': 'Tarifs de transfert', 'transfert': 'Transfert', 'alerte_fraude': 'Alerte anti-fraude',
     'experience': 'Expérience', 'ong': 'Association',
@@ -169,6 +178,13 @@ ACTIONS: dict[str, ActionSpec] = {
                                    summary=lambda d, t: str(d.get('mois', ''))),
     'rapport_cree': ActionSpec('Rapport financier créé', MONEY, IMPORTANT,
                                summary=lambda d, t: _join(d.get('titre', ''), d.get('code', ''))),
+    'validation_demandee': ActionSpec('Double validation demandée', MONEY, SENSITIVE, summary=_validation),
+    'validation_premiere': ActionSpec('Première validation donnée', MONEY, SENSITIVE, summary=_validation),
+    'validation_accordee': ActionSpec('Opération validée et exécutée', MONEY, SENSITIVE, summary=_validation),
+    'validation_refusee': ActionSpec('Opération refusée', MONEY, SENSITIVE, summary=_validation),
+    'validation_echouee': ActionSpec('Opération validée, exécution en échec', MONEY, SENSITIVE, summary=_validation),
+    'remboursement_traite': ActionSpec('Remboursement traité au back-office', MONEY, SENSITIVE,
+                                       summary=lambda d, t: _join(d.get('operation', ''), d.get('reference', ''))),
     'profil_versement_modifie': ActionSpec('Compte de versement modifié', MONEY, SENSITIVE,
                                            summary=lambda d, t: _join(d.get('operateur', ''),
                                                                       f"…{d['numero_fin']}" if d.get('numero_fin')

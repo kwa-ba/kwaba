@@ -39,3 +39,41 @@ export async function enregistrerSociete(corps: FormData) {
 export async function lireSignature() {
   return (await api.get<Blob>(`${SOCIETE}signature/`, { responseType: "blob" })).data;
 }
+
+// --- Credit notes (GL-8) ---------------------------------------------------------------------------------------
+
+export interface AvoirAdmin {
+  id: string;
+  numero: string;
+  emis_le: string;
+  motif: string;
+  total_ttc: number;
+  tva: number;
+  facture: { id: string; numero: string; total_ttc: number; client_nom: string };
+}
+
+export interface FactureARegulariser extends FactureAdmin {
+  /** Refunded and not yet neutralised by a credit note */
+  a_neutraliser: number;
+  deja_neutralise: number;
+}
+
+const AVOIRS = "/v1/admin/documents/avoirs/";
+
+export async function lireAvoirs(q: string, page: number) {
+  return (await api.get<{ results: AvoirAdmin[]; count: number; page: number; page_size: number }>(AVOIRS, {
+    params: { ...(q ? { q } : {}), page },
+  })).data;
+}
+
+export async function lireFacturesARegulariser() {
+  return (await api.get<FactureARegulariser[]>(`${AVOIRS}a-regulariser/`)).data;
+}
+
+export async function emettreAvoir(factureId: string) {
+  return (await api.post<AvoirAdmin>(`${FACTURES}${factureId}/avoir/`)).data;
+}
+
+export function telechargerAvoir(a: Pick<AvoirAdmin, "id" | "numero">) {
+  return telechargerPdf(`${AVOIRS}${a.id}/pdf/`, `avoir-${a.numero}.pdf`);
+}

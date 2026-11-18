@@ -8,3 +8,7 @@ class RestitutionRefusee(ValueError):
 
 class ClotureRefusee(ValueError):
     """A month that cannot be locked (current month, earlier month still open, a closing check refused), in French."""
+
+
+class ValidationRefusee(ValueError):
+    """A double validation that cannot go on (same person twice, already decided, unknown operation), in French."""

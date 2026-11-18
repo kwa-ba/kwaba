@@ -16,7 +16,7 @@ def retirer_si_expire(utilisateur) -> None:
     if utilisateur.role != 'admin' or utilisateur.admin_expire_le is None or utilisateur.admin_expire_le > timezone.now():
         return
     if _retirer(_expires().filter(pk=utilisateur.pk)):
-        utilisateur.refresh_from_db(fields=['role', 'admin_sections', 'admin_permissions', 'admin_expire_le',
+        utilisateur.refresh_from_db(fields=['role', 'admin_sections', 'admin_permissions', 'admin_expire_le', 'admin_lecture_seule',
                                             'role_avant_admin'])
 
 
@@ -29,7 +29,7 @@ def _retirer(admins) -> int:
     comptes = list(admins.values('pk', 'email', 'role_avant_admin'))
     nombre = admins.update(
         role=Case(When(role_avant_admin='', then=Value('voyageur')), default=F('role_avant_admin')),
-        admin_sections=None, admin_permissions=[], admin_expire_le=None, role_avant_admin='',
+        admin_sections=None, admin_permissions=[], admin_expire_le=None, admin_lecture_seule=False, role_avant_admin='',
     )
     for compte in comptes:
         activity.record('admin_expire', target=activity.Target('account', str(compte['pk']), compte['email']),

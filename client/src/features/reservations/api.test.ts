@@ -35,7 +35,12 @@ describe("reservations", () => {
   });
 
   it("annule côté back-office avec un motif", async () => {
-    await annulerReservationAdmin("r1", "Doublon");
+    await expect(annulerReservationAdmin("r1", "Doublon")).resolves.toEqual({ attenteValidation: false, message: "Réservation annulée" });
     expect(api.post).toHaveBeenCalledWith("/v1/admin/reservations/r1/annuler/", { motif: "Doublon" });
+  });
+
+  it("annonce qu'une deuxième personne doit valider un gros remboursement (202)", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ status: 202, data: { detail: "Une deuxième personne doit valider", validation: "v1" } });
+    await expect(annulerReservationAdmin("r1", "Doublon")).resolves.toEqual({ attenteValidation: true, message: "Une deuxième personne doit valider" });
   });
 });

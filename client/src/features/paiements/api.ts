@@ -87,3 +87,68 @@ export const URL_EXPORT_FINANCES = "/v1/admin/paiements/finances/";
 export async function lireFinances(debut: string, fin: string) {
   return (await api.get<Finances>(URL_EXPORT_FINANCES, { params: { debut, fin } })).data;
 }
+
+// --- Back-office: refunds (GL-9) -------------------------------------------------------------------------------
+
+export type StatutRemboursement = "attente_numero" | "a_envoyer" | "en_cours" | "envoye" | "a_traiter";
+export type ActionRemboursement = "numero" | "relancer" | "manuel";
+
+export interface RemboursementAdmin {
+  id: string;
+  montant: number;
+  motif: string;
+  statut: StatutRemboursement;
+  statut_libelle: string;
+  cree_le: string;
+  envoye_le: string | null;
+  derniere_erreur: string;
+  tentatives: number;
+  type_objet: string;
+  objet_id: string;
+  reference: string;
+  payeur: string;
+  paiement: { reference: string; montant: number; mode: string; carte: boolean };
+  /** Mobile Money account, end of the number only */
+  compte: string;
+  actions: ActionRemboursement[];
+}
+
+export interface BaremeRemboursement {
+  code: "voyageur" | "plateforme";
+  libelle: string;
+  montant: number;
+  validation_requise: boolean;
+}
+
+export interface ApercuRemboursement {
+  reservation: { id: string; reference: string; statut: string; voyageur: string; check_in: string; check_out: string; total: number };
+  paye: number;
+  /** Empty: never paid online, or already cancelled */
+  baremes: BaremeRemboursement[];
+  seuil: number;
+  validation_en_attente: boolean;
+}
+
+const REMBOURSEMENTS = "/v1/admin/paiements/finances/remboursements/";
+
+export async function lireRemboursements(statut: string, page: number) {
+  return (await api.get<{ results: RemboursementAdmin[]; count: number; page: number; page_size: number }>(REMBOURSEMENTS, {
+    params: { ...(statut ? { statut } : {}), page },
+  })).data;
+}
+
+export async function lireApercuRemboursement(reference: string) {
+  return (await api.get<ApercuRemboursement>(`${REMBOURSEMENTS}apercu/`, { params: { reference } })).data;
+}
+
+/** Cancels and refunds a paid stay; from the threshold it waits for a second person (202). */
+export async function rembourserSejour(reservationId: string, bareme: BaremeRemboursement["code"], motif: string) {
+  const res = await api.post<{ detail: string; validation?: string; rembourse?: number }>(`${REMBOURSEMENTS}sejour/`, {
+    reservation_id: reservationId, bareme, motif,
+  });
+  return { attenteValidation: res.status === 202, message: res.data.detail };
+}
+
+export async function agirSurRemboursement(id: string, action: ActionRemboursement, corps: Record<string, string> = {}) {
+  return (await api.post<RemboursementAdmin>(`${REMBOURSEMENTS}${id}/${action}/`, corps)).data;
+}

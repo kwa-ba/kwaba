@@ -38,6 +38,8 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
     { href: "/backoffice/finances/comptes", label: "Grand-livre par compte" },
     { href: "/backoffice/finances/balance", label: "Balance générale" },
     { href: "/backoffice/finances/encaissements", label: "Encaissements et versements" },
+    { href: "/backoffice/finances/remboursements", label: "Remboursements" },
+    { href: "/backoffice/finances/validations", label: "Validations" },
     { href: "/backoffice/finances/rapports", label: "Rapports" },
     { href: "/backoffice/finances/cloture", label: "Clôture mensuelle" },
     { href: "/backoffice/finances/export", label: "Export comptable" },
@@ -112,6 +114,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
         <div className="border-t border-gray-100 pt-4">
           <ThemeSelector className="mb-3" />
+          {droits?.lecture_seule && <p className="text-xs font-bold text-amber-800 bg-amber-50 rounded-lg px-2 py-1 mb-2">Lecture seule : aucune modification</p>}
           <p className="text-xs text-muted truncate">{session.user.email}</p>
           <Link href="/" className="mt-2 flex items-center gap-2 text-sm font-medium text-dark hover:text-brand"><ArrowLeft size={15} /> Retour au site</Link>
         </div>

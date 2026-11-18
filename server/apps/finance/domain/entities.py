@@ -117,3 +117,42 @@ class Page:
     """A page of a long list: its rows and the total number of rows after filters."""
     lignes: list[dict]
     total: int
+
+
+# --- Double validation (GL-10, FIN-13) -------------------------------------------------------------------------------
+
+VALIDATION_EN_ATTENTE, VALIDATION_EXECUTEE, VALIDATION_REFUSEE, VALIDATION_ECHOUEE = (
+    'en_attente', 'executee', 'refusee', 'echouee')
+
+
+@dataclass(frozen=True)
+class Operation:
+    """A money operation of another module that may need a second person (a refund, a payout), declared at start-up
+    (finance.api.declarer_operation). `executer` receives the data of the request and returns what was done, in
+    French; it runs in the transaction of the approval."""
+    code: str
+    libelle: str
+    executer: Callable[[dict], str]
+
+
+@dataclass(frozen=True)
+class Validation:
+    id: uuid.UUID
+    operation: str
+    objet_type: str
+    objet_id: str
+    montant: int
+    motif: str
+    donnees: dict
+    statut: str
+    demandee_par_id: uuid.UUID | None
+    demandee_le: datetime
+    premiere_par_id: uuid.UUID | None = None
+    decidee_par_id: uuid.UUID | None = None
+    decidee_le: datetime | None = None
+    resultat: str = ''
+
+    @property
+    def personnes(self) -> set:
+        """Who already agreed: the person who asked (none when the system asked) and a first approval."""
+        return {p for p in (self.demandee_par_id, self.premiere_par_id) if p}

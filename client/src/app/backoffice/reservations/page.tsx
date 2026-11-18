@@ -71,8 +71,9 @@ function Reservations() {
         libelle: "Annuler la réservation", danger: true, motif: true,
         action: async (motif) => {
           try {
-            await annulerReservationAdmin(r.id, motif);
-            toast.success("Réservation annulée");
+            const resultat = await annulerReservationAdmin(r.id, motif);
+            if (resultat.attenteValidation) toast.info(resultat.message);
+            else toast.success("Réservation annulée");
             queryClient.invalidateQueries({ queryKey: ["admin"] });
           } catch (err) {
             toast.error(apiErrorMessage(err));

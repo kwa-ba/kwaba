@@ -56,14 +56,20 @@ def executer(sql: str, params=()):
 def test_reference_data_of_the_schema_is_loaded():
     assert NatureModel.objects.count() == 54
     assert NatureModel.objects.filter(actif=True).count() == 40
-    assert ParametreModel.objects.count() == 95
-    assert ParametreModel.objects.filter(actif=True).count() == 53
+    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008)
+    assert ParametreModel.objects.count() == 96
+    assert ParametreModel.objects.filter(actif=True).count() == 54
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == ['FEDAPAY']
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
-    for cle in ('fonds_garantie_taux', 'double_validation_seuil', 'garantie_renforcee_beneficiaire'):
+    for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):
         assert finance.parametre(cle) == 0
+    # Decided on 18 November 2026, each with its dated history
+    assert (finance.parametre('double_validation_seuil'), finance.parametre('fonds_garantie_taux'),
+            finance.parametre('capital_social')) == (250_000, 10, 500_000)
+    assert ParametreHistoModel.objects.filter(cle__in=['double_validation_seuil', 'fonds_garantie_taux',
+                                                       'capital_social']).count() == 3
 
 
 def test_parametre_reads_an_active_value_and_refuses_unknown_or_inactive_keys():

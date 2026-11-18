@@ -15,12 +15,13 @@ from typing import Iterable
 
 from collections.abc import Callable
 
-from apps.finance.application.registre import declarer
-from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, FiltresMouvements, Ligne
-from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse, RestitutionRefusee
+from apps.finance.application.registre import OPERATIONS, declarer
+from apps.finance.application.registre import declarer_operation as declarer_operation_registre
+from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, FiltresMouvements, Ligne, Operation
+from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse, RestitutionRefusee, ValidationRefusee
 from apps.finance.domain.rules import mois_de
 from apps.finance.infrastructure.container import (cloture_service, grand_livre_service, livres_service,
-                                                   rapport_service, restitution_service)
+                                                   rapport_service, restitution_service, validation_service)
 
 __all__ = [
     'ENTREE', 'SORTIE', 'Ligne', 'MouvementRefuse', 'RestitutionRefusee',
@@ -39,6 +40,9 @@ __all__ = [
     'ClotureRefusee', 'mois_comptables', 'cloturer',
     # Reports (GL-19)
     'rapports', 'axes', 'rapport_libre', 'creer_rapport',
+    # Double validation (GL-10)
+    'ValidationRefusee', 'declarer_operation', 'seuil_double_validation', 'validation_requise', 'demander_validation',
+    'approuver_validation', 'refuser_validation', 'statut_validation', 'validations', 'libelle_operation',
 ]
 
 
@@ -230,3 +234,59 @@ def creer_rapport(*, code: str, titre: str, axe1: str, axe2: str | None = None, 
     """Saves a new report (a row, never code), logged."""
     return rapport_service().creer(code=code, titre=titre, axe1=axe1, axe2=axe2, familles=familles, offres=offres,
                                    par_id=par_id)
+
+
+# --- Double validation (GL-10) --------------------------------------------------------------------------------------
+
+def declarer_operation(code: str, libelle: str, executer: Callable[[dict], str]) -> None:
+    """Declares, at start-up (AppConfig.ready), a money operation that may need a second person: `executer` receives
+    the data of the request when it is approved, in the approval's transaction, and says what it did."""
+    declarer_operation_registre(Operation(code=code, libelle=libelle, executer=executer))
+
+
+def seuil_double_validation() -> int:
+    """Amount (F CFA) from which a second person must approve; 0: the rule is inert (no decision)."""
+    return validation_service().seuil()
+
+
+def validation_requise(montant: int) -> bool:
+    return validation_service().requise(montant)
+
+
+def _validation_simple(v) -> dict:
+    return {'id': str(v.id), 'operation': v.operation, 'objet_type': v.objet_type, 'objet_id': v.objet_id,
+            'montant': v.montant, 'motif': v.motif, 'donnees': v.donnees, 'statut': v.statut,
+            'demandee_par_id': v.demandee_par_id, 'demandee_le': v.demandee_le, 'premiere_par_id': v.premiere_par_id,
+            'decidee_par_id': v.decidee_par_id, 'decidee_le': v.decidee_le, 'resultat': v.resultat}
+
+
+def demander_validation(operation: str, *, objet_type: str, objet_id, montant: int, motif: str = '',
+                        donnees: dict | None = None, par_id: uuid.UUID | None = None) -> dict:
+    """Asks a second person (par_id None: asked by the system, then two approvals are needed). Returns the request
+    waiting for this object, created or already there. Raises ValidationRefusee."""
+    return _validation_simple(validation_service().demander(
+        operation, objet_type=objet_type, objet_id=objet_id, montant=montant, motif=motif, donnees=donnees or {},
+        par_id=par_id))
+
+
+def approuver_validation(validation_id, *, par_id: uuid.UUID) -> dict:
+    """Approves; the second approval runs the operation. Raises ValidationRefusee (same person, already decided)."""
+    return _validation_simple(validation_service().approuver(validation_id, par_id=par_id))
+
+
+def refuser_validation(validation_id, *, par_id: uuid.UUID, motif: str) -> dict:
+    return _validation_simple(validation_service().refuser(validation_id, par_id=par_id, motif=motif))
+
+
+def statut_validation(operation: str, objet_type: str, objet_id) -> str | None:
+    """State of the latest request for this object: en_attente, executee, refusee, echouee, or None."""
+    return validation_service().statut_de(operation, objet_type, objet_id)
+
+
+def validations(statut: str | None = None) -> list[dict]:
+    return [_validation_simple(v) for v in validation_service().liste(statut)]
+
+
+def libelle_operation(code: str) -> str:
+    operation = OPERATIONS.get(code)
+    return operation.libelle if operation else code

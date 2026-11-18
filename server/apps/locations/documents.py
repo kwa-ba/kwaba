@@ -58,6 +58,7 @@ PRODUIT = Produit(
     proprietaire_id=lambda loc: loc.voyageur_id,
     reference=lambda loc: loc.reference,
     paye=lambda loc: paiements.paiement_reussi('location', loc.pk),
+    rembourse=lambda loc: paiements.total_rembourse('location', loc.pk),
     recu=lambda loc: paiements.recu_pdf('location', loc.pk),
     bon=bon,
     facture=lambda loc: {'client_nom': _nom(loc.voyageur), 'client_email': loc.voyageur.email, 'lignes': lignes_facture(loc)},

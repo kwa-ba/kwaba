@@ -94,6 +94,20 @@ def annuler(reservation, par: str) -> int:
         return rembourse
 
 
+BAREMES = {'voyageur': "selon les conditions d'annulation", 'plateforme': 'remboursement intégral (annulation par Kwa-Ba)',
+           'hote': "remboursement intégral (annulation par l'hôte)"}
+
+
+def executer_remboursement(donnees: dict) -> str:
+    """Refund of a stay approved by a second person (GL-10): the cancellation runs now, with the scale asked."""
+    reservation = ReservationModel.objects.get(pk=donnees['reservation_id'])
+    par = donnees.get('par', 'plateforme')
+    if par not in BAREMES:
+        raise paiements.PaiementErreur("Barème d'annulation inconnu.")
+    rembourse = annuler(reservation, par=par)
+    return f"Réservation {reservation.reference} annulée, {BAREMES[par]} : {rembourse} F CFA remboursés."
+
+
 def expirer() -> int:
     """Releases the dates of the bookings not paid in time (after a last check)."""
     expirees = 0

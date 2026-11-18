@@ -45,6 +45,8 @@ export interface AdminUser {
   admin_permissions: string[];
   /** Temporary admin: end of the rights, then back to the previous role. */
   admin_expire_le: string | null;
+  /** Finance role (GL-10): sees their sections, every change is refused. */
+  admin_lecture_seule: boolean;
 }
 
 export interface DroitsAdmin {
@@ -53,6 +55,8 @@ export interface DroitsAdmin {
   sections_disponibles: { code: string; libelle: string }[];
   permissions: string[];
   permissions_disponibles: { code: string; libelle: string }[];
+  /** Read-only account (Finance role): the screens hide their actions, the API refuses them anyway. */
+  lecture_seule: boolean;
 }
 
 export interface ConditionsHote {
