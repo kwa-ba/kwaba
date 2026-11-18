@@ -31,6 +31,9 @@ export async function lireReservationAdmin(id: string) {
   return (await api.get<AdminReservationDetail>(`/v1/admin/reservations/${id}/`)).data;
 }
 
-export async function annulerReservationAdmin(id: string, motif: string) {
-  await api.post(`/v1/admin/reservations/${id}/annuler/`, { motif });
+/** Cancellation by Kwa-Ba. From the double validation threshold, the refund waits for a second person: the answer
+ * then carries `validation` and a message, and the booking stays as it is until it is approved. */
+export async function annulerReservationAdmin(id: string, motif: string): Promise<{ attenteValidation: boolean; message: string }> {
+  const res = await api.post<{ detail?: string; validation?: string }>(`/v1/admin/reservations/${id}/annuler/`, { motif });
+  return { attenteValidation: res.status === 202, message: res.data?.detail ?? "Réservation annulée" };
 }

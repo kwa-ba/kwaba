@@ -94,3 +94,40 @@ class FactureModel(models.Model):
 
     def __str__(self):
         return f"{self.numero} · {self.client_nom} · {self.total_ttc} FCFA"
+
+
+class SequencePieceModel(models.Model):
+    """Last number issued per series and year, for the series other than invoices (AVO credit notes…): continuous
+    numbering without gaps, under a lock at every issue."""
+    serie = models.CharField(max_length=5)
+    annee = models.PositiveSmallIntegerField()
+    dernier = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['serie', 'annee'], name='une_sequence_par_serie_et_annee')]
+
+
+class AvoirModel(models.Model):
+    """Credit note (GL-8): neutralises all or part of an invoice that stays as it was (an invoice is never deleted
+    nor changed, LPF Togo art. 64). Never changed nor deleted either; its PDF is frozen when issued. Amounts are
+    positive: they are deducted from the invoice."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    numero = models.CharField(max_length=20, unique=True)
+    facture = models.ForeignKey(FactureModel, on_delete=models.PROTECT, related_name='avoirs')
+    emis_le = models.DateTimeField(auto_now_add=True)
+    emis_par_id = models.UUIDField(null=True, blank=True, db_index=True)
+    motif = models.CharField(max_length=300)
+    lignes = models.JSONField(default=list, help_text='[{libelle, quantite, prix_unitaire}] en FCFA TTC, à déduire')
+    total_ht = models.PositiveIntegerField()
+    tva = models.PositiveIntegerField(default=0)
+    total_ttc = models.PositiveIntegerField()
+    taux_tva = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    pdf = models.FileField(upload_to='avoirs/', storage=stockage_prive, blank=True)
+
+    class Meta:
+        ordering = ['-emis_le']
+        verbose_name = 'Avoir'
+        constraints = [models.CheckConstraint(condition=models.Q(total_ttc__gt=0), name='avoir_montant_positif')]
+
+    def __str__(self):
+        return f"{self.numero} · avoir sur {self.facture.numero} · {self.total_ttc} FCFA"

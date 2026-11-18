@@ -1,4 +1,4 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
 ADMIN_API = '/api/v1/admin/'
 
@@ -25,6 +25,8 @@ SPECIAL_PERMISSIONS = {
     'agenda_settings': "Réglages de l'agenda",
     'validate_without_visit': 'Valider une annonce sans visite',
     'activity_log': "Journal d'activité",
+    # Refunds decided in the back-office, approval of a second person (GL-9, GL-10)
+    'finance_operations': 'Opérations financières (remboursements, validations)',
 }
 
 # Start of the path after /api/v1/admin/ → section. A route listed nowhere is refused to a limited admin
@@ -62,6 +64,11 @@ def a_acces_section(utilisateur, section: str | None) -> bool:
     return utilisateur.is_superuser or utilisateur.admin_sections is None or section in utilisateur.admin_sections
 
 
+def est_en_lecture_seule(user) -> bool:
+    """Finance role (GL-10): sees, never changes. A super admin is never read only."""
+    return not user.is_superuser and bool(getattr(user, 'admin_lecture_seule', False))
+
+
 def has_special_permission(user, permission: str) -> bool:
     return user.role == 'admin' and (user.is_superuser or permission in (user.admin_permissions or []))
 
@@ -77,7 +84,10 @@ class EstAdministrateur(IsAuthenticated):
             return False
         if request.path.removeprefix(ADMIN_API).startswith(ROUTES_TOUS_ADMINS):
             return True
-        if a_acces_section(request.user, section_de(request.path)):
-            return True
-        self.message = "Cette section ne vous est pas ouverte."
-        return False
+        if not a_acces_section(request.user, section_de(request.path)):
+            self.message = "Cette section ne vous est pas ouverte."
+            return False
+        if request.method not in SAFE_METHODS and est_en_lecture_seule(request.user):
+            self.message = "Compte en lecture seule : aucune modification n'est possible."
+            return False
+        return True

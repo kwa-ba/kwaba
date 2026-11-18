@@ -14,3 +14,8 @@ class AuditJournal(Journal):
 
     def rapport_cree(self, par_id, code: str, titre: str) -> None:
         activity.record('rapport_cree', actor=par_id, code=code, titre=titre)
+
+    def validation(self, action: str, par_id, validation) -> None:
+        activity.record(f'validation_{action}', actor=par_id, operation=validation.operation,
+                        objet=f'{validation.objet_type}:{validation.objet_id}', montant=validation.montant,
+                        motif=validation.motif if action == 'demandee' else validation.resultat)

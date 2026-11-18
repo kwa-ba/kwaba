@@ -54,6 +54,8 @@ class UserModel(AbstractUser):
     admin_sections = models.JSONField(null=True, blank=True)
     admin_permissions = models.JSONField(default=list, blank=True, db_default=[])
     admin_expire_le = models.DateTimeField(null=True, blank=True)
+    # Finance role (GL-10): an admin who sees their sections but changes nothing (every write refused by the API)
+    admin_lecture_seule = models.BooleanField(default=False, db_default=False)
     role_avant_admin = models.CharField(max_length=20, blank=True, default='', db_default='')
     USERNAME_FIELD  = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']

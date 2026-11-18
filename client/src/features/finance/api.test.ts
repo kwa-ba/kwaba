@@ -56,3 +56,21 @@ describe("finance (back-office)", () => {
     expect(api.post).toHaveBeenLastCalledWith(`${F}/rapports/`, nouveau);
   });
 });
+
+describe("double validation (GL-10)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit les demandes et envoie une décision, avec le motif d'un refus seulement", async () => {
+    await finance.lireValidations("en_attente");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/validations/?statut=en_attente`);
+    await finance.lireValidations("");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/validations/`);
+    await finance.deciderValidation("v1", "approuver", "ignoré");
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/validations/v1/approuver/`, {});
+    await finance.deciderValidation("v1", "refuser", "Séjour maintenu");
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/validations/v1/refuser/`, { motif: "Séjour maintenu" });
+  });
+});

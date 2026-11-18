@@ -14,8 +14,9 @@ from apps.finance.infrastructure.persistence.models import (
     RapprochementJourModel,
     ReleveExterneModel,
     TiersTypeModel,
+    ValidationModel,
 )
 
 __all__ = ['AxeModel', 'CompteArgentModel', 'CorrespondanceHistoModel', 'FamilleModel', 'MouvementModel',
            'MoyenPaiementModel', 'NatureModel', 'OffreModel', 'ParametreHistoModel', 'ParametreModel', 'PeriodeModel',
-           'RapportModel', 'RapprochementJourModel', 'ReleveExterneModel', 'TiersTypeModel']
+           'RapportModel', 'RapprochementJourModel', 'ReleveExterneModel', 'TiersTypeModel', 'ValidationModel']

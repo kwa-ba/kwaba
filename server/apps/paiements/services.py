@@ -257,6 +257,9 @@ def rembourser(paiement, montant: int, motif: str):
         )
         # The money is owed to the traveller from now on (ledger, T05)
         grand_livre.du_au_voyageur(remboursement)
+        # An invoiced sale given back is neutralised by a credit note quoting the invoice (GL-8), never deleted
+        from apps.documents import api as documents  # local import: documents loads the paid products
+        documents.regulariser_avoirs(paiement.type_objet, remboursement.objet_id, motif=motif)
     return remboursement
 
 
@@ -396,6 +399,43 @@ def synchroniser_payout(ligne):
 COMPTE_DESACTIVE = "Compte de l'hôte désactivé : versement suspendu tant que le compte n'est pas réactivé."
 
 
+EN_ATTENTE_VALIDATION = "En attente de la double validation : deux personnes doivent l'accepter (Finance → Validations)."
+REFUSE_EN_VALIDATION = "Refusé en double validation : à reprendre avec l'équipe finance."
+
+
+def _versement_autorise(versement) -> bool:
+    """A payout from the threshold leaves only once two people have approved it (GL-10); the worker asks for it once
+    and waits. Below the threshold, or without a threshold decided, it leaves as before."""
+    from apps.finance import api as finance  # local import: finance is read at the worker's pass only
+
+    if not finance.validation_requise(versement.montant):
+        return True
+    statut = finance.statut_validation('versement_hote', 'versement', versement.pk)
+    if statut == 'executee':
+        return True
+    if statut is None:
+        nom = versement.hote.get_full_name() if versement.hote else ''
+        finance.demander_validation('versement_hote', objet_type='versement', objet_id=versement.pk,
+                                    montant=versement.montant, motif=f"Versement automatique à l'hôte {nom}".strip(),
+                                    donnees={'versement_id': str(versement.pk), 'beneficiaire': nom,
+                                             'reservation_id': str(versement.reservation_id)})
+    erreur = REFUSE_EN_VALIDATION if statut in ('refusee', 'echouee') else EN_ATTENTE_VALIDATION
+    if versement.derniere_erreur != erreur:
+        versement.derniere_erreur = erreur
+        versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+    return False
+
+
+def autoriser_versement(donnees: dict) -> str:
+    """Approval of a payout by two people: it leaves at the worker's next pass."""
+    versement = VersementModel.objects.get(pk=donnees['versement_id'])
+    if versement.statut not in ('planifie', 'echoue'):
+        raise PaiementErreur(f"Ce versement n'est plus à envoyer ({versement.get_statut_display()}).")
+    versement.derniere_erreur = ''
+    versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+    return f"Versement de {versement.montant} F CFA autorisé : il part au prochain passage du worker des paiements."
+
+
 def envoyer_versements_dus() -> int:
     if not fedapay_actif():
         return 0  # payouts to hosts go through FedaPay
@@ -410,6 +450,8 @@ def envoyer_versements_dus() -> int:
             if versement.derniere_erreur != COMPTE_DESACTIVE:
                 versement.derniere_erreur = COMPTE_DESACTIVE
                 versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+            continue
+        if not _versement_autorise(versement):
             continue
         profil = ProfilVersementModel.objects.filter(hote_id=versement.hote_id).first()
         if not profil:

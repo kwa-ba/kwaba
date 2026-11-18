@@ -1,10 +1,11 @@
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import date
 from types import SimpleNamespace
 
-from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncDate
+from django.db.models import CharField, Count, Q, Sum
+from django.db.models.functions import Cast, TruncDate
 from django.utils import timezone
 
 from apps.hebergements import api as hebergements
@@ -95,6 +96,26 @@ def objets(reservation_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, SimpleNamesp
 
 def objet(reservation_id: uuid.UUID) -> SimpleNamespace | None:
     return objets([reservation_id]).get(reservation_id)
+
+
+REFERENCE = re.compile(r'^RES-AF(\d{4})-([0-9A-F]{4})$')
+
+
+def par_reference(reference: str) -> list[SimpleNamespace]:
+    """Bookings matching a reference (RES-AF2026-3A43, any case) or a full id. The reference is computed from the
+    year and the start of the id: two bookings of a year may share it (rare), hence a list."""
+    texte = (reference or '').strip().upper()
+    try:
+        return [o for o in [objet(uuid.UUID(texte))] if o]
+    except ValueError:
+        pass
+    trouve = REFERENCE.match(texte)
+    if not trouve:
+        return []
+    annee, debut = int(trouve.group(1)), trouve.group(2).lower()
+    ids = (ReservationModel.objects.filter(created_at__year=annee).annotate(texte_id=Cast('id', CharField()))
+           .filter(texte_id__startswith=debut).values_list('id', flat=True)[:5])
+    return list(objets(ids).values())
 
 
 def ids_confirmees(reservation_ids: Iterable[uuid.UUID]) -> set[uuid.UUID]:

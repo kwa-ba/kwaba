@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import { telechargerPdf } from "@/lib/documents";
-import { emettreFacture, enregistrerSociete, factureDe, lireSignature, lireSociete, telechargerDocument, telechargerFacture } from "./api";
+import {
+  emettreAvoir, emettreFacture, enregistrerSociete, factureDe, lireAvoirs, lireFacturesARegulariser, lireSignature, lireSociete,
+  telechargerAvoir, telechargerDocument, telechargerFacture,
+} from "./api";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
 vi.mock("@/lib/documents", () => ({ telechargerPdf: vi.fn() }));
@@ -46,5 +49,24 @@ describe("documents", () => {
     vi.mocked(api.get).mockResolvedValue({ data: new Blob() });
     await lireSignature();
     expect(api.get).toHaveBeenCalledWith("/v1/admin/documents/societe/signature/", { responseType: "blob" });
+  });
+});
+
+describe("avoirs (GL-8)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post]) vi.mocked(m).mockResolvedValue({ data: { results: [], count: 0 } });
+  });
+
+  it("liste les avoirs, les factures à régulariser, et émet l'avoir d'une facture", async () => {
+
+    await lireAvoirs("F-2026", 2);
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/documents/avoirs/", { params: { q: "F-2026", page: 2 } });
+    await lireFacturesARegulariser();
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/documents/avoirs/a-regulariser/");
+    await emettreAvoir("f1");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/documents/factures/f1/avoir/");
+    await telechargerAvoir({ id: "a1", numero: "AVO-2026-00001" });
+    expect(telechargerPdf).toHaveBeenLastCalledWith("/v1/admin/documents/avoirs/a1/pdf/", "avoir-AVO-2026-00001.pdf");
   });
 });

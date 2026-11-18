@@ -48,6 +48,8 @@ Une seule rubrique **Finance** dans le menu (GL-1, section de droits « finances
 | Grand-livre par compte | GL-4 | un compte général, ou un tiers (compte auxiliaire), avec son solde progressif, d'ouverture et de clôture | `comptes/`, `comptes/<compte>/auxiliaires/`, `grand-livre-compte/` |
 | Balance générale | GL-5 | par compte : solde d'ouverture, débits, crédits, solde de clôture ; totaux et équilibre | `balance/` |
 | Encaissements et versements | (AN-B2) | page Finances d'origine (module `paiements`) : période, rapprochement jour par jour, versements, exports CSV et PDF | `paiements/finances/` |
+| Remboursements | GL-9 | rembourser un séjour payé depuis ses montants figés (conditions du voyageur, ou intégral par Kwa-Ba) ; suivre chaque remboursement, saisir le compte Mobile Money, relancer, enregistrer un remboursement fait à la main (carte) | `paiements/finances/remboursements/` (module `paiements`) |
+| Validations | GL-10 | les opérations à partir du seuil qui attendent une deuxième personne ; approuver ou refuser (motif) | `validations/`, `validations/<id>/approuver|refuser/` |
 | Rapports | GL-19 | les rapports enregistrés, un rapport libre sur un ou deux axes, l'enregistrement d'un nouveau rapport (une ligne de `finance_rapport`) ; export CSV | `rapports/`, `rapports/resultat/`, `rapports/export/` |
 | Clôture mensuelle | GL-7 | les six contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
 | Export comptable | GL-6 | le fichier des écritures (CSV `;`, UTF-8 avec BOM) pour le cabinet | `export/ecritures/` |
@@ -62,6 +64,35 @@ Règles :
 - Aujourd'hui, aucun rapprochement FedaPay n'est encore écrit (GL-12) : le contrôle 4 de la clôture est donc rouge et aucun mois ne peut être clôturé. C'est voulu : un jour sans rapprochement n'est jamais un écart nul.
 
 L'ancienne adresse `/backoffice/grand-livre` redirige vers `/backoffice/finances/grand-livre`.
+
+## Lot UI-A : avoirs, remboursements, rôle Finance, double validation
+
+### Avoirs (GL-8, module `documents`)
+
+Une facture ne se supprime ni ne se modifie (LPF Togo art. 64) : une vente rendue est neutralisée par une **facture d'avoir**, série `AVO-AAAA-NNNNN`, numérotation continue sans trou (`SequencePieceModel`, verrou à chaque émission), PDF figé, qui cite la facture d'origine (numéro, date, montant). `AvoirModel` : montants positifs, à déduire ; jamais plus que ce que la facture contient encore.
+
+- **Quand** : à chaque remboursement décidé (`paiements.services.rembourser`), et à l'émission d'une facture d'un objet déjà remboursé. Le produit payé dit ce qui a été rendu (`Produit.rembourse`, `paiements.api.total_rembourse`, sur le **premier paiement réussi** de l'objet seulement : un paiement fait deux fois et rendu n'est pas une vente annulée).
+- **Montant** (décision du 18/11) : le montant remboursé. Annulation totale : un avoir du total qui reprend les lignes de la facture. Remboursement partiel (nuits retenues) : un avoir du montant rendu, une ligne ; la facture reste valable pour la part conservée. Un séjour annulé jamais facturé n'a ni facture ni avoir.
+- **Idempotent** : `documents.api.regulariser_avoirs` émet la différence entre ce qui a été rendu et les avoirs déjà émis ; un second appel n'émet rien. Un échec (société non renseignée) n'empêche jamais le remboursement : la facture apparaît dans **Documents → Avoirs**, « factures remboursées sans avoir », avec un bouton « Émettre l'avoir ».
+- **Factures antérieures** (F-2026-00006) : `manage.py regulariser_avoirs` (`--simulation` pour voir sans émettre), relançable sans doublon.
+
+### Remboursements (GL-9, module `paiements`)
+
+**Finance → Remboursements** : chercher un séjour par sa référence (`RES-AF2026-3A43`, ou son identifiant si deux réservations partagent la référence) ; l'aperçu donne, depuis les **montants figés** de la réservation (`tarifs.montants_de`, jamais les taux courants), ce que rendrait l'annulation selon les conditions du voyageur et en intégral. Rembourser annule la réservation par le parcours habituel : lignes du grand livre (T01, T02, R01, R08, T05), versement de l'hôte réduit ou annulé, avoir si la vente était facturée. La liste suit chaque remboursement ; actions : saisir le compte Mobile Money (voyageur joint par téléphone), relancer un envoi en échec, enregistrer un remboursement fait depuis le tableau de bord FedaPay (carte : T05 sort du compte d'argent). Journal : `remboursement_traite`.
+
+### Rôle Finance et permission (GL-10)
+
+- **Lecture seule** (`admin_lecture_seule`, réglé par un super admin dans *Utilisateurs → Droits*) : l'admin voit ses sections (toutes par défaut) et l'API refuse toute écriture (`EstAdministrateur`, 403 « Compte en lecture seule »). Un super admin n'est jamais en lecture seule.
+- **Permission « Opérations financières »** (`finance_operations`) : nécessaire pour rembourser, agir sur un remboursement et décider une validation. Jamais incluse d'office.
+
+### Double validation (GL-10, module `finance`)
+
+À partir du **seuil** (`double_validation_seuil` = 250 000 F, décision du 18/11 ; 0 rend la règle inerte), une opération d'argent attend une deuxième personne (`finance_validation`) :
+
+- **Remboursement d'un séjour** décidé au back-office (Finance → Remboursements, et aussi l'annulation depuis Réservations, qui répond alors 202) : la personne qui demande ne peut pas valider ; une autre personne valide, et l'annulation s'exécute dans la même transaction.
+- **Versement automatique à un hôte** : le worker ne l'envoie pas, il crée une demande « Système » ; **deux** personnes différentes doivent l'accepter, puis il part au passage suivant.
+- La base refuse elle-même qu'une même personne demande et valide, ou valide deux fois (contraintes de `finance_validation`) ; une seule demande en attente par objet. Une exécution en échec est annulée et la demande garde la raison (`echouee`). Refus : motif obligatoire.
+- Les modules déclarent leurs opérations au démarrage (`finance.api.declarer_operation`) : `remboursement_sejour` (réservations), `versement_hote` (paiements). Journal : `validation_demandee`, `validation_premiere`, `validation_accordee`, `validation_refusee`, `validation_echouee`.
 
 ## Écrire une ligne
 
@@ -147,11 +178,11 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 | FIN-06 fonds de garantie | Taux à 0 ; natures G sans compte (bloquent la clôture, I12) : lot F4, après l'expert-comptable |
 | FIN-07 livres comptables et export | Fait : vues (partie double, livre-journal, grand-livre, balance, contrôles), écrans Livre-journal, Grand-livre par compte, Balance générale et fichier CSV des écritures (GL-3 à GL-6). À-nouveaux et livre d'inventaire : GL-23 |
 | FIN-08 clôture mensuelle | Fait : refus en base dans un mois verrouillé, `peut_on_cloturer`, écran et verrouillage par un super admin, dans l'ordre, définitif en base (GL-7). Contrôle « toute facture annulée a son avoir » : avec GL-8 |
-| FIN-09 facturation | Lot F3 (module `documents`) |
+| FIN-09 facturation | Factures (module `documents`) ; avoirs AVO sur toute vente remboursée (GL-8). Documents de caution REC/RET : GL-14 |
 | FIN-10 tarifs complets et historique | Paramètres chargés ; page Tarifs : avec FIN-16 |
 | FIN-11 dépenses, comptes courants | Natures D et F ; écrans : lot F4 |
 | FIN-12 tableau de bord | Synthèse : marge par offre, taux de frais réel, fonds de garantie du mois. Tableau de bord DAF complet (quatre poches, seuils, scénario prudent) : GL-18 |
-| FIN-13 rôle Finance, double validation, journal | Journal des corrections : fait. Le reste après le lot F2 |
+| FIN-13 rôle Finance, double validation, journal | Fait : rôle Finance en lecture seule, permission « Opérations financières », double validation à partir de 250 000 F des remboursements et des versements, garantie en base, journal (GL-10) |
 | FIN-16 référentiel unique des paramètres | Table et 95 valeurs (53 actives). Lecture par le site à la place de `ReglagesTarifsModel`, ajout par l'interface, historique écrit : PR dédiée |
 | FIN-17 restitution générique | Fait : vue pivot, axes, rapports, moteur, écran Rapports avec rapport libre, création d'un rapport sans développement et export CSV (GL-19) |
 | Invariants | I5, I8 à I13 en base, I14 ajouté (modules ouverts et référentiel). I1 à I4, I6 et I7 se comparent aux écrans (page Finances, tableau de bord) quand ils liront le grand livre |
@@ -196,18 +227,21 @@ Le fichier a été traduit dans notre architecture : modèles Django et migratio
 
 - La rubrique Finance regroupe toutes les pages d'argent et de comptabilité du back-office (GL-1) ; livraison par lots : d'abord les livres (GL-2 à GL-7, GL-19), puis les écritures du lot UI-A (GL-8 avoirs, GL-9 remboursements, GL-10 rôle Finance, GL-14 documents de caution), puis le reste.
 - Clôture d'un mois : super administrateurs seulement.
-- Fonds de garantie : **8 %** (au lieu de 5 ou 7 %). Capital social : **500 000 F CFA**. Ils entreront dans `finance_parametre`, avec leur historique, avec GL-17 et GL-16 (le fonds reste à zéro tant que ses natures G n'ont pas de compte SYSCOHADA, sinon il bloquerait la clôture).
+- Lot UI-A : seuil de double validation **250 000 F** (H-4), appliqué aux remboursements décidés au back-office **et** aux versements automatiques aux hôtes ; avoir d'un remboursement partiel = le montant remboursé ; rôle Finance = admin en lecture seule, opérations d'argent sous la permission « Opérations financières ».
+- Fonds de garantie : **10 %** (au lieu de 5 ou 7 % ; d'abord fixé à 8 %, corrigé le même jour). Il est distinct de la caution du voyageur, qui garde sa règle propre. Capital social : **500 000 F CFA**. Ils entreront dans `finance_parametre`, avec leur historique, avec GL-17 et GL-16 (le fonds reste à zéro tant que ses natures G n'ont pas de compte SYSCOHADA, sinon il bloquerait la clôture).
 - Données de test de la préprod : par les vrais parcours (réservation, paiement, arrivée, annulation, versement), comptes `*.demo@`. Le grand livre étant en ajout seul, elles y restent : la base de production est distincte.
 
 ## Paramètres à zéro, en attente de décision
 
-`fonds_garantie_taux` (8 % décidé, voir ci-dessus), `double_validation_seuil`, `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
+`fonds_garantie_taux` (10 % décidé, voir ci-dessus), `double_validation_seuil` (250 000 F décidé, appliqué au lot UI-A), `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
 
 Les natures G01 et G02 (fonds de garantie) n'ont pas de compte SYSCOHADA : une ligne G apparaîtrait dans `finance_ecritures_sans_compte` et bloquerait la clôture (I12). C'est voulu, jusqu'à l'avis de l'expert-comptable.
 
 ## Tests
 
 - `server/tests/unit/finance/` : règles du domaine et cas d'usage avec des adaptateurs factices, sans base ; `test_livres.py` : pagination, périodes, comptes de résultat, clôture (mois en cours, ordre, contrôles), rapports.
+- `server/tests/unit/finance/test_validations.py` : deux personnes différentes, deux accords quand le système demande, exécution par le dernier accord, échec enregistré, refus motivé, seuil à zéro inerte.
+- `server/tests/integration/finance/test_lot_ui_a.py` : par le vrai parcours d'un séjour, avoirs (annulation totale et partielle, facture émise après l'annulation, factures à régulariser), remboursement sous et au-dessus du seuil, contrainte en base, annulation depuis Réservations, refus, versement retenu puis accepté par deux personnes, compte en lecture seule.
 - `server/tests/integration/finance/test_livres.py` : la rubrique Finance sur une vraie base (filtres du grand livre, livre-journal équilibré, solde progressif d'un compte et d'un tiers, balance, report d'un exercice, fichier CSV, clôture et son trigger, rapports, droits).
 - `server/tests/integration/finance/test_sejours.py` : un séjour à travers le vrai parcours de paiement (paiement, arrivée, annulation gratuite et tardive, annulation après l'arrivée, paiement après annulation, versement, Pack Séjour, taux changé ensuite, argent antérieur au grand livre) ; `test_backoffice.py` : l'écran et ses droits.
 - `server/tests/integration/finance/test_schema.py` : chaque vue, fonction et trigger existe et répond ; les vues disparaissent avant un `migrate` et reviennent après ; contrôle `finance.E001` et invariant I14.

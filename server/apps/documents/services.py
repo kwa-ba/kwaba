@@ -1,5 +1,6 @@
 """Invoice issuing (continuous numbering) and attachments of the confirmation emails."""
 import logging
+import uuid
 from decimal import Decimal
 
 from django.core.files.base import ContentFile
@@ -7,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import generateurs
-from .models import FactureModel, ParametresSocieteModel, SequenceFactureModel
+from .models import AvoirModel, FactureModel, ParametresSocieteModel, SequenceFactureModel, SequencePieceModel
 from .registre import PRODUITS
 
 logger = logging.getLogger('apps.documents')
@@ -53,7 +54,73 @@ def facture_de(type_objet: str, objet, par=None) -> FactureModel:
         return existante
     if not produit.paye(objet):
         raise DocumentErreur("Une facture n'est émise qu'après le paiement.")
-    return _emettre(objet_type=type_objet, objet_id=objet.pk, client_adresse='', par=par, **produit.facture(objet))
+    with transaction.atomic():
+        f = _emettre(objet_type=type_objet, objet_id=objet.pk, client_adresse='', par=par, **produit.facture(objet))
+        # Invoiced after a refund (cancelled stay): its credit note comes at once
+        regulariser(type_objet, objet.pk, par=par)
+    return f
+
+
+def _numero_serie(serie: str) -> str:
+    """Next number of a series (AVO…) for the year, under a lock: continuous, without gaps."""
+    annee = timezone.localdate().year
+    SequencePieceModel.objects.get_or_create(serie=serie, annee=annee)
+    seq = SequencePieceModel.objects.select_for_update().get(serie=serie, annee=annee)
+    seq.dernier += 1
+    seq.save(update_fields=['dernier'])
+    return f"{serie}-{annee}-{seq.dernier:05d}"
+
+
+def deja_neutralise(facture: FactureModel) -> int:
+    return sum(facture.avoirs.values_list('total_ttc', flat=True))
+
+
+@transaction.atomic
+def emettre_avoir(facture: FactureModel, montant: int, motif: str, par=None) -> AvoirModel:
+    """Credit note of `montant` on an invoice (GL-8): the whole invoice gives its lines back, a part gives one line.
+    Never more than what the invoice still holds; the invoice itself is never touched."""
+    facture = FactureModel.objects.select_for_update().get(pk=facture.pk)
+    reste = facture.total_ttc - deja_neutralise(facture)
+    if not 0 < montant <= reste:
+        raise DocumentErreur(f"Avoir impossible : il reste {reste} FCFA à neutraliser sur la facture {facture.numero}.")
+    motif = (motif or '').strip()[:300] or 'Annulation'
+    if montant == facture.total_ttc:
+        lignes = facture.lignes  # the whole sale is cancelled: its lines, deducted
+    else:
+        lignes = [{'libelle': f"{motif} (facture {facture.numero})", 'quantite': 1, 'prix_unitaire': montant}]
+    taux = facture.taux_tva
+    ht = int((Decimal(montant) / (1 + taux / 100)).quantize(Decimal('1'))) if taux else montant
+    a = AvoirModel.objects.create(
+        numero=_numero_serie('AVO'), facture=facture, emis_par_id=getattr(par, 'pk', par if isinstance(par, uuid.UUID) else None),
+        motif=motif, lignes=lignes, total_ht=ht, tva=montant - ht, total_ttc=montant, taux_tva=taux,
+    )
+    a.pdf.save(f"{a.numero}.pdf", ContentFile(generateurs.avoir(a)), save=True)
+    logger.info("Avoir %s de %s FCFA émis sur %s", a.numero, montant, facture.numero)
+    return a
+
+
+def a_neutraliser(facture: FactureModel) -> int:
+    """What is still to neutralise on an invoice: money refunded to the client, less the credit notes issued."""
+    produit = PRODUITS.get(facture.objet_type)
+    if not (produit and produit.rembourse and facture.objet_id):
+        return 0
+    objet = produit.charger(facture.objet_id)
+    if objet is None:
+        return 0
+    return max(0, min(produit.rembourse(objet), facture.total_ttc) - deja_neutralise(facture))
+
+
+def regulariser(type_objet: str, objet_id, motif: str = '', par=None) -> AvoirModel | None:
+    """Issues the credit note an object needs, if any: its invoice exists and money was given back. Idempotent: the
+    second call finds nothing left. None without an invoice (a stay never invoiced has nothing to neutralise)."""
+    facture = FactureModel.objects.filter(objet_type=type_objet, objet_id=objet_id).first()
+    if facture is None:
+        return None
+    montant = a_neutraliser(facture)
+    if not montant:
+        return None
+    motif = motif or ("Annulation" if montant + deja_neutralise(facture) >= facture.total_ttc else "Remboursement partiel")
+    return emettre_avoir(facture, montant, motif, par)
 
 
 def facture_libre(*, client_nom, client_email, client_adresse, lignes, par) -> FactureModel:

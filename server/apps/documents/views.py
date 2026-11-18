@@ -13,7 +13,7 @@ from apps.securite.backoffice import paginer
 from apps.securite.permissions import EstAdministrateur
 
 from . import generateurs, services
-from .models import FactureModel, ParametresSocieteModel
+from .models import AvoirModel, FactureModel, ParametresSocieteModel
 from .registre import PRODUITS
 
 
@@ -180,3 +180,65 @@ class FacturePdfView(APIView):
         if not f:
             return Response({'detail': 'Facture introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         return _pdf(f.pdf.read() if f.pdf else generateurs.facture(f), f"facture-{f.numero}.pdf")
+
+
+def _avoir(a: AvoirModel) -> dict:
+    return {'id': str(a.id), 'numero': a.numero, 'emis_le': a.emis_le, 'motif': a.motif, 'total_ttc': a.total_ttc,
+            'tva': a.tva, 'facture': {'id': str(a.facture_id), 'numero': a.facture.numero,
+                                      'total_ttc': a.facture.total_ttc, 'client_nom': a.facture.client_nom}}
+
+
+class AvoirsView(APIView):
+    """GET: credit notes issued (q: number, invoice, customer), newest first (GL-8)."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request):
+        qs = AvoirModel.objects.select_related('facture')
+        if q := request.query_params.get('q', '').strip():
+            qs = (qs.filter(numero__icontains=q) | qs.filter(facture__numero__icontains=q)
+                  | qs.filter(facture__client_nom__icontains=q))
+        return paginer(request, qs.order_by('-emis_le'), _avoir)
+
+
+class AvoirPdfView(APIView):
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request, pk):
+        a = AvoirModel.objects.select_related('facture').filter(pk=pk).first()
+        if not a:
+            return Response({'detail': 'Avoir introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        return _pdf(a.pdf.read() if a.pdf else generateurs.avoir(a), f"avoir-{a.numero}.pdf")
+
+
+class AvoirsARegulariserView(APIView):
+    """GET: invoices whose sale was given back (refund decided) without their credit note yet, with the amount
+    still to neutralise. Empty when every cancelled invoice has its credit note."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request):
+        lignes = []
+        for f in FactureModel.objects.exclude(objet_type='libre').prefetch_related('avoirs').order_by('-emise_le'):
+            montant = services.a_neutraliser(f)
+            if montant:
+                lignes.append({**_facture(f), 'a_neutraliser': montant,
+                               'deja_neutralise': services.deja_neutralise(f)})
+        return Response(lignes)
+
+
+class RegulariserFactureView(APIView):
+    """POST: issues the credit note an invoice needs (what was refunded, less the credit notes already issued)."""
+    permission_classes = [EstAdministrateur]
+
+    def post(self, request, pk):
+        f = FactureModel.objects.filter(pk=pk).first()
+        if not f:
+            return Response({'detail': 'Facture introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            avoir = services.regulariser(f.objet_type, f.objet_id, par=request.user)
+        except services.DocumentErreur as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
+        if avoir is None:
+            return Response({'detail': 'Rien à neutraliser sur cette facture.'}, status=status.HTTP_409_CONFLICT)
+        activity.record("backoffice_creation", request, actor=request.user, objet="avoir", id=str(avoir.pk),
+                        libelle=f"{avoir.numero} sur {f.numero}")
+        return Response(_avoir(avoir), status=status.HTTP_201_CREATED)

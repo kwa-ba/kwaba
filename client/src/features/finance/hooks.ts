@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cloturerMois, creerRapport, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
+  cloturerMois, creerRapport, deciderValidation, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
   lireGrandLivreCompte, lireLivreJournal, lireMoisComptables, lireMouvements, lirePilotage, lireRapports,
   lireReferentiels, lireResultatRapport, type DemandeRapport, type FiltresMouvements, type NouveauRapport,
 } from "./api";
@@ -23,6 +23,7 @@ export const CLES_FINANCE = {
   controles: (mois: string) => ["admin", "finance", "cloture", mois] as const,
   rapports: ["admin", "finance", "rapports"] as const,
   resultat: (demande: DemandeRapport, debut: string, fin: string) => ["admin", "finance", "rapports", demande, debut, fin] as const,
+  validations: (statut: string) => ["admin", "finance", "validations", statut] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -104,5 +105,19 @@ export function useCreerRapport() {
   return useMutation({
     mutationFn: (rapport: NouveauRapport) => creerRapport(rapport),
     onSuccess: () => client.invalidateQueries({ queryKey: CLES_FINANCE.rapports }),
+  });
+}
+
+export function useValidations(statut: string) {
+  return useQuery({ queryKey: CLES_FINANCE.validations(statut), queryFn: () => lireValidations(statut) });
+}
+
+/** Approves or refuses: the operation may have changed bookings, refunds and payouts, read again everywhere. */
+export function useDeciderValidation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, motif }: { id: string; decision: "approuver" | "refuser"; motif?: string }) =>
+      deciderValidation(id, decision, motif),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
   });
 }

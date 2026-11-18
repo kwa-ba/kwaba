@@ -24,6 +24,7 @@ export default function DroitsAdmin({ admin, sections, permissions, onFermer }: 
   const [choisies, setChoisies] = useState<string[]>(admin?.admin_sections ?? []);
   const [granted, setGranted] = useState<string[]>(admin?.admin_permissions ?? []);
   const [fin, setFin] = useState(pourSaisie(admin?.admin_expire_le ?? null));
+  const [lectureSeule, setLectureSeule] = useState(!!admin?.admin_lecture_seule);
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
 
@@ -39,6 +40,7 @@ export default function DroitsAdmin({ admin, sections, permissions, onFermer }: 
         admin_sections: limite ? choisies : null,
         admin_permissions: granted,
         admin_expire_le: fin ? new Date(fin).toISOString() : null,
+        admin_lecture_seule: lectureSeule,
       });
       toast.success("Droits mis à jour");
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -54,6 +56,10 @@ export default function DroitsAdmin({ admin, sections, permissions, onFermer }: 
   return (
     <Panneau ouvert={!!admin} titre={`Droits de ${nom}`} onFermer={onFermer} onValider={valider} envoi={envoi}>
       {erreurs.detail && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-xl p-3">{erreurs.detail}</p>}
+      <div>
+        <Interrupteur label="Lecture seule (rôle Finance)" checked={lectureSeule} onChange={setLectureSeule} />
+        <p className="text-xs text-muted">Voit ses sections mais ne peut rien modifier : toute action est refusée.</p>
+      </div>
       <Interrupteur label="Limiter à certaines sections" checked={limite} onChange={setLimite} />
       {limite && (
         <fieldset className="space-y-2">

@@ -297,3 +297,36 @@ export function urlExportRapport(demande: DemandeRapport, debut: string, fin: st
 export async function creerRapport(rapport: NouveauRapport) {
   return (await api.post<Rapport>(`${FINANCE}/rapports/`, rapport)).data;
 }
+
+// --- Double validation (GL-10) ---------------------------------------------------------------------------------
+
+export type StatutValidation = "en_attente" | "executee" | "refusee" | "echouee";
+
+export interface ValidationFinance {
+  id: string;
+  operation: string;
+  operation_libelle: string;
+  objet_type: string;
+  objet_id: string;
+  montant: number;
+  motif: string;
+  donnees: Record<string, string>;
+  statut: StatutValidation;
+  /** « Système » when the worker asked (a payout due): two approvals are then needed */
+  demandee_par: string;
+  demandee_le: string;
+  premiere_par: string;
+  decidee_par: string;
+  decidee_le: string | null;
+  resultat: string;
+  je_peux_valider: boolean;
+}
+
+export async function lireValidations(statut: string) {
+  return (await api.get<{ seuil: number; peut_operer: boolean; validations: ValidationFinance[] }>(
+    `${FINANCE}/validations/${parametres({ statut })}`)).data;
+}
+
+export async function deciderValidation(id: string, decision: "approuver" | "refuser", motif = "") {
+  return (await api.post<ValidationFinance>(`${FINANCE}/validations/${id}/${decision}/`, decision === "refuser" ? { motif } : {})).data;
+}

@@ -78,6 +78,7 @@ PRODUIT = Produit(
     proprietaire_id=lambda r: r.guest_id,
     reference=lambda r: r.reference,
     paye=lambda r: paiements.paiement_reussi('reservation', r.pk),
+    rembourse=lambda r: paiements.total_rembourse('reservation', r.pk),
     recu=lambda r: paiements.recu_pdf('reservation', r.pk),
     bon=bon,
     facture=lambda r: {'client_nom': _nom(r.guest), 'client_email': r.guest.email, 'lignes': lignes_facture(r)},
