@@ -81,10 +81,16 @@ class FaussesAlertes(Alertes):
 
 class FauxJournal(Journal):
     def __init__(self):
-        self.corrections = []
+        self.corrections, self.clotures, self.rapports = [], [], []
 
     def correction(self, par_id, mouvement_id, inverse_id, motif):
         self.corrections.append((par_id, mouvement_id, inverse_id, motif))
+
+    def cloture(self, par_id, mois):
+        self.clotures.append((par_id, mois))
+
+    def rapport_cree(self, par_id, code, titre):
+        self.rapports.append((par_id, code, titre))
 
 
 class FausseTransaction(TransactionManager):

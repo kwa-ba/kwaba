@@ -1,24 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, RefreshCw, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { X } from "lucide-react";
+import AdminTable, { Pagination, SearchInput, type Colonne } from "@/components/backoffice/AdminTable";
 import { formatDate, formatPrice } from "@/lib/utils";
-import { lireGrandLivre, type MouvementFinance } from "../api";
+import type { FiltresMouvements, LigneMouvement } from "../api";
+import { useMouvements, useReferentielsFinance } from "../hooks";
+import { CHAMP, ChoixCode } from "./communs";
+import { FAMILLES, OFFRES, TIERS } from "./libelles";
 
-const TIERS: Record<string, string> = {
-  hote: "Hôte", hotel: "Hôtel", voyageur: "Voyageur", chauffeur: "Chauffeur", proprietaire: "Propriétaire",
-  prestataire: "Prestataire", apporteur: "Apporteur",
-};
-const OFFRES: Record<string, string> = {
-  COURTE_DUREE: "Courte durée", HOTEL: "Hôtel", TRANSFERT: "Transfert", VOITURE_CH: "Voiture avec chauffeur",
-  VOITURE_SANS: "Voiture sans chauffeur", STRUCTURE: "Structure", EVASION: "Évasion",
-};
-const FAMILLES: Record<string, string> = {
-  R: "bg-emerald-50 text-emerald-800", D: "bg-orange-50 text-orange-800", T: "bg-sky-50 text-sky-800",
-  C: "bg-violet-50 text-violet-800",
-};
-
-function Montant({ m }: { m: MouvementFinance }) {
+function Montant({ m }: { m: LigneMouvement }) {
   return (
     <span className={`tabular-nums font-semibold whitespace-nowrap ${m.montant_signe < 0 ? "text-red-700" : "text-emerald-700"}`}>
       {m.montant_signe < 0 ? "−" : "+"} {formatPrice(m.montant)}
@@ -26,147 +17,86 @@ function Montant({ m }: { m: MouvementFinance }) {
   );
 }
 
-function Chiffre({ libelle, montant, aide, accent }: { libelle: string; montant: number; aide: string; accent?: boolean }) {
+function Nature({ m }: { m: LigneMouvement }) {
   return (
-    <div className={`rounded-2xl p-4 ${accent ? "bg-primary text-white" : "bg-surface border border-gray-100"}`}>
-      <p className={`text-xs font-semibold ${accent ? "text-white/80" : "text-muted"}`}>{libelle}</p>
-      <p className="font-heading font-bold text-xl mt-1 tabular-nums">{formatPrice(montant)}</p>
-      <p className={`text-xs mt-0.5 ${accent ? "text-white/80" : "text-muted"}`}>{aide}</p>
-    </div>
+    <span>
+      <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-bold mr-1.5 ${FAMILLES[m.famille] ?? "bg-gray-100 text-dark"}`}>{m.nature_code}</span>
+      {m.nature_libelle}
+      {m.annule_mouvement_id && <span className="block text-xs text-muted">Corrige la ligne {m.annule_mouvement_id}{m.motif ? ` : ${m.motif}` : ""}</span>}
+    </span>
   );
 }
 
+const tiers = (m: LigneMouvement) => (m.tiers_type
+  ? <>{m.nom || m.tiers_id || "À désigner"} <span className="text-muted">· {TIERS[m.tiers_type] ?? m.tiers_type}</span></>
+  : <span className="text-muted">Kwa-Ba</span>);
+
+const COLONNES: Colonne<LigneMouvement>[] = [
+  { titre: "N°", cellule: (m) => <span className="text-muted tabular-nums">{m.id}</span>, masquerMobile: true },
+  { titre: "Date", cellule: (m) => <span className="whitespace-nowrap">{formatDate(m.date_evenement)}</span> },
+  { titre: "Nature", cellule: (m) => <Nature m={m} />, masquerMobile: true },
+  { titre: "Offre", cellule: (m) => OFFRES[m.offre_code] ?? m.offre_code },
+  { titre: "Tiers", cellule: tiers },
+  { titre: "Compte", cellule: (m) => m.compte_argent_code },
+  { titre: "Pièce", cellule: (m) => <span className="text-muted whitespace-nowrap">{m.piece_reference ?? "—"}</span> },
+  { titre: "Montant", cellule: (m) => <Montant m={m} />, className: "text-right" },
+];
+
+const VIDE: FiltresMouvements = {};
+
 /**
- * The ledger at a glance (module finance): the invariants that must always hold, the three balances that never mix
- * (Kwa-Ba's revenue, money owed to partners and travellers, deposits held), the sums owed by partner and the latest
- * lines. Every figure is read from the ledger, none is computed again from the bookings.
+ * Every line of the ledger, newest first, with filters that combine (GL-2): period, nature, family, offer, third
+ * party, money account, document and direction. A written line never changes: an error is corrected by an inverse
+ * line, and both stay visible.
  */
 export default function GrandLivre() {
-  const { data: d, isLoading, isError, refetch, isFetching, dataUpdatedAt } = useQuery({
-    queryKey: ["admin", "finance", "grand-livre"], queryFn: lireGrandLivre,
-  });
-  const anomalies = d?.invariants.filter((i) => i.anomalies > 0) ?? [];
+  const [filtres, setFiltres] = useState<FiltresMouvements>(VIDE);
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isFetching, isError, refetch } = useMouvements(filtres, page);
+  const { data: ref } = useReferentielsFinance();
+
+  const changer = (champ: keyof FiltresMouvements, valeur: string) => {
+    setFiltres((f) => ({ ...f, [champ]: valeur || undefined }));
+    setPage(1);
+  };
+  const actifs = Object.values(filtres).filter(Boolean).length;
+  const natures = (ref?.natures ?? []).filter((n) => !filtres.famille || n.famille === filtres.famille);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        {d && (
-          <p className="text-sm text-muted">
-            Lu le {formatDate(new Date(dataUpdatedAt).toISOString())} à {new Date(dataUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-        )}
-        <button onClick={() => refetch()} disabled={isFetching} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-surface text-sm font-semibold disabled:opacity-50 sm:ml-auto">
-          <RefreshCw size={16} aria-hidden className={isFetching ? "animate-spin" : ""} /> Actualiser
-        </button>
-      </div>
-
-      {isLoading && <div className="h-64 skeleton rounded-2xl" />}
-      {isError && <p className="text-sm text-red-700">Impossible de lire le grand livre.</p>}
-      {d && (
-        <>
-          <section className={`rounded-2xl border p-5 ${anomalies.length ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50"}`}>
-            <div className="flex items-center gap-2 mb-3">
-              {anomalies.length
-                ? <TriangleAlert size={20} className="text-red-700" aria-hidden />
-                : <CheckCircle2 size={20} className="text-emerald-700" aria-hidden />}
-              <h2 className="font-heading font-bold text-dark">
-                {anomalies.length ? `${anomalies.length} invariant${anomalies.length > 1 ? "s" : ""} en anomalie` : "Tous les invariants sont respectés"}
-              </h2>
-            </div>
-            <ul className="grid sm:grid-cols-2 gap-2 text-sm">
-              {d.invariants.map((i) => (
-                <li key={i.invariant} className={`flex items-start justify-between gap-3 rounded-xl px-3 py-2 ${i.anomalies ? "bg-surface text-red-800 font-semibold" : "bg-surface/70 text-dark"}`}>
-                  <span><span className="text-muted font-normal">{i.invariant}</span> · {i.libelle}</span>
-                  <span className="tabular-nums whitespace-nowrap">{i.anomalies ? `${i.anomalies} anomalie${i.anomalies > 1 ? "s" : ""}` : "OK"}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Chiffre libelle="Revenu Kwa-Ba du mois" montant={d.soldes.revenu_du_mois} aide="Frais de service et commissions acquises" accent />
-            <Chiffre libelle="Dû aux partenaires" montant={d.soldes.du_partenaires} aide="Fonds de tiers : jamais à Kwa-Ba" />
-            <Chiffre libelle="Dû aux voyageurs" montant={d.soldes.du_voyageurs} aide="Remboursements décidés, pas encore envoyés" />
-            <Chiffre libelle="Cautions détenues" montant={d.soldes.cautions_detenues} aide="Argent des voyageurs, à restituer" />
+    <div className="space-y-4">
+      <section className="bg-surface rounded-2xl border border-gray-100 p-4 space-y-3" aria-label="Filtres">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <SearchInput value={filtres.piece ?? ""} onChange={(v) => changer("piece", v)} placeholder="Pièce : référence de réservation, facture…" />
+          <label className="text-sm"><span className="sr-only">Du</span>
+            <input type="date" aria-label="Du" className={CHAMP} value={filtres.du ?? ""} max={filtres.au} onChange={(e) => changer("du", e.target.value)} /></label>
+          <label className="text-sm"><span className="sr-only">Au</span>
+            <input type="date" aria-label="Au" className={CHAMP} value={filtres.au ?? ""} min={filtres.du} onChange={(e) => changer("au", e.target.value)} /></label>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+          <ChoixCode libelle="Famille" valeur={filtres.famille ?? ""} onChange={(v) => { changer("famille", v); changer("nature", ""); }} options={ref?.familles ?? []} tous="Toutes" />
+          <ChoixCode libelle="Nature" valeur={filtres.nature ?? ""} onChange={(v) => changer("nature", v)} options={natures} tous="Toutes" />
+          <ChoixCode libelle="Offre" valeur={filtres.offre ?? ""} onChange={(v) => changer("offre", v)} options={ref?.offres ?? []} tous="Toutes" />
+          <ChoixCode libelle="Type de tiers" valeur={filtres.tiers_type ?? ""} onChange={(v) => changer("tiers_type", v)} options={ref?.tiers_types ?? []} />
+          <ChoixCode libelle="Compte d'argent" valeur={filtres.compte_argent ?? ""} onChange={(v) => changer("compte_argent", v)} options={ref?.comptes_argent ?? []} />
+          <ChoixCode libelle="Sens" valeur={filtres.sens ?? ""} onChange={(v) => changer("sens", v)}
+            options={[{ code: "entree", libelle: "Entrées" }, { code: "sortie", libelle: "Sorties" }]} />
+        </div>
+        {(actifs > 0 || filtres.tiers_id) && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {filtres.tiers_id && <span className="text-muted">Tiers n° {filtres.tiers_id}</span>}
+            <button onClick={() => { setFiltres(VIDE); setPage(1); }} className="flex items-center gap-1 font-semibold text-brand hover:underline">
+              <X size={14} aria-hidden /> Effacer les filtres ({actifs})
+            </button>
           </div>
-          {Object.keys(d.soldes.comptes).length > 0 && (
-            <p className="text-sm text-muted">
-              Solde au grand livre : {Object.entries(d.soldes.comptes).map(([c, m]) => `${c === "FEDAPAY" ? "FedaPay" : c} ${formatPrice(m)}`).join(" · ")}
-            </p>
-          )}
+        )}
+      </section>
 
-          <section className="bg-background rounded-2xl border border-gray-100 p-5">
-            <h2 className="font-heading font-bold text-dark mb-3">Sommes dues, par partenaire</h2>
-            {d.du_aux_partenaires.length === 0 ? <p className="text-sm text-muted">Kwa-Ba ne doit rien à personne.</p> : (
-              <ul className="divide-y divide-gray-50 text-sm">
-                {d.du_aux_partenaires.map((p) => (
-                  <li key={`${p.tiers_type}-${p.tiers_id}`} className="flex flex-wrap justify-between gap-2 py-2">
-                    <span className="min-w-0">
-                      <strong className="text-dark">{p.nom || p.tiers_id || "À désigner"}</strong> <span className="text-muted">· {TIERS[p.tiers_type] ?? p.tiers_type}</span>
-                      {p.email && <span className="block text-xs text-muted break-all">{p.email}</span>}
-                    </span>
-                    <span className={`tabular-nums font-semibold ${p.solde_du < 0 ? "text-red-700" : "text-dark"}`}>{formatPrice(p.solde_du)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="bg-background rounded-2xl border border-gray-100 overflow-x-auto">
-            <h2 className="font-heading font-bold text-dark px-5 pt-5">Dernières lignes du grand livre</h2>
-            <p className="text-xs text-muted px-5 mb-3">Une ligne écrite ne se modifie jamais : une erreur se corrige par une ligne inverse.</p>
-            {/* Phone: one card per line, the amount always in view */}
-            <ul className="sm:hidden divide-y divide-gray-50 text-sm">
-              {d.mouvements.length === 0 && <li className="px-5 py-4 text-muted">Aucune ligne pour l&apos;instant.</li>}
-              {d.mouvements.map((m) => (
-                <li key={m.id} className="px-5 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-bold mr-1.5 ${FAMILLES[m.famille] ?? "bg-gray-100 text-dark"}`}>{m.nature_code}</span>
-                      {m.nature_libelle}
-                    </span>
-                    <Montant m={m} />
-                  </div>
-                  <p className="text-xs text-muted mt-1">
-                    N° {m.id} · {formatDate(m.date_evenement)} · {OFFRES[m.offre_code] ?? m.offre_code}
-                    {m.piece_reference && <> · {m.piece_reference}</>}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {m.tiers_type ? `${m.nom || m.tiers_id || "À désigner"} · ${TIERS[m.tiers_type] ?? m.tiers_type}` : "Kwa-Ba"}
-                    {m.annule_mouvement_id && <> · corrige la ligne {m.annule_mouvement_id}</>}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <table className="hidden sm:table w-full text-sm">
-              <thead><tr className="text-left text-xs text-muted border-b border-gray-100">
-                <th className="px-5 py-2 font-semibold">N°</th><th className="px-3 py-2 font-semibold">Date</th>
-                <th className="px-3 py-2 font-semibold">Nature</th><th className="px-3 py-2 font-semibold">Offre</th>
-                <th className="px-3 py-2 font-semibold">Tiers</th><th className="px-3 py-2 font-semibold">Pièce</th>
-                <th className="px-5 py-2 font-semibold text-right">Montant</th>
-              </tr></thead>
-              <tbody>
-                {d.mouvements.length === 0 && <tr><td colSpan={7} className="px-5 py-4 text-muted">Aucune ligne pour l&apos;instant.</td></tr>}
-                {d.mouvements.map((m) => (
-                  <tr key={m.id} className="border-b border-gray-50 last:border-0 align-top">
-                    <td className="px-5 py-2 text-muted tabular-nums">{m.id}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDate(m.date_evenement)}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-bold mr-1.5 ${FAMILLES[m.famille] ?? "bg-gray-100 text-dark"}`}>{m.nature_code}</span>
-                      {m.nature_libelle}
-                      {m.annule_mouvement_id && <span className="block text-xs text-muted">Corrige la ligne {m.annule_mouvement_id}</span>}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">{OFFRES[m.offre_code] ?? m.offre_code}</td>
-                    <td className="px-3 py-2">{m.tiers_type ? <>{m.nom || m.tiers_id || "À désigner"} <span className="text-muted">· {TIERS[m.tiers_type] ?? m.tiers_type}</span></> : <span className="text-muted">Kwa-Ba</span>}</td>
-                    <td className="px-3 py-2 text-muted whitespace-nowrap">{m.piece_reference ?? "—"}</td>
-                    <td className="px-5 py-2 text-right"><Montant m={m} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        </>
-      )}
+      {data && <p className="text-sm text-muted">{data.count} ligne{data.count > 1 ? "s" : ""}</p>}
+      <AdminTable colonnes={COLONNES} lignes={data?.results} cle={(m) => String(m.id)} chargement={isLoading || isFetching}
+        erreur={isError} onReessayer={() => refetch()}
+        titreMobile={(m) => <div className="flex items-start justify-between gap-3"><Nature m={m} /><Montant m={m} /></div>} />
+      {data && <Pagination page={page} count={data.count} pageSize={data.page_size} onChange={setPage} />}
+      <p className="text-xs text-muted">Une ligne écrite ne se modifie jamais : une erreur se corrige par une ligne inverse, et les deux restent visibles.</p>
     </div>
   );
 }

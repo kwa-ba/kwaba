@@ -16,10 +16,11 @@ from typing import Iterable
 from collections.abc import Callable
 
 from apps.finance.application.registre import declarer
-from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, Ligne
-from apps.finance.domain.exceptions import MouvementRefuse, RestitutionRefusee
+from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, FiltresMouvements, Ligne
+from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse, RestitutionRefusee
 from apps.finance.domain.rules import mois_de
-from apps.finance.infrastructure.container import grand_livre_service, restitution_service
+from apps.finance.infrastructure.container import (cloture_service, grand_livre_service, livres_service,
+                                                   rapport_service, restitution_service)
 
 __all__ = [
     'ENTREE', 'SORTIE', 'Ligne', 'MouvementRefuse', 'RestitutionRefusee',
@@ -31,6 +32,13 @@ __all__ = [
     'balance_generale', 'cautions_detenues', 'controle_equilibre', 'controle_invariants', 'derniers_mouvements',
     'du_aux_partenaires',
     'ecritures', 'marge_par_offre', 'peut_on_cloturer', 'rapport', 'soldes_comptes_argent', 'synthese',
+    # Books of article 19, steering (GL-2 to GL-6, GL-18)
+    'FiltresMouvements', 'mouvements', 'livre_journal', 'comptes', 'auxiliaires', 'grand_livre_compte', 'balance',
+    'export_comptable', 'pilotage',
+    # Month closing (GL-7)
+    'ClotureRefusee', 'mois_comptables', 'cloturer',
+    # Reports (GL-19)
+    'rapports', 'axes', 'rapport_libre', 'creer_rapport',
 ]
 
 
@@ -139,3 +147,86 @@ def marge_par_offre(mois: date) -> list[dict]:
 def ecritures(mois: date) -> list[dict]:
     """Double-entry lines of a month: two per movement, same amount, opposite directions."""
     return restitution_service().ecritures(mois)
+
+
+# --- Books of article 19 (GL-2 to GL-6) -----------------------------------------------------------------------------
+
+def mouvements(filtres: FiltresMouvements, page: int = 1, taille: int = 20) -> dict:
+    """Ledger lines matching the filters, newest first: {lignes, total}."""
+    resultat = livres_service().mouvements(filtres, page, taille)
+    return {'lignes': resultat.lignes, 'total': resultat.total}
+
+
+def livre_journal(debut: date, fin: date, journal: str | None = None, page: int = 1, taille: int = 20) -> dict:
+    """Double-entry lines of the period in date order: {lignes, total, totaux: {total_debit, total_credit}}."""
+    resultat = livres_service().livre_journal(debut, fin, journal, page, taille)
+    return {'lignes': resultat['page'].lignes, 'total': resultat['page'].total, 'totaux': resultat['totaux']}
+
+
+def comptes() -> list[dict]:
+    """General accounts with at least one entry: {compte_general, libelle, nb_lignes, solde}."""
+    return livres_service().comptes()
+
+
+def auxiliaires(compte: str) -> list[dict]:
+    """Sub-accounts (third parties) of a general account: {compte_auxiliaire, nb_lignes, solde}."""
+    return livres_service().auxiliaires(compte)
+
+
+def grand_livre_compte(compte: str, debut: date, fin: date, auxiliaire: str | None = None, page: int = 1,
+                       taille: int = 20) -> dict:
+    """Entries of an account on the period with their running balance, its opening and closing balances."""
+    resultat = livres_service().grand_livre_compte(compte, debut, fin, auxiliaire, page, taille)
+    page_ = resultat.pop('page')
+    return {**resultat, 'lignes': page_.lignes, 'total': page_.total}
+
+
+def balance(debut: date, fin: date) -> dict:
+    """Trial balance of the period: {comptes, totaux, equilibree}."""
+    return livres_service().balance(debut, fin)
+
+
+def export_comptable(debut: date, fin: date) -> list[dict]:
+    """Accounting entries of the period for the accounting firm."""
+    return livres_service().export_comptable(debut, fin)
+
+
+def pilotage(mois: date) -> dict:
+    """Margin by offer, real payment fee rate and guarantee fund of a month."""
+    return livres_service().pilotage(mois)
+
+
+# --- Month closing (GL-7) -------------------------------------------------------------------------------------------
+
+def mois_comptables() -> list[dict]:
+    """Every accounting month and the current one, newest first: {mois, etat, verrouillee_le, en_cours…}."""
+    return cloture_service().mois()
+
+
+def cloturer(mois: date, *, par_id: uuid.UUID | None) -> list[dict]:
+    """Locks a finished month once every check is green, in order; raises ClotureRefusee otherwise. Irreversible."""
+    return cloture_service().cloturer(mois, par_id=par_id)
+
+
+# --- Reports (GL-19) ------------------------------------------------------------------------------------------------
+
+def rapports() -> list[dict]:
+    """Saved reports: {code, titre, axe1, axe2, familles, offres, periodicite, destinataire}."""
+    return rapport_service().liste()
+
+
+def axes() -> list[dict]:
+    """Axes a report can group by: {code, libelle}."""
+    return rapport_service().axes()
+
+
+def rapport_libre(debut: date, fin: date, axe1: str, axe2: str | None = None, familles=None, offres=None) -> list[dict]:
+    """A report on one or two axes without saving it; RestitutionRefusee for an unknown axis."""
+    return rapport_service().libre(debut, fin, axe1, axe2, familles, offres)
+
+
+def creer_rapport(*, code: str, titre: str, axe1: str, axe2: str | None = None, familles=None, offres=None,
+                  par_id: uuid.UUID | None = None) -> dict:
+    """Saves a new report (a row, never code), logged."""
+    return rapport_service().creer(code=code, titre=titre, axe1=axe1, axe2=axe2, familles=familles, offres=offres,
+                                   par_id=par_id)

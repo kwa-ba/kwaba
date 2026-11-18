@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Scheduled tasks (cron): scripts/maintenance.sh flush-tokens | renew-certs
-# By hand on the preprod: scripts/maintenance.sh seed-demo
+# By hand on the preprod: scripts/maintenance.sh seed-demo | seed-finance
 source "$(dirname "$0")/lib.sh"
 
 case "${1:-}" in
@@ -26,8 +26,15 @@ case "${1:-}" in
     kwaba_compose run --rm --no-deps api python manage.py seed_give_demo
     log "Données de démonstration prêtes"
     ;;
+  seed-finance)
+    # Months of paid, cancelled, paid-out and refunded stays through the real flows (FedaPay simulated), for the
+    # Finance heading. Append only ledger: these lines stay. Refuses the production domain (server/config/demo.py)
+    [ -f .deploy.env ] || { log "Pas encore déployé"; exit 1; }
+    kwaba_compose run --rm --no-deps api python manage.py seed_finance_demo "${@:2}"
+    log "Données financières de test prêtes"
+    ;;
   *)
-    echo "usage: maintenance.sh flush-tokens | renew-certs | seed-demo" >&2
+    echo "usage: maintenance.sh flush-tokens | renew-certs | seed-demo | seed-finance [--mois N] [--par-jour N]" >&2
     exit 2
     ;;
 esac

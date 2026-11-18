@@ -4,3 +4,7 @@ class MouvementRefuse(ValueError):
 
 class RestitutionRefusee(ValueError):
     """A report that cannot be produced (unknown axis, month not given by its first day…), in French."""
+
+
+class ClotureRefusee(ValueError):
+    """A month that cannot be locked (current month, earlier month still open, a closing check refused), in French."""

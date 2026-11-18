@@ -94,3 +94,26 @@ class Ecrivain:
     offres: frozenset[str]
     natures: frozenset[str]
     ouvert: Callable[[], bool] = lambda: True
+
+
+@dataclass(frozen=True)
+class FiltresMouvements:
+    """Filters of the list of ledger lines (GL-2): every field optional, combined with AND. `piece` matches part of
+    the document reference."""
+    du: date | None = None
+    au: date | None = None
+    nature: str | None = None
+    famille: str | None = None
+    offre: str | None = None
+    tiers_type: str | None = None
+    tiers_id: str | None = None
+    compte_argent: str | None = None
+    piece: str | None = None
+    sens: str | None = None
+
+
+@dataclass(frozen=True)
+class Page:
+    """A page of a long list: its rows and the total number of rows after filters."""
+    lignes: list[dict]
+    total: int
