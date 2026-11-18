@@ -8,3 +8,9 @@ class AuditJournal(Journal):
     def correction(self, par_id, mouvement_id: int, inverse_id: int, motif: str) -> None:
         activity.record('ecriture_corrigee', actor=par_id, mouvement=mouvement_id, ligne_inverse=inverse_id,
                         motif=motif)
+
+    def cloture(self, par_id, mois) -> None:
+        activity.record('periode_cloturee', actor=par_id, mois=f'{mois:%Y-%m}')
+
+    def rapport_cree(self, par_id, code: str, titre: str) -> None:
+        activity.record('rapport_cree', actor=par_id, code=code, titre=titre)

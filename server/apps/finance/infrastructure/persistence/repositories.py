@@ -4,12 +4,13 @@ from decimal import Decimal
 
 from django.db import DatabaseError, IntegrityError, connection, transaction
 
-from apps.finance.application.ports import GrandLivre, Parametres, TransactionManager
+from apps.finance.application.ports import GrandLivre, Parametres, Periodes, Rapports, TransactionManager
 from apps.finance.domain.entities import Ecriture, Ligne, Mouvement, Nature, Referentiels
-from apps.finance.domain.exceptions import MouvementRefuse
-from apps.finance.infrastructure.persistence.models import (CLE_IDEMPOTENCE, CORRECTION_UNIQUE, CompteArgentModel,
-                                                            MouvementModel, MoyenPaiementModel, NatureModel,
-                                                            OffreModel, ParametreModel, PeriodeModel, TiersTypeModel)
+from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse
+from apps.finance.infrastructure.persistence.models import (CLE_IDEMPOTENCE, CORRECTION_UNIQUE, AxeModel,
+                                                            CompteArgentModel, MouvementModel, MoyenPaiementModel,
+                                                            NatureModel, OffreModel, ParametreModel, PeriodeModel,
+                                                            RapportModel, TiersTypeModel)
 
 # SQLSTATE of RAISE EXCEPTION: a refusal of the database guards (migration 0003)
 REFUS_BASE = 'P0001'
@@ -143,3 +144,40 @@ class DjangoGrandLivre(GrandLivre):
 class DjangoParametres(Parametres):
     def lire(self, cle: str) -> tuple[Decimal, bool] | None:
         return ParametreModel.objects.filter(cle=cle).values_list('valeur', 'actif').first()
+
+
+class DjangoPeriodes(Periodes):
+    def serialiser(self) -> None:
+        # Two closings at the same time: the second waits for the first, then sees it
+        with connection.cursor() as curseur:
+            curseur.execute("SELECT pg_advisory_xact_lock(hashtextextended('finance:cloture', 0))")
+
+    def toutes(self) -> list[dict]:
+        return list(PeriodeModel.objects.order_by('mois').values('mois', 'etat', 'verrouillee_le',
+                                                                 'verrouillee_par_id'))
+
+    def verrouiller(self, mois, par_id, quand) -> None:
+        PeriodeModel.objects.get_or_create(mois=mois)
+        changes = (PeriodeModel.objects.filter(mois=mois).exclude(etat=PeriodeModel.VERROUILLEE)
+                   .update(etat=PeriodeModel.VERROUILLEE, verrouillee_le=quand, verrouillee_par_id=par_id))
+        if not changes:
+            raise ClotureRefusee(f'{mois:%m/%Y} est déjà clôturé.')
+
+
+class DjangoRapports(Rapports):
+    CHAMPS = ('code', 'titre', 'axe1', 'axe2', 'familles', 'offres', 'periodicite', 'destinataire')
+
+    def liste(self) -> list[dict]:
+        return [{**r, 'axe1': r.pop('axe1_id'), 'axe2': r.pop('axe2_id')} for r in
+                RapportModel.objects.filter(actif=True).order_by('cree_le', 'code')
+                .values('code', 'titre', 'axe1_id', 'axe2_id', 'familles', 'offres', 'periodicite', 'destinataire')]
+
+    def axes(self) -> list[dict]:
+        return list(AxeModel.objects.filter(actif=True).order_by('code').values('code', 'libelle'))
+
+    def existe(self, code: str) -> bool:
+        return RapportModel.objects.filter(code=code).exists()
+
+    def creer(self, *, code, titre, axe1, axe2, familles, offres) -> None:
+        RapportModel.objects.create(code=code, titre=titre, axe1_id=axe1, axe2_id=axe2, familles=familles,
+                                    offres=offres)

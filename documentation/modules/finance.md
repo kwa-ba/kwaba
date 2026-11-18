@@ -36,9 +36,32 @@ Les montants sont ceux figés sur la réservation à sa création : un taux chan
 
 À venir, sur le même modèle : transferts (chauffeur « à désigner » jusqu'à son attribution) et locations de voiture (propriétaire, chauffeur, caution C01 à C03). Kwa-Ba Give n'écrit rien tant que ses natures ne sont pas décidées.
 
-## Écran du back-office
+## Back-office : la rubrique Finance
 
-**Back-office → Grand livre** (section « Finances », lecture seule) : contrôle des invariants (vert, ou rouge avec le nombre d'anomalies), les trois soldes qui ne se mélangent jamais (revenu de Kwa-Ba du mois, dû aux partenaires, dû aux voyageurs, cautions détenues), solde de chaque compte d'argent, sommes dues par partenaire (nom et email) et les 50 dernières lignes. Sur téléphone, chaque ligne est une carte, montant en vue. API : `GET /api/v1/admin/finance/grand-livre/`.
+Une seule rubrique **Finance** dans le menu (GL-1, section de droits « finances ») ; ses pages s'ouvrent sous elle. Tout est lu dans le grand livre, sauf « Encaissements et versements » (calculé depuis les paiements, gardé pour comparer). Les seules écritures sont la clôture d'un mois et l'enregistrement d'un rapport, toutes deux au journal d'activité.
+
+| Page | Ticket | Contenu | API (`/api/v1/admin/finance/…`) |
+| --- | --- | --- | --- |
+| Synthèse | — / GL-18 (partiel) | invariants, soldes qui ne se mélangent jamais, comptes d'argent, sommes dues par partenaire, marge par offre, taux de frais réel et fonds de garantie du mois | `grand-livre/`, `pilotage/?mois=` |
+| Grand livre | GL-2 | toutes les lignes, du plus récent au plus ancien ; filtres combinés (période, famille, nature, offre, type et identifiant de tiers, compte d'argent, pièce, sens) ; pagination | `mouvements/`, `referentiels/` |
+| Livre-journal | GL-3 | deux écritures par mouvement, débit et crédit, par date ; filtre par journal (VT, AC, TR, OD) ; totaux de la période | `livre-journal/` |
+| Grand-livre par compte | GL-4 | un compte général, ou un tiers (compte auxiliaire), avec son solde progressif, d'ouverture et de clôture | `comptes/`, `comptes/<compte>/auxiliaires/`, `grand-livre-compte/` |
+| Balance générale | GL-5 | par compte : solde d'ouverture, débits, crédits, solde de clôture ; totaux et équilibre | `balance/` |
+| Encaissements et versements | (AN-B2) | page Finances d'origine (module `paiements`) : période, rapprochement jour par jour, versements, exports CSV et PDF | `paiements/finances/` |
+| Rapports | GL-19 | les rapports enregistrés, un rapport libre sur un ou deux axes, l'enregistrement d'un nouveau rapport (une ligne de `finance_rapport`) ; export CSV | `rapports/`, `rapports/resultat/`, `rapports/export/` |
+| Clôture mensuelle | GL-7 | les six contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
+| Export comptable | GL-6 | le fichier des écritures (CSV `;`, UTF-8 avec BOM) pour le cabinet | `export/ecritures/` |
+
+Règles :
+
+- **Périodes** : `?debut=&fin=` (AAAA-MM-JJ, bornes comprises), ce mois-ci par défaut, un an au plus. **Listes** : `page`, `page_size` (20 par défaut, 100 au plus), réponse `{results, count, page, page_size}` comme le reste du back-office.
+- **Comptes de résultat** (classes 6, 7, 8) : leur solde repart de zéro au 1er janvier (exercice civil) ; les comptes de bilan (1 à 5) reprennent leur solde depuis la première écriture. En attendant les écritures d'à-nouveaux (GL-23), c'est la balance et le grand-livre par compte qui l'appliquent.
+- **Clôture** : un mois se clôture une fois terminé, dans l'ordre (le plus ancien mois ouvert d'abord), quand les six contrôles de `finance_peut_on_cloturer` sont verts, par un **super administrateur** (décision du 18 novembre 2026), qui saisit le mois (« 10/2026 ») pour confirmer. Les clôtures simultanées s'attendent (verrou consultatif). Un mois verrouillé ne reçoit plus aucune écriture et **ne se rouvre jamais** : la base refuse toute modification ou suppression d'un mois verrouillé (trigger de la migration `0007`). Journal : `periode_cloturee`.
+- **Exports** : écritures et rapports en CSV, cellules protégées contre l'injection de formules ; chaque export va au journal (`finances_exportees`, format `ecritures` ou `rapport`).
+- **Rapports** : code de 3 à 40 caractères (minuscules, chiffres, `_`), titre de 3 à 120, axes de `finance_axe`, filtres de familles et d'offres en codes ; un axe inconnu est refusé par la base. Journal : `rapport_cree`.
+- Aujourd'hui, aucun rapprochement FedaPay n'est encore écrit (GL-12) : le contrôle 4 de la clôture est donc rouge et aucun mois ne peut être clôturé. C'est voulu : un jour sans rapprochement n'est jamais un écart nul.
+
+L'ancienne adresse `/backoffice/grand-livre` redirige vers `/backoffice/finances/grand-livre`.
 
 ## Écrire une ligne
 
@@ -122,15 +145,15 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 | FIN-04 sommes dues aux partenaires | Vue faite. Écran, échéances, alertes, gel des versements : lot F2 |
 | FIN-05 registre des cautions | Vue par réservation ou location. Registre des cautions de location : lot F2 ; séjours : projet séparé |
 | FIN-06 fonds de garantie | Taux à 0 ; natures G sans compte (bloquent la clôture, I12) : lot F4, après l'expert-comptable |
-| FIN-07 livres comptables et export | Vues livrées (partie double, livre-journal, grand-livre, balance, contrôles). Fichier CSV et écran : lot F4 |
-| FIN-08 clôture mensuelle | Refus en base dans un mois verrouillé, `peut_on_cloturer`. Verrouillage et écran : lot F4 |
+| FIN-07 livres comptables et export | Fait : vues (partie double, livre-journal, grand-livre, balance, contrôles), écrans Livre-journal, Grand-livre par compte, Balance générale et fichier CSV des écritures (GL-3 à GL-6). À-nouveaux et livre d'inventaire : GL-23 |
+| FIN-08 clôture mensuelle | Fait : refus en base dans un mois verrouillé, `peut_on_cloturer`, écran et verrouillage par un super admin, dans l'ordre, définitif en base (GL-7). Contrôle « toute facture annulée a son avoir » : avec GL-8 |
 | FIN-09 facturation | Lot F3 (module `documents`) |
 | FIN-10 tarifs complets et historique | Paramètres chargés ; page Tarifs : avec FIN-16 |
 | FIN-11 dépenses, comptes courants | Natures D et F ; écrans : lot F4 |
-| FIN-12 tableau de bord | Vue du taux de frais réel ; écran : lot F4 |
+| FIN-12 tableau de bord | Synthèse : marge par offre, taux de frais réel, fonds de garantie du mois. Tableau de bord DAF complet (quatre poches, seuils, scénario prudent) : GL-18 |
 | FIN-13 rôle Finance, double validation, journal | Journal des corrections : fait. Le reste après le lot F2 |
 | FIN-16 référentiel unique des paramètres | Table et 95 valeurs (53 actives). Lecture par le site à la place de `ReglagesTarifsModel`, ajout par l'interface, historique écrit : PR dédiée |
-| FIN-17 restitution générique | Vue pivot, axes, rapports, moteur : faits. Écran de création : lot F4 |
+| FIN-17 restitution générique | Fait : vue pivot, axes, rapports, moteur, écran Rapports avec rapport libre, création d'un rapport sans développement et export CSV (GL-19) |
 | Invariants | I5, I8 à I13 en base, I14 ajouté (modules ouverts et référentiel). I1 à I4, I6 et I7 se comparent aux écrans (page Finances, tableau de bord) quand ils liront le grand livre |
 
 ## Écarts par rapport au fichier SQL du 10 novembre
@@ -169,15 +192,23 @@ Le fichier a été traduit dans notre architecture : modèles Django et migratio
 - Gel des versements (FIN-04.6) : un interrupteur « versements gelés » par partenaire, au back-office, journalisé.
 - Petites sommes de moins de 5 000 F : pas de versement groupé le vendredi pour l'instant ; l'échéance de chaque somme est affichée.
 
+## Décisions prises le 2026-11-18
+
+- La rubrique Finance regroupe toutes les pages d'argent et de comptabilité du back-office (GL-1) ; livraison par lots : d'abord les livres (GL-2 à GL-7, GL-19), puis les écritures du lot UI-A (GL-8 avoirs, GL-9 remboursements, GL-10 rôle Finance, GL-14 documents de caution), puis le reste.
+- Clôture d'un mois : super administrateurs seulement.
+- Fonds de garantie : **8 %** (au lieu de 5 ou 7 %). Capital social : **500 000 F CFA**. Ils entreront dans `finance_parametre`, avec leur historique, avec GL-17 et GL-16 (le fonds reste à zéro tant que ses natures G n'ont pas de compte SYSCOHADA, sinon il bloquerait la clôture).
+- Données de test de la préprod : par les vrais parcours (réservation, paiement, arrivée, annulation, versement), comptes `*.demo@`. Le grand livre étant en ajout seul, elles y restent : la base de production est distincte.
+
 ## Paramètres à zéro, en attente de décision
 
-`fonds_garantie_taux` (5 % ou 7 %), `double_validation_seuil`, `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
+`fonds_garantie_taux` (8 % décidé, voir ci-dessus), `double_validation_seuil`, `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
 
 Les natures G01 et G02 (fonds de garantie) n'ont pas de compte SYSCOHADA : une ligne G apparaîtrait dans `finance_ecritures_sans_compte` et bloquerait la clôture (I12). C'est voulu, jusqu'à l'avis de l'expert-comptable.
 
 ## Tests
 
-- `server/tests/unit/finance/` : règles du domaine et cas d'usage avec des adaptateurs factices, sans base.
+- `server/tests/unit/finance/` : règles du domaine et cas d'usage avec des adaptateurs factices, sans base ; `test_livres.py` : pagination, périodes, comptes de résultat, clôture (mois en cours, ordre, contrôles), rapports.
+- `server/tests/integration/finance/test_livres.py` : la rubrique Finance sur une vraie base (filtres du grand livre, livre-journal équilibré, solde progressif d'un compte et d'un tiers, balance, report d'un exercice, fichier CSV, clôture et son trigger, rapports, droits).
 - `server/tests/integration/finance/test_sejours.py` : un séjour à travers le vrai parcours de paiement (paiement, arrivée, annulation gratuite et tardive, annulation après l'arrivée, paiement après annulation, versement, Pack Séjour, taux changé ensuite, argent antérieur au grand livre) ; `test_backoffice.py` : l'écran et ses droits.
 - `server/tests/integration/finance/test_schema.py` : chaque vue, fonction et trigger existe et répond ; les vues disparaissent avant un `migrate` et reviennent après ; contrôle `finance.E001` et invariant I14.
 - `server/tests/integration/finance/` (PostgreSQL réelle) : série FB (immuabilité, idempotence, refus, y compris par un `INSERT`, `UPDATE` ou `DELETE` direct en base), FI-02, destinataires des alertes, journal des corrections, les neuf cas de référence du prompt développeurs au franc près, les trois soldes, la partie double du cas de référence (note 12, section 8.4), les invariants et la clôture.

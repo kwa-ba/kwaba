@@ -26,6 +26,17 @@ def mois_de(moment: datetime) -> date:
     return moment.astimezone(timezone.utc).date().replace(day=1)
 
 
+def est_compte_de_resultat(compte: str) -> bool:
+    """SYSCOHADA classes 6 (charges), 7 (produits) and 8 (HAO): their balance starts again from zero each financial
+    year; balance sheet accounts (classes 1 to 5) carry theirs over."""
+    return (compte or '')[:1] in ('6', '7', '8')
+
+
+def debut_exercice(jour: date) -> date:
+    """First day of the financial year of a day: the calendar year (AUDCIF art. 7)."""
+    return date(jour.year, 1, 1)
+
+
 def premier_du_mois(mois: date) -> date:
     if mois.day != 1:
         raise RestitutionRefusee('Un mois comptable se désigne par son premier jour.')

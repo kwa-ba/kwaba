@@ -165,6 +165,10 @@ ACTIONS: dict[str, ActionSpec] = {
     'tarifs_modifies': ActionSpec('Tarifs modifiés', MONEY, SENSITIVE, summary=_rates),
     'finances_exportees': ActionSpec('Export des finances', MONEY, SENSITIVE, summary=_export),
     'ecriture_corrigee': ActionSpec('Écriture corrigée', MONEY, SENSITIVE, (('mouvement', 'ledger', None),), _reason),
+    'periode_cloturee': ActionSpec('Mois comptable clôturé', MONEY, SENSITIVE,
+                                   summary=lambda d, t: str(d.get('mois', ''))),
+    'rapport_cree': ActionSpec('Rapport financier créé', MONEY, IMPORTANT,
+                               summary=lambda d, t: _join(d.get('titre', ''), d.get('code', ''))),
     'profil_versement_modifie': ActionSpec('Compte de versement modifié', MONEY, SENSITIVE,
                                            summary=lambda d, t: _join(d.get('operateur', ''),
                                                                       f"…{d['numero_fin']}" if d.get('numero_fin')
