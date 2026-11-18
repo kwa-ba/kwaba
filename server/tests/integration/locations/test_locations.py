@@ -5,8 +5,11 @@ from unittest import mock
 
 import pytest
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
+from apps.documents.models import DocumentCautionModel, JustificatifCautionModel
+from apps.finance import api as finance
 from apps.locations import services
 from apps.locations.models import (
     CategorieVehiculeModel, LieuRemiseModel, LocationModel, ParametresLocationModel, PartenaireLocationModel,
@@ -397,6 +400,11 @@ def test_unpaid_rental_expires(client_for, make_user, faux, catalogue):
 SANS_CHAUFFEUR = {'formule': 'sans_chauffeur', 'conducteur': 'Ama Kossi', 'permis_numero': 'TG-123456', 'permis_pays': 'Togo'}
 
 
+def photo(nom='retroviseur.jpg'):
+    """Evidence of a damage: a JPEG (its signature is checked, not its name)."""
+    return SimpleUploadedFile(nom, bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'0' * 64, content_type='image/jpeg')
+
+
 def _vehicule_rendu(loc, heures=25):
     """The vehicle was picked up 3 days ago and returned `heures` hours ago."""
     maintenant = timezone.now()
@@ -421,8 +429,13 @@ def test_deposit_paid_online_then_refunded_minus_damages(client_for, make_user, 
     au_loueur = next(m.body for m in mail.outbox if m.to == ['yao@test.kwaba'])
     assert 'ne lui demandez rien' in au_loueur and 'Signalez-le à Kwa-Ba dans les 24 heures' in au_loueur
 
+    # The deposit is the traveller's money, in the register from the payment (GL-13)
+    assert (finance.caution('location', loc.pk)['montant'], finance.caution('location', loc.pk)['statut']) == (
+        60000, 'detenue')
     loc = _vehicule_rendu(loc, heures=2)
-    services.retenir_caution(loc, 30000, 'Rétroviseur cassé')
+    with pytest.raises(services.LocationErreur, match='pièce justificative'):
+        services.retenir_caution(loc, 30000, 'Rétroviseur cassé')
+    services.retenir_caution(loc, 30000, 'Rétroviseur cassé', justificatifs=[photo()])
     v = VersementPartenaireModel.objects.get(location=loc)
     assert (v.montant_brut, v.commission, v.montant) == (160000, 18000, 142000)  # the withheld amount is added, without commission
     paiements.passe()
@@ -438,6 +451,16 @@ def test_deposit_paid_online_then_refunded_minus_damages(client_for, make_user, 
     assert (rb.montant, rb.motif, rb.statut) == (30000, 'Restitution de la caution', 'attente_numero')
     au_voyageur = next(m for m in mail.outbox if m.to == ['ama@test.kwaba'] and 'caution' in m.subject)
     assert '30 000' in au_voyageur.body and 'Rétroviseur cassé' in au_voyageur.body and 'numéro Mobile Money' in au_voyageur.body
+    # GL-14: the RET notice, numbered, quoting the decision and its evidence, attached for the traveller and the owner
+    avis = DocumentCautionModel.objects.get(objet_id=loc.id)
+    assert (avis.type, avis.numero[:4], avis.montant_rendu, avis.montant_retenu, avis.cgv_article, avis.justificatifs) == (
+        'RET', 'RET-', 30000, 30000, '14.3', ['retroviseur.jpg'])
+    assert [nom for nom, _, _ in au_voyageur.attachments] == [f'{avis.numero}.pdf']
+    au_proprietaire = next(m for m in mail.outbox if m.to == ['yao@test.kwaba'] and 'Retenue' in m.subject)
+    assert au_proprietaire.attachments[0][0] == f'{avis.numero}.pdf'
+    inscrite = finance.caution('location', loc.pk)
+    assert (inscrite['statut'], inscrite['montant_rendu'], inscrite['montant_retenu'], inscrite['document_numero']) == (
+        'retenue', 30000, 30000, avis.numero)
     assert [p['montant'] for p in faux.payouts] == [142000]  # owner paid with the withheld amount
     with pytest.raises(services.LocationErreur):
         services.retenir_caution(loc, 10000, 'Trop tard')
@@ -452,8 +475,10 @@ def test_deposit_retention_rules(client_for, make_user, faux, catalogue, loueur)
     with pytest.raises(services.LocationErreur, match='entre 0 et la caution'):
         services.retenir_caution(loc, 60001, 'Trop')
     with pytest.raises(services.LocationErreur, match='motif'):
-        services.retenir_caution(loc, 10000, '  ')
-    services.retenir_caution(loc, 10000, 'Rayure')
+        services.retenir_caution(loc, 10000, '  ', justificatifs=[photo()])
+    with pytest.raises(services.LocationErreur, match='PDF, JPEG'):
+        services.retenir_caution(loc, 10000, 'Rayure', justificatifs=[SimpleUploadedFile('x.jpg', b'MZ executable')])
+    services.retenir_caution(loc, 10000, 'Rayure', justificatifs=[photo()])
     services.retenir_caution(loc, 0, '')  # cancels the withheld amount
     loc.refresh_from_db()
     assert (loc.caution_retenue, loc.caution_motif) == (0, '')
@@ -467,8 +492,11 @@ def test_back_office_records_a_retention(client_for, make_user, faux, catalogue,
     admin = client_for(make_user(role='admin'))
     url = f'/api/v1/admin/location/locations/{loc.id}/caution/'
     assert client_for(make_user()).post(url, {'montant': 5000, 'motif': 'Plein non fait'}, format='json').status_code == 403
-    r = admin.post(url, {'montant': 5000, 'motif': 'Plein non fait'}, format='json')
+    assert admin.post(url, {'montant': 5000, 'motif': 'Plein non fait'}, format='json').status_code == 400  # no evidence
+    r = admin.post(url, {'montant': 5000, 'motif': 'Plein non fait', 'justificatifs': [photo('jauge.jpg')]},
+                   format='multipart')
     assert r.status_code == 200 and (r.data['caution_retenue'], r.data['caution_motif']) == (5000, 'Plein non fait')
+    assert JustificatifCautionModel.objects.get(objet_id=loc.id).nom == 'jauge.jpg'
     assert admin.post(url, {'montant': 200000, 'motif': 'Trop'}, format='json').status_code == 400
 
 
@@ -480,6 +508,10 @@ def test_cancelled_rental_always_refunds_the_deposit(client_for, make_user, faux
     # Less than 24 h before: the rental is not refunded, the deposit is
     assert client.delete(f'{LOCATIONS}{loc.id}/').data['rembourse'] == 60000
     assert VersementPartenaireModel.objects.get(location=loc).statut == 'planifie'
+    # GL-14: given back in full, with its REC receipt, and settled in the register
+    recu = DocumentCautionModel.objects.get(objet_id=loc.id)
+    assert (recu.type, recu.montant_rendu, recu.montant_retenu) == ('REC', 60000, 0)
+    assert finance.caution('location', loc.pk)['statut'] == 'restituee'
 
 
 def test_deposit_paid_to_the_partner_when_online_deposit_is_off(client_for, make_user, faux, catalogue, loueur):

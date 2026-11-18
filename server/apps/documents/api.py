@@ -6,13 +6,15 @@ from django.db.models import Exists
 from django.db.models.functions import Trim
 
 from .generateurs import nom
-from .models import ParametresSocieteModel, stockage_prive
+from . import services
+from .models import DocumentCautionModel, JustificatifCautionModel, ParametresSocieteModel, stockage_prive
 from .pdf import Document, _p as paragraphe, date, fcfa
 from .registre import Produit, enregistrer
 from .services import DocumentErreur, pieces_confirmation, regulariser
 
 __all__ = ['Document', 'Produit', 'date', 'enregistrer', 'fcfa', 'nom', 'paragraphe', 'pieces_confirmation', 'societe',
-           'societe_immatriculee', 'stockage_prive', 'condition_societe_immatriculee', 'regulariser_avoirs']
+           'societe_immatriculee', 'stockage_prive', 'condition_societe_immatriculee', 'regulariser_avoirs',
+           'DocumentErreur', 'ajouter_justificatifs', 'nb_justificatifs', 'emettre_document_caution', 'piece_caution']
 
 logger = logging.getLogger('apps.documents')
 
@@ -50,3 +52,29 @@ def condition_societe_immatriculee() -> Exists:
         .annotate(_raison=Trim('raison_sociale'), _adresse=Trim('adresse'), _rccm=Trim('rccm'), _nif=Trim('nif'))
         .exclude(_raison='').exclude(_adresse='').exclude(_rccm='').exclude(_nif='')
     )
+
+
+# --- Documents of the deposits (GL-14) ------------------------------------------------------------------------------
+
+def ajouter_justificatifs(objet_type: str, objet_id, fichiers, par=None) -> int:
+    """Evidence of a withholding, kept in private storage and quoted in the RET notice. Raises DocumentErreur."""
+    return len(services.ajouter_justificatifs(objet_type, objet_id, fichiers, par=par))
+
+
+def nb_justificatifs(objet_type: str, objet_id) -> int:
+    return JustificatifCautionModel.objects.filter(objet_type=objet_type, objet_id=objet_id).count()
+
+
+def emettre_document_caution(**donnees) -> dict:
+    """REC receipt or RET notice of a settled deposit (once per deposit): {numero, type}. Raises DocumentErreur."""
+    d = services.emettre_document_caution(**donnees)
+    return {'numero': d.numero, 'type': d.type}
+
+
+def piece_caution(objet_type: str, objet_id) -> tuple[str, bytes, str] | None:
+    """The deposit's document as an email attachment, None if not issued yet."""
+    d = DocumentCautionModel.objects.filter(objet_type=objet_type, objet_id=objet_id).first()
+    if d is None or not d.pdf:
+        return None
+    with d.pdf.open('rb') as f:
+        return f"{d.numero}.pdf", f.read(), 'application/pdf'

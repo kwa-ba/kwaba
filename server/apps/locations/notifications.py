@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.utils import formats, timezone
 
+from apps.documents import api as documents
 from apps.paiements import api as paiements
 from apps.users import api as users
 from apps.securite import coordonnees
@@ -119,14 +120,24 @@ def versement_au_partenaire(v: VersementPartenaireModel):
 
 
 def caution_au_voyageur(loc: LocationModel):
-    """Deposit return: amount given back, withheld amount and its reason; Mobile Money number to give if needed."""
+    """Deposit return: amount given back, withheld amount and its reason; Mobile Money number to give if needed. The
+    REC receipt or RET notice is attached (GL-14); a RET notice also goes to the owner who receives the amount."""
     rendu = loc.caution - loc.caution_retenue
+    piece = documents.piece_caution('location', loc.pk)
+    numero = piece[0].removesuffix('.pdf') if piece else ''
     paiements.envoyer_email('emails/locations/caution_restituee.txt', f"Restitution de votre caution : {loc.reference}", [loc.voyageur.email], {
         'prenom': loc.voyageur.first_name, 'reference': loc.reference, 'caution': paiements.fcfa(loc.caution),
         'rendu': paiements.fcfa(rendu), 'retenue': paiements.fcfa(loc.caution_retenue) if loc.caution_retenue else '',
         'motif': loc.caution_motif, 'numero_requis': paiements.numero_remboursement_requis('location', loc.pk),
         'url': f"{settings.FRONTEND_URL}/location/{loc.id}", 'assistance': settings.ASSISTANCE_CONTACT,
-    })
+        'document': numero,
+    }, pieces_jointes=[piece] if piece else None)
+    if loc.caution_retenue and piece and loc.partenaire and loc.partenaire.email:
+        paiements.envoyer_email('emails/locations/retenue_partenaire.txt', f"Retenue sur caution : {loc.reference}",
+                                [loc.partenaire.email], {
+            'contact': loc.partenaire.contact, 'reference': loc.reference, 'caution': paiements.fcfa(loc.caution),
+            'retenue': paiements.fcfa(loc.caution_retenue), 'motif': loc.caution_motif, 'document': numero,
+        }, pieces_jointes=[piece])
 
 
 def _traiter(qs, fonction, drapeau):

@@ -156,3 +156,33 @@ class Validation:
     def personnes(self) -> set:
         """Who already agreed: the person who asked (none when the system asked) and a first approval."""
         return {p for p in (self.demandee_par_id, self.premiere_par_id) if p}
+
+
+# --- Deposits held for travellers (GL-13, FIN-05) -------------------------------------------------------------------
+
+# States of a deposit in the register (not to mix with CAUTION_RETENUE, the ledger nature C03)
+ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE = 'detenue', 'restituee', 'retenue'
+
+
+@dataclass(frozen=True)
+class Caution:
+    """A deposit held by Kwa-Ba for a traveller: never Kwa-Ba's money. Settled once: given back in full (receipt
+    REC), or partly kept for a motivated decision (notice RET)."""
+    objet_type: str
+    objet_id: str
+    reference: str
+    offre: str
+    montant: int
+    recue_le: datetime
+    date_limite: datetime
+    voyageur_id: uuid.UUID | None = None
+    statut: str = ETAT_CAUTION_DETENUE
+    montant_retenu: int = 0
+    montant_rendu: int = 0
+    motif_retenue: str = ''
+    cgv_article: str = ''
+    decision_par_id: uuid.UUID | None = None
+    decision_le: datetime | None = None
+    soldee_le: datetime | None = None
+    mode_restitution: str = ''
+    document_numero: str = ''

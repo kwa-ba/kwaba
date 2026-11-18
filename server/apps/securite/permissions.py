@@ -42,6 +42,9 @@ _ROUTES_SECTIONS = {
     'location/': 'location',
     'experiences/': 'experiences',
     'give/': 'give',
+    # Deposit documents and their evidence belong to the money (GL-14): before 'documents/', which would catch them
+    'documents/cautions/': 'finances',
+    'documents/justificatifs/': 'finances',
     'documents/': 'documents',
     'contrats/': 'documents',
     'paiements/finances/': 'finances',

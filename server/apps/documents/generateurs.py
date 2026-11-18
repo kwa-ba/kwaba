@@ -1,6 +1,6 @@
 """Content of the invoices and credit notes. Vouchers and receipts are built by the module of each product
 (documents.api)."""
-from .models import AvoirModel, FactureModel
+from .models import AvoirModel, DocumentCautionModel, FactureModel
 from .pdf import Document, date, fcfa
 
 
@@ -46,4 +46,26 @@ def facture(f: FactureModel) -> bytes:
         doc.paragraphe('TVA non applicable.', 'petit')
     if f.objet_type != 'libre':
         doc.paragraphe('Facture acquittée : réglée en ligne lors de la réservation.', 'petit')
+    return doc.en_pdf()
+
+
+def document_caution(d: DocumentCautionModel) -> bytes:
+    """REC receipt or RET notice of a deposit: what was held, given back, kept and why."""
+    retenue = d.type == 'RET'
+    doc = Document('Avis de retenue sur caution' if retenue else 'Reçu de restitution de caution', d.numero,
+                   sous_titre=f"émis le {date(d.emis_le)}", destinataire=[x for x in (d.client_nom, d.client_email) if x])
+    doc.bloc('Caution', [('Réservation', d.reference), ('Caution versée', fcfa(d.montant_caution)),
+                         ('Montant restitué', fcfa(d.montant_rendu)), ('Mode de restitution', d.mode_restitution),
+                         *([('Montant retenu', fcfa(d.montant_retenu))] if retenue else [])])
+    if retenue:
+        doc.bloc('Décision motivée', [
+            ('Motif', d.motif), ('Fondement', f"Conditions générales de vente, article {d.cgv_article}"),
+            *([('Décision', d.decision)] if d.decision else []),
+            ('Pièces justificatives', ', '.join(d.justificatifs) or '—'),
+        ])
+        doc.paragraphe("La somme retenue est versée au propriétaire pour réparer le préjudice constaté. Vous pouvez "
+                       "contester cette décision auprès de l'assistance Kwa-Ba en citant ce numéro d'avis.", 'petit')
+    else:
+        doc.paragraphe("La totalité de votre caution vous est restituée. Elle était conservée par Kwa-Ba pour votre "
+                       "compte et n'a jamais constitué un revenu de Kwa-Ba.", 'petit')
     return doc.en_pdf()

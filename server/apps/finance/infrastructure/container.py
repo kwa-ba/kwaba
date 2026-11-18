@@ -1,10 +1,10 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (ClotureService, GrandLivreService, LivresService, RapportService,
+from apps.finance.application.service import (CautionService, ClotureService, GrandLivreService, LivresService, RapportService,
                                               RestitutionService, ValidationService)
 from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
-from apps.finance.infrastructure.persistence.repositories import (DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
+from apps.finance.infrastructure.persistence.repositories import (DjangoCautions, DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
                                                                   DjangoRapports, DjangoTransactionManager,
                                                                   DjangoValidations)
 from apps.finance.infrastructure.persistence.restitutions import SqlRestitutions
@@ -35,3 +35,7 @@ def rapport_service() -> RapportService:
 def validation_service() -> ValidationService:
     return ValidationService(validations=DjangoValidations(), parametres=DjangoParametres(), operations=OPERATIONS,
                              journal=AuditJournal(), tx=DjangoTransactionManager(), clock=DjangoClock())
+
+
+def caution_service() -> CautionService:
+    return CautionService(cautions=DjangoCautions(), tx=DjangoTransactionManager(), clock=DjangoClock())

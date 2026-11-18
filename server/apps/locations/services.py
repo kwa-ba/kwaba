@@ -39,6 +39,7 @@ from apps.reservations import api as reservations
 from apps.transferts import api as transferts
 from config.site import module_actif
 
+from . import cautions
 from .models import (
     CategorieVehiculeModel, LieuRemiseModel, LocationModel, ParametresLocationModel, PartenaireLocationModel,
     VersementChauffeurLocationModel, VersementPartenaireModel,
@@ -281,6 +282,8 @@ def paiement_recu(paiement):
     if reduction:
         location.reduction_pack_sejour = reduction
         location.save(update_fields=['reduction_pack_sejour'])
+    # The deposit paid with it is the traveller's money: in the register of the deposits (GL-13)
+    cautions.enregistrer(location)
     logger.info("Location %s payée : à attribuer", location.reference)
 
 
@@ -433,20 +436,25 @@ def annuler(location: LocationModel, par: str) -> int:
                         v.statut = 'annule'
                     v.save()
             # The deposit is always given back: the vehicle was not handed over
-            if location.caution_gardee and not location.caution_restituee_le:
+            caution_rendue = bool(location.caution_gardee and not location.caution_restituee_le)
+            if caution_rendue:
                 rembourse += location.caution_gardee
                 location.caution_retenue, location.caution_restituee_le = 0, timezone.now()
             motif = "Annulation par le voyageur" if par == 'voyageur' else "Annulation par Kwa-Ba"
             paiements.rembourser_en_partie('location', location.pk, rembourse, motif)
+            if caution_rendue:
+                cautions.solder(location, mode='Remboursement en ligne (location annulée)')
 
         location.statut, location.annulee_par, location.annulee_le = 'annulee', par, timezone.now()
         location.save(update_fields=['statut', 'annulee_par', 'annulee_le', 'caution_retenue', 'caution_restituee_le'])
         return rembourse
 
 
-def retenir_caution(location: LocationModel, montant: int, motif: str) -> LocationModel:
+def retenir_caution(location: LocationModel, montant: int, motif: str, cgv_article: str = '', justificatifs=(),
+                    par=None) -> LocationModel:
     """Amount withheld from the deposit (damage, missing fuel… reported by the owner), before it is returned. It is
-    paid to the owner with the rental; 0 cancels the withheld amount."""
+    paid to the owner with the rental; 0 cancels the withheld amount. A withholding is a motivated decision: its
+    reason, the article of the terms of sale and at least one piece of evidence (GL-14)."""
     with transaction.atomic():
         location = LocationModel.objects.select_for_update().get(pk=location.pk)
         if not location.caution_gardee:
@@ -459,6 +467,11 @@ def retenir_caution(location: LocationModel, montant: int, motif: str) -> Locati
             raise LocationErreur(f"La retenue doit être comprise entre 0 et la caution ({location.caution} FCFA).")
         if montant and not motif.strip():
             raise LocationErreur("Indiquez le motif de la retenue : il est communiqué au voyageur.")
+        try:
+            cautions.retenir(location, montant=montant, motif=motif, cgv_article=cgv_article,
+                             justificatifs=justificatifs, par=par)
+        except cautions.CautionErreur as exc:
+            raise LocationErreur(str(exc)) from exc
         location.caution_retenue, location.caution_motif = montant, motif.strip() if montant else ''
         location.save(update_fields=['caution_retenue', 'caution_motif'])
         VersementPartenaireModel.objects.filter(location=location, statut__in=('planifie', 'echoue')).update(
@@ -498,6 +511,9 @@ def restituer_cautions() -> int:
             paiements.rembourser_en_partie('location', loc.pk, loc.caution - loc.caution_retenue, "Restitution de la caution")
             loc.caution_restituee_le = timezone.now()
             loc.save(update_fields=['caution_restituee_le'])
+            # Its document (REC receipt or RET notice) and the register, in the same transaction
+            cautions.solder(loc, mode='Remboursement en ligne' if loc.caution > loc.caution_retenue
+                            else 'Aucun remboursement : caution retenue en totalité')
             restituees += 1
     return restituees
 

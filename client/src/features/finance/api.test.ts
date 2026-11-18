@@ -74,3 +74,20 @@ describe("double validation (GL-10)", () => {
     expect(api.post).toHaveBeenLastCalledWith(`${F}/validations/v1/refuser/`, { motif: "Séjour maintenu" });
   });
 });
+
+describe("registre des cautions (GL-13, GL-14)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+  });
+
+  it("lit le registre, les retards et les pièces d'une caution", async () => {
+    await finance.lireCautions("detenue", false);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/cautions/?statut=detenue`);
+    await finance.lireCautions("", true);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/cautions/?retard=1`);
+    await finance.lireJustificatifs("location", "l1");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/documents/justificatifs/?objet_type=location&objet_id=l1");
+    expect(finance.urlDocumentCaution("RET-2026-00001")).toBe("/v1/admin/documents/cautions/RET-2026-00001/pdf/");
+  });
+});

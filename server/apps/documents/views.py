@@ -1,4 +1,6 @@
 """Document download (traveller, donor, admin) and invoice management in the back-office."""
+import io
+
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from rest_framework import serializers, status
@@ -13,7 +15,7 @@ from apps.securite.backoffice import paginer
 from apps.securite.permissions import EstAdministrateur
 
 from . import generateurs, services
-from .models import AvoirModel, FactureModel, ParametresSocieteModel
+from .models import AvoirModel, DocumentCautionModel, FactureModel, JustificatifCautionModel, ParametresSocieteModel
 from .registre import PRODUITS
 
 
@@ -32,7 +34,7 @@ class DocumentView(APIView):
 
     def get(self, request, type_objet, pk, document):
         produit = PRODUITS.get(type_objet)
-        if not produit or document not in produit.documents:
+        if not produit or document not in (*produit.documents, 'caution'):
             return Response({'detail': 'Document inconnu.'}, status=status.HTTP_404_NOT_FOUND)
         objet = produit.charger(pk)
         # Same response if the object does not exist or belongs to someone else: nothing leaks
@@ -45,6 +47,13 @@ class DocumentView(APIView):
             return _pdf(produit.bon(objet), f"bon-{reference}.pdf")
         if document == 'recu':
             return _pdf(produit.recu(objet), f"{produit.prefixe_recu}-{reference}.pdf")
+        if document == 'caution':
+            # REC receipt or RET notice of the deposit, once it is settled (GL-14)
+            d = DocumentCautionModel.objects.filter(objet_type=type_objet, objet_id=objet.pk).first()
+            if d is None:
+                return Response({'detail': "Pas encore de document : la caution n'est pas soldée."},
+                                status=status.HTTP_404_NOT_FOUND)
+            return _pdf(d.pdf.read() if d.pdf else generateurs.document_caution(d), f"{d.numero}.pdf")
         try:
             f = services.facture_de(type_objet, objet)
         except services.DocumentErreur as exc:
@@ -242,3 +251,56 @@ class RegulariserFactureView(APIView):
         activity.record("backoffice_creation", request, actor=request.user, objet="avoir", id=str(avoir.pk),
                         libelle=f"{avoir.numero} sur {f.numero}")
         return Response(_avoir(avoir), status=status.HTTP_201_CREATED)
+
+
+# --- Documents of the deposits (GL-14) ------------------------------------------------------------------------------
+
+def _document_caution(d: DocumentCautionModel) -> dict:
+    return {'id': str(d.id), 'numero': d.numero, 'type': d.type, 'type_libelle': d.get_type_display(),
+            'emis_le': d.emis_le, 'objet_type': d.objet_type, 'objet_id': str(d.objet_id), 'reference': d.reference,
+            'client_nom': d.client_nom, 'montant_caution': d.montant_caution, 'montant_rendu': d.montant_rendu,
+            'montant_retenu': d.montant_retenu, 'motif': d.motif, 'cgv_article': d.cgv_article}
+
+
+class DocumentsCautionView(APIView):
+    """GET ?q=: REC receipts and RET notices issued, newest first."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request):
+        qs = DocumentCautionModel.objects.all()
+        if q := request.query_params.get('q', '').strip():
+            qs = qs.filter(numero__icontains=q) | qs.filter(reference__icontains=q) | qs.filter(client_nom__icontains=q)
+        return paginer(request, qs.order_by('-emis_le'), _document_caution)
+
+
+class DocumentCautionPdfView(APIView):
+    """GET <numero>/pdf/: the PDF of a REC receipt or RET notice, by its number (quoted in the register)."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request, numero):
+        d = DocumentCautionModel.objects.filter(numero=numero).first()
+        if not d:
+            return Response({'detail': 'Document introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        return _pdf(d.pdf.read() if d.pdf else generateurs.document_caution(d), f"{d.numero}.pdf")
+
+
+class JustificatifsView(APIView):
+    """GET ?objet_type=&objet_id=: evidence of a withholding; GET <id>/: one file (admins only, private storage)."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request, pk=None):
+        if pk is None:
+            qs = JustificatifCautionModel.objects.filter(objet_type=request.query_params.get('objet_type') or '',
+                                                         objet_id=request.query_params.get('objet_id') or None)
+            return Response([{'id': str(j.id), 'nom': j.nom, 'taille': j.taille, 'ajoute_le': j.ajoute_le} for j in qs])
+        j = JustificatifCautionModel.objects.filter(pk=pk).first()
+        if not j:
+            return Response({'detail': 'Pièce introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        with j.fichier.open('rb') as f:
+            contenu = f.read()
+        reponse = HttpResponse(contenu, content_type=services._type_reel(io.BytesIO(contenu)) or 'application/octet-stream')
+        nom = ''.join(c for c in j.nom if c.isprintable() and c not in '"\\;') or 'justificatif'
+        reponse['Content-Disposition'] = f'attachment; filename="{nom}"'
+        reponse['Cache-Control'] = 'no-store'
+        reponse['X-Content-Type-Options'] = 'nosniff'
+        return reponse
