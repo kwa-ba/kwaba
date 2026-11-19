@@ -25,7 +25,8 @@ def test_the_page_shows_the_invariants_the_three_balances_and_the_latest_lines(m
 
     assert r.status_code == 200
     d = r.json()
-    assert {i['invariant'] for i in d['invariants']} == {'I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14'}
+    assert {i['invariant'] for i in d['invariants']} == {'I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15',
+                                                         'I16'}
     assert d['soldes'] == {'revenu_du_mois': 15_000, 'du_partenaires': 265_000, 'du_voyageurs': 0,
                            'cautions_detenues': 0, 'comptes': {'FEDAPAY': 280_000}}
     assert d['du_aux_partenaires'] == [{'tiers_type': 'hote', 'tiers_id': str(hote.pk), 'nom': 'Ama Mensah',

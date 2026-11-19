@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from apps.activity import api as activity
 from apps.finance import api as finance
+from apps.finance.domain.entities import TYPES_SANS_RELEVE
 from apps.finance.infrastructure.persistence.models import (CompteArgentModel, FamilleModel, NatureModel, OffreModel,
                                                             TiersTypeModel)
 from apps.securite.backoffice import VueAdmin
@@ -96,6 +97,12 @@ def _csv(entetes: list[str], lignes: list[list], nom: str) -> HttpResponse:
     return reponse
 
 
+def _soldes_reels() -> dict[str, int]:
+    """Ledger balance of the money accounts that hold money (the account of passage and the fund have no statement)."""
+    types = dict(CompteArgentModel.objects.values_list('code', 'type'))
+    return {code: v for code, v in finance.soldes_comptes_argent().items() if types.get(code) not in TYPES_SANS_RELEVE}
+
+
 class GrandLivreView(VueAdmin):
     """GET: invariants, the balances that never mix, money accounts, sums owed by partner, latest lines."""
 
@@ -113,7 +120,8 @@ class GrandLivreView(VueAdmin):
                 'du_partenaires': sum(d['solde_du'] for d in du if d['tiers_type'] != 'voyageur'),
                 'du_voyageurs': sum(d['solde_du'] for d in du if d['tiers_type'] == 'voyageur'),
                 'cautions_detenues': sum(c['solde_detenu'] for c in finance.cautions_detenues()),
-                'comptes': finance.soldes_comptes_argent(),
+                # Where the money really is: not the associates' account of passage nor the guarantee fund
+                'comptes': _soldes_reels(),
             },
             'du_aux_partenaires': [{**d, **comptes.get(d['tiers_id'], INCONNU)} for d in du],
             'mouvements': [{**m, **comptes.get(m['tiers_id'] or '', INCONNU)} for m in mouvements],
@@ -575,6 +583,17 @@ class DepenseAnnulationView(VueAdmin):
         return Response(_depenses_json([depense])[0])
 
 
+def _champ_texte(donnees, pk):
+    """A text field of a POST (blank if absent), or of a PATCH (None if absent: kept as it is)."""
+    return lambda cle: (str(donnees.get(cle) or '') if (cle in donnees or not pk) else None)
+
+
+def _champ_actif(donnees, pk) -> bool | None:
+    if 'actif' not in donnees:
+        return None if pk else True
+    return donnees.get('actif') is not False and str(donnees.get('actif')).lower() not in ('false', '0')
+
+
 class FournisseursView(VueAdmin):
     """GET ?actifs=1: the suppliers. POST {nom, nif, contact}: a new one. PATCH <id>/ {nom, nif, contact, actif}."""
 
@@ -591,17 +610,18 @@ class FournisseursView(VueAdmin):
         if refus := _peut_operer(request):
             return refus
         d = request.data
+        texte = _champ_texte(d, pk)
         try:
-            f = finance.enregistrer_fournisseur(nom=d.get('nom') or '', nif=d.get('nif') or '',
-                                                contact=d.get('contact') or '', actif=d.get('actif', True) is not False,
-                                                fournisseur_id=pk, par_id=request.user.pk)
+            f = finance.enregistrer_fournisseur(nom=texte('nom'), nif=texte('nif'), contact=texte('contact'),
+                                                actif=_champ_actif(d, pk), fournisseur_id=pk, par_id=request.user.pk)
         except finance.DepenseRefusee as refus:
             return _refus(str(refus))
         return Response(f, status=status.HTTP_200_OK if pk else status.HTTP_201_CREATED)
 
 
 class AssociesView(VueAdmin):
-    """GET: the associates. POST {nom, email, compte_id}: a new one. PATCH <id>/ {nom, email, compte_id, actif}."""
+    """GET: the associates. POST {nom, email, compte_id, capital_souscrit}: a new one. PATCH <id>/ {nom, email,
+    compte_id, actif, capital_souscrit}: only the fields given change."""
 
     def get(self, request, pk=None):
         return Response(finance.associes(actifs_seulement=request.query_params.get('actifs') == '1'))
@@ -616,13 +636,141 @@ class AssociesView(VueAdmin):
         if refus := _peut_operer(request):
             return refus
         d = request.data
-        compte_id = _uuid(d.get('compte_id')) if d.get('compte_id') else None
-        if d.get('compte_id') and compte_id is None:
-            return _refus('Compte du site inconnu.')
+        texte = _champ_texte(d, pk)
+        champs = {}
+        if 'compte_id' in d or not pk:
+            champs['compte_id'] = _uuid(d.get('compte_id')) if d.get('compte_id') else None
+            if d.get('compte_id') and champs['compte_id'] is None:
+                return _refus('Compte du site inconnu.')
+        if 'capital_souscrit' in d or not pk:
+            try:
+                champs['capital_souscrit'] = int(str(d.get('capital_souscrit') or 0).replace(' ', ''))
+            except ValueError:
+                return _refus('Part du capital attendue en francs CFA, nombre entier.')
         try:
-            a = finance.enregistrer_associe(nom=d.get('nom') or '', email=d.get('email') or '', compte_id=compte_id,
-                                            actif=d.get('actif', True) is not False, associe_id=pk,
-                                            par_id=request.user.pk)
+            a = finance.enregistrer_associe(nom=texte('nom'), email=texte('email'), actif=_champ_actif(d, pk),
+                                            associe_id=pk, par_id=request.user.pk, **champs)
         except finance.DepenseRefusee as refus:
             return _refus(str(refus))
         return Response(a, status=status.HTTP_200_OK if pk else status.HTTP_201_CREATED)
+
+
+# --- Associates' current accounts (GL-16) ----------------------------------------------------------------------------
+
+class ComptesCourantsView(VueAdmin):
+    """GET: what Kwa-Ba owes each associate (advances, expenses they paid, repayments, balance), with the share capital
+    and each associate's part."""
+
+    def get(self, request):
+        return Response({**finance.comptes_courants(), 'peut_modifier': _peut_saisir(request),
+                         # Decision of 2026-11-19: repayments open with the bank account
+                         'remboursements_ouverts': False})
+
+
+class ReleveCompteCourantView(VueAdmin):
+    """GET: the lines of an associate's current account, oldest first, with the balance after each."""
+
+    def get(self, request, pk):
+        try:
+            return Response(finance.releve_compte_courant(pk))
+        except finance.DepenseRefusee as refus:
+            return _refus(str(refus), status.HTTP_404_NOT_FOUND)
+
+
+# --- Guarantee fund (GL-17) ------------------------------------------------------------------------------------------
+
+ERREURS_FONDS = (finance.FondsGarantieRefuse, finance.MouvementRefuse)
+
+
+def _poches(fonds: int) -> dict:
+    """The money Kwa-Ba holds, split into the pockets that never mix: owed to partners, owed to travellers, deposits,
+    guarantee fund; what is left is free."""
+    tresorerie = sum(_soldes_reels().values())
+    du = finance.du_aux_partenaires()
+    poches = {
+        'tresorerie': tresorerie,
+        'du_partenaires': sum(d['solde_du'] for d in du if d['tiers_type'] != 'voyageur'),
+        'du_voyageurs': sum(d['solde_du'] for d in du if d['tiers_type'] == 'voyageur'),
+        'cautions_detenues': sum(c['solde_detenu'] for c in finance.cautions_detenues()),
+        'fonds_garantie': fonds,
+    }
+    return {**poches, 'libre': tresorerie - sum(v for k, v in poches.items() if k != 'tresorerie')}
+
+
+def _sinistres_json(sinistres: list[dict]) -> list[dict]:
+    noms = _noms({x['impute_par_id'] for x in sinistres})
+    depenses = {x['depense_id']: finance.depense(x['depense_id']) for x in sinistres}
+    return [{**x, 'impute_par': noms.get(str(x['impute_par_id']), '') if x['impute_par_id'] else '',
+             'depense': {k: (depenses[x['depense_id']] or {}).get(k) for k in ('numero', 'libelle', 'date_depense',
+                                                                                 'montant', 'offre')}}
+            for x in sinistres]
+
+
+class FondsGarantieView(VueAdmin):
+    """GET: the fund (balance, target, alert, rate), the pockets of the money, the allocation of each month, the losses
+    it covers and the D04 expenses it may still cover."""
+
+    def get(self, request):
+        etat = finance.fonds_garantie()
+        sinistres = finance.sinistres()
+        couvertes = {x['depense_id'] for x in sinistres if x['statut'] == 'impute'}
+        a_couvrir = [d for d in finance.depenses(nature='D04', statut='ecrite', taille=100)['lignes']
+                     if d['id'] not in couvertes]
+        return Response({**etat, 'poches': _poches(etat['solde']), 'dotations': finance.dotations_fonds_garantie(),
+                         'sinistres': _sinistres_json(sinistres), 'depenses_a_couvrir': a_couvrir,
+                         'peut_operer': _peut_saisir(request)})
+
+
+class DotationView(VueAdmin):
+    """POST {mois?: YYYY-MM}: writes what the allocation of a finished month lacks (every finished open month without
+    `mois`). It is also written each night and at the closing. Logged."""
+
+    def post(self, request):
+        if refus := _peut_operer(request):
+            return refus
+        texte = request.data.get('mois')
+        mois = _mois(texte) if texte else None
+        if texte and mois is None:
+            return _refus('Mois attendu au format AAAA-MM.')
+        try:
+            faites = finance.doter_fonds_garantie(mois, par_id=request.user.pk)
+        except ERREURS_FONDS as refus:
+            return _refus(str(refus), status.HTTP_409_CONFLICT)
+        return Response({'dotations': faites, 'ajoute': sum(d['ajoute'] for d in faites)})
+
+
+class SinistresView(VueAdmin):
+    """POST {depense, montant, decision_reference, motif}: the fund covers a written D04 expense, with the reference of
+    the decision, at most the expense and the fund's balance. Logged."""
+
+    def post(self, request):
+        if refus := _peut_operer(request):
+            return refus
+        d = request.data
+        try:
+            montant = int(str(d.get('montant') or '').replace(' ', ''))
+        except ValueError:
+            return _refus('Montant attendu en francs CFA, nombre entier.')
+        depense_id = _uuid(d.get('depense'))
+        if depense_id is None:
+            return _refus('Choisissez la dépense du sinistre.')
+        try:
+            s = finance.imputer_sinistre(depense_id, montant=montant,
+                                         decision_reference=d.get('decision_reference') or '',
+                                         motif=d.get('motif') or '', par_id=request.user.pk)
+        except ERREURS_FONDS as refus:
+            return _refus(str(refus))
+        return Response(_sinistres_json([s])[0], status=status.HTTP_201_CREATED)
+
+
+class SinistreAnnulationView(VueAdmin):
+    """POST {motif}: cancels the cover of a loss by its inverse line. Logged."""
+
+    def post(self, request, pk):
+        if refus := _peut_operer(request):
+            return refus
+        try:
+            s = finance.annuler_sinistre(pk, motif=request.data.get('motif') or '', par_id=request.user.pk)
+        except ERREURS_FONDS as refus:
+            return _refus(str(refus), status.HTTP_409_CONFLICT)
+        return Response(_sinistres_json([s])[0])

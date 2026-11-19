@@ -252,3 +252,22 @@ def test_a_saved_report_runs_with_its_axes_and_filters():
     assert restitutions.appels[-1] == ('synthese', 'nature', 'offre', ['R'], None)
     with pytest.raises(RestitutionRefusee, match='inconnu'):
         service.executer('absent', date(2026, 11, 1), date(2026, 11, 30))
+
+
+def test_the_closing_writes_the_guarantee_fund_allocation_first():
+    """GL-17: the allocation of the month is written before the checks; if it cannot be, the closing says why."""
+    service, periodes, _ = cloture(etats={date(2026, 10, 1): 'ouverte'})
+    dotes = []
+    service.avant_cloture = lambda mois, par_id: dotes.append((mois, par_id))
+    service.cloturer(date(2026, 10, 1), par_id='super-admin')
+    assert dotes == [(date(2026, 10, 1), 'super-admin')]
+
+    service, periodes, _ = cloture(etats={date(2026, 10, 1): 'ouverte'})
+
+    def refuser(mois, par_id):
+        raise ValueError('compte du fonds inactif')
+
+    service.avant_cloture = refuser
+    with pytest.raises(ClotureRefusee, match='fonds de garantie impossible : compte du fonds inactif'):
+        service.cloturer(date(2026, 10, 1), par_id=None)
+    assert periodes.verrouillages == []

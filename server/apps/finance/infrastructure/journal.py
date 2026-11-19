@@ -37,3 +37,6 @@ class AuditJournal(Journal):
 
     def annuaire(self, action: str, par_id, genre: str, nom: str) -> None:
         activity.record(f'{action}_enregistre', actor=par_id, nom=nom)
+
+    def fonds_garantie(self, action: str, par_id, details: dict) -> None:
+        activity.record(f'fonds_garantie_{action}', actor=par_id, **details)

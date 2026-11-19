@@ -1,11 +1,12 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (CautionService, ClotureService, DepenseService, GrandLivreService, LivresService,
-                                              RapportService, RapprochementService, RestitutionService,
-                                              ValidationService)
+from apps.finance.application.service import (CautionService, ClotureService, ComptesCourantsService, DepenseService,
+                                              FondsGarantieService, GrandLivreService, LivresService, RapportService,
+                                              RapprochementService, RestitutionService, ValidationService)
 from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
-from apps.finance.infrastructure.persistence.repositories import (DjangoAnnuaire, DjangoCautions, DjangoDepenses,
+from apps.finance.infrastructure.persistence.repositories import (DjangoAnnuaire, DjangoCautions, DjangoComptesCourants,
+                                                                  DjangoDepenses, DjangoFondsGarantie,
                                                                   DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
                                                                   DjangoRapports, DjangoRapprochements,
                                                                   DjangoRegularisations, DjangoTransactionManager,
@@ -27,8 +28,10 @@ def livres_service() -> LivresService:
 
 
 def cloture_service() -> ClotureService:
+    # The closing writes the allocation of the month to the guarantee fund first (GL-17)
     return ClotureService(restitutions=SqlRestitutions(), periodes=DjangoPeriodes(), journal=AuditJournal(),
-                          tx=DjangoTransactionManager(), clock=DjangoClock())
+                          tx=DjangoTransactionManager(), clock=DjangoClock(),
+                          avant_cloture=lambda mois, par_id: fonds_garantie_service().doter(mois, par_id=par_id))
 
 
 def rapport_service() -> RapportService:
@@ -54,3 +57,15 @@ def depense_service() -> DepenseService:
     return DepenseService(depenses=DjangoDepenses(), annuaire=DjangoAnnuaire(), grand_livre=grand_livre_service(),
                           validations=validation_service(), parametres=DjangoParametres(), journal=AuditJournal(),
                           tx=DjangoTransactionManager(), clock=DjangoClock())
+
+
+def comptes_courants_service() -> ComptesCourantsService:
+    return ComptesCourantsService(annuaire=DjangoAnnuaire(), comptes=DjangoComptesCourants(),
+                                  parametres=DjangoParametres())
+
+
+def fonds_garantie_service() -> FondsGarantieService:
+    return FondsGarantieService(fonds=DjangoFondsGarantie(), depenses=DjangoDepenses(),
+                                grand_livre=grand_livre_service(), parametres=DjangoParametres(),
+                                alertes=EmailAlertes(), journal=AuditJournal(), tx=DjangoTransactionManager(),
+                                clock=DjangoClock())

@@ -480,13 +480,17 @@ class AssocieModel(models.Model):
     email = models.EmailField(blank=True, default='')
     compte_id = models.UUIDField(null=True, blank=True, help_text='Compte du site, facultatif')
     actif = models.BooleanField(default=True)
+    # Part of the share capital (GL-16), shown with the capital; the opening entry comes with the accountant
+    capital_souscrit = models.BigIntegerField(default=0, db_default=0)
     cree_le = models.DateTimeField(db_default=Now())
 
     class Meta:
         db_table = 'finance_associe'
         ordering = ['nom']
         verbose_name = 'Associé'
-        constraints = [models.UniqueConstraint(Lower('nom'), name='finance_associe_nom_unique')]
+        constraints = [models.UniqueConstraint(Lower('nom'), name='finance_associe_nom_unique'),
+                       models.CheckConstraint(condition=Q(capital_souscrit__gte=0),
+                                              name='finance_associe_capital_positif')]
 
     def __str__(self):
         return self.nom
@@ -530,6 +534,38 @@ class DepenseModel(models.Model):
                                    name='finance_depense_ecrite_datee'),
             models.CheckConstraint(condition=~Q(statut='annulee') | ~Q(motif_annulation=''),
                                    name='finance_depense_annulation_motivee'),
+        ]
+
+
+class SinistreModel(models.Model):
+    """A loss covered by the guarantee fund (GL-17): a D04 expense of the ledger, the decision that granted the
+    guarantee, and the use of the fund (G02 line). Cancelled by its inverse line, never deleted."""
+    ETATS = [('impute', 'Imputé au fonds'), ('annule', 'Annulé')]
+
+    id = models.UUIDField(primary_key=True)
+    depense = models.ForeignKey(DepenseModel, on_delete=models.PROTECT, related_name='sinistres')
+    montant = models.BigIntegerField()
+    decision_reference = models.CharField(max_length=120)
+    motif = models.TextField()
+    statut = models.CharField(max_length=10, choices=ETATS, default='impute')
+    impute_par_id = models.UUIDField(null=True, blank=True)
+    impute_le = models.DateTimeField()
+    mouvement_id = models.BigIntegerField(null=True, blank=True)
+    annule_le = models.DateTimeField(null=True, blank=True)
+    motif_annulation = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'finance_sinistre'
+        ordering = ['-impute_le']
+        verbose_name = 'Sinistre couvert par le fonds de garantie'
+        constraints = [
+            models.CheckConstraint(condition=Q(montant__gt=0), name='finance_sinistre_montant_positif'),
+            models.CheckConstraint(condition=~Q(decision_reference=''), name='finance_sinistre_decision'),
+            # A loss is covered once at a time
+            models.UniqueConstraint(fields=['depense'], condition=Q(statut='impute'),
+                                    name='finance_sinistre_un_par_depense'),
+            models.CheckConstraint(condition=~Q(statut='annule') | ~Q(motif_annulation=''),
+                                   name='finance_sinistre_annulation_motivee'),
         ]
 
 

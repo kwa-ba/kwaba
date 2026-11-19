@@ -126,8 +126,9 @@ function ListeDepenses() {
       {data?.count === 0 && <p className="text-sm text-muted">Aucune dépense pour ces filtres.</p>}
       {pieces && <Pieces depense={pieces} onFermer={() => setPieces(null)} />}
       <p className="text-xs text-muted">
-        Aujourd&apos;hui, chaque dépense est avancée par un associé : la charge entre au résultat et Kwa-Ba lui doit la somme (compte courant 462).
-        Son remboursement à l&apos;associé viendra avec les comptes courants (GL-16). Montants TTC : la TVA n&apos;est pas encore suivie.
+        Aujourd&apos;hui, chaque dépense est avancée par un associé : la charge entre au résultat et Kwa-Ba lui doit la somme (compte courant 462,
+        voir Finance → Comptes des associés). Un sinistre pris en charge par la Garantie Kwa-Ba se saisit en D04, puis se couvre dans Finance →
+        Fonds de garantie. Montants TTC : la TVA n&apos;est pas encore suivie.
       </p>
     </div>
   );
@@ -279,7 +280,7 @@ function Annuaire({ genre }: { genre: "fournisseurs" | "associes" }) {
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted">{estFournisseur ? "Un fournisseur désactivé garde ses dépenses passées, mais ne se choisit plus." : "Les associés sont ceux à qui Kwa-Ba doit ce qu'ils ont avancé ; leurs comptes courants viendront avec GL-16."}</p>
+      <p className="text-xs text-muted">{estFournisseur ? "Un fournisseur désactivé garde ses dépenses passées, mais ne se choisit plus." : "Les associés sont ceux à qui Kwa-Ba doit ce qu'ils ont avancé : leurs comptes courants et leurs parts du capital sont dans Finance → Comptes des associés."}</p>
     </div>
   );
 }

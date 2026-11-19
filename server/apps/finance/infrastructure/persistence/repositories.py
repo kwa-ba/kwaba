@@ -7,11 +7,14 @@ from decimal import Decimal
 from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.db.models import Sum
 
-from apps.finance.application.ports import (Annuaire, Cautions, Depenses, GrandLivre, Parametres, Periodes, Rapports,
-                                            Rapprochements, Regularisations, TransactionManager, Validations)
-from apps.finance.domain.entities import (FAMILLE_DEPENSE, PREFIXE_REGULARISATION, RAPPROCHEMENT_EN_ERREUR, Associe,
-                                          Caution, Depense, Ecriture, Fournisseur, Ligne, Mouvement, Nature,
-                                          OperationExterne, Referentiels, Regularisation, Validation)
+from apps.finance.application.ports import (Annuaire, Cautions, ComptesCourants, Depenses, FondsGarantie, GrandLivre,
+                                            Parametres, Periodes, Rapports, Rapprochements, Regularisations,
+                                            TransactionManager, Validations)
+from apps.finance.domain.entities import (COMPTE_FONDS_GARANTIE, FAMILLE_DEPENSE, NATURE_DOTATION_GARANTIE,
+                                          NATURES_COMPTE_COURANT, PREFIXE_DOTATION, PREFIXE_REGULARISATION,
+                                          RAPPROCHEMENT_EN_ERREUR, SINISTRE_IMPUTE, TIERS_ASSOCIE, Associe, Caution,
+                                          Depense, Ecriture, Fournisseur, Ligne, Mouvement, Nature, OperationExterne,
+                                          Referentiels, Regularisation, Sinistre, Validation)
 from apps.finance.domain.exceptions import ClotureRefusee, DepenseRefusee, MouvementRefuse
 from apps.finance.infrastructure.persistence.models import (CLE_IDEMPOTENCE, CORRECTION_UNIQUE, AssocieModel, AxeModel,
                                                             CautionModel, CompteArgentModel, DepenseModel,
@@ -19,7 +22,8 @@ from apps.finance.infrastructure.persistence.models import (CLE_IDEMPOTENCE, COR
                                                             NatureModel, OffreModel, ParametreModel, PeriodeModel,
                                                             RapportModel, RapprochementJourModel,
                                                             RapprochementLigneModel, RegularisationModel,
-                                                            ReleveExterneModel, TiersTypeModel, ValidationModel)
+                                                            ReleveExterneModel, SinistreModel, TiersTypeModel,
+                                                            ValidationModel)
 
 # SQLSTATE of RAISE EXCEPTION: a refusal of the database guards (migration 0003)
 REFUS_BASE = 'P0001'
@@ -148,6 +152,14 @@ class DjangoGrandLivre(GrandLivre):
         # Advisory lock of the transaction: needs no right on any table, released at its end
         with connection.cursor() as curseur:
             curseur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))', [cle])
+
+    def solde_compte_courant(self, associe_id: str) -> int:
+        with connection.cursor() as curseur:
+            curseur.execute(f"""
+                SELECT COALESCE(SUM({SIGNE}), 0) FROM finance_mouvement m
+                WHERE m.tiers_type = %s AND m.tiers_id = %s AND m.nature_code = ANY(%s)""",
+                            [TIERS_ASSOCIE, str(associe_id), list(NATURES_COMPTE_COURANT)])
+            return int(curseur.fetchone()[0])
 
 
 class DjangoParametres(Parametres):
@@ -483,6 +495,9 @@ class DjangoDepenses(Depenses):
         lignes = [_depense(m) for m in qs.order_by('-date_depense', '-numero')[decalage:decalage + limite]]
         return lignes, qs.count(), total
 
+    def couverte_par_le_fonds(self, depense_id) -> bool:
+        return SinistreModel.objects.filter(depense_id=depense_id, statut=SINISTRE_IMPUTE).exists()
+
 
 def _unique(enregistrer, message: str):
     try:
@@ -497,10 +512,15 @@ def _fournisseur(m: FournisseurModel) -> Fournisseur:
 
 
 def _associe(m: AssocieModel) -> Associe:
-    return Associe(id=m.id, nom=m.nom, email=m.email, compte_id=m.compte_id, actif=m.actif)
+    return Associe(id=m.id, nom=m.nom, email=m.email, compte_id=m.compte_id, actif=m.actif,
+                   capital_souscrit=m.capital_souscrit)
 
 
 class DjangoAnnuaire(Annuaire):
+    def serialiser(self) -> None:
+        with connection.cursor() as curseur:
+            curseur.execute("SELECT pg_advisory_xact_lock(hashtextextended('finance:associes', 0))")
+
     def fournisseurs(self, actifs_seulement) -> list[Fournisseur]:
         qs = FournisseurModel.objects.filter(actif=True) if actifs_seulement else FournisseurModel.objects.all()
         return [_fournisseur(m) for m in qs.order_by('nom')]
@@ -525,8 +545,95 @@ class DjangoAnnuaire(Annuaire):
         return _associe(m) if m else None
 
     def enregistrer_associe(self, a: Associe, nouveau: bool) -> Associe:
-        champs = {'nom': a.nom, 'email': a.email, 'compte_id': a.compte_id, 'actif': a.actif}
+        champs = {'nom': a.nom, 'email': a.email, 'compte_id': a.compte_id, 'actif': a.actif,
+                  'capital_souscrit': a.capital_souscrit}
         _unique(lambda: AssocieModel.objects.create(id=a.id, **champs) if nouveau
                 else AssocieModel.objects.filter(pk=a.id).update(**champs),
                 f'Un associé « {a.nom} » existe déjà.')
         return a
+
+
+# --- Associates' current accounts (GL-16) and guarantee fund (GL-17) -------------------------------------------------
+
+def _rangees(sql: str, params: list) -> list[dict]:
+    with connection.cursor() as curseur:
+        curseur.execute(sql, params)
+        colonnes = [c[0] for c in curseur.description]
+        return [dict(zip(colonnes, r)) for r in curseur.fetchall()]
+
+
+class DjangoComptesCourants(ComptesCourants):
+    def soldes(self) -> dict[str, dict]:
+        lignes = _rangees(f"""
+            SELECT m.tiers_id,
+                   COALESCE(SUM(CASE WHEN m.nature_code <> 'F04' THEN {SIGNE} ELSE 0 END), 0)::bigint AS avances,
+                   COALESCE(SUM(CASE WHEN m.nature_code = 'F04' THEN -{SIGNE} ELSE 0 END), 0)::bigint AS remboursements,
+                   COALESCE(SUM({SIGNE}), 0)::bigint AS solde
+            FROM finance_mouvement m
+            WHERE m.tiers_type = %s AND m.nature_code = ANY(%s)
+            GROUP BY m.tiers_id""", [TIERS_ASSOCIE, list(NATURES_COMPTE_COURANT)])
+        return {r.pop('tiers_id'): r for r in lignes}
+
+    def releve(self, associe_id: str) -> list[dict]:
+        return _rangees(f"""
+            SELECT m.id AS mouvement_id, m.date_evenement AS date, m.piece_reference AS piece, m.nature_code AS nature,
+                   n.libelle AS nature_libelle, COALESCE(m.motif, '') AS libelle, ({SIGNE})::bigint AS montant_signe,
+                   m.annule_mouvement_id
+            FROM finance_mouvement m JOIN finance_nature n ON n.code = m.nature_code
+            WHERE m.tiers_type = %s AND m.tiers_id = %s AND m.nature_code = ANY(%s)
+            ORDER BY m.date_evenement, m.id""", [TIERS_ASSOCIE, str(associe_id), list(NATURES_COMPTE_COURANT)])
+
+
+CHAMPS_SINISTRE = ('montant', 'decision_reference', 'motif', 'statut', 'impute_par_id', 'impute_le', 'mouvement_id',
+                   'annule_le', 'motif_annulation')
+
+
+def _sinistre(m: SinistreModel) -> Sinistre:
+    return Sinistre(id=m.id, depense_id=m.depense_id, **{c: getattr(m, c) for c in CHAMPS_SINISTRE})
+
+
+class DjangoFondsGarantie(FondsGarantie):
+    def serialiser(self) -> None:
+        with connection.cursor() as curseur:
+            curseur.execute("SELECT pg_advisory_xact_lock(hashtextextended('finance:fonds_garantie', 0))")
+
+    def dotations(self) -> list[dict]:
+        return _rangees("""
+            SELECT d.mois_comptable AS mois, d.assiette, d.taux, d.due, d.ecrite, COALESCE(p.etat, 'ouverte') AS etat
+            FROM finance_dotation_garantie d LEFT JOIN finance_periode p ON p.mois = d.mois_comptable
+            ORDER BY d.mois_comptable DESC""", [])
+
+    def dotation(self, mois) -> dict | None:
+        lignes = _rangees("""
+            SELECT d.mois_comptable AS mois, d.assiette, d.taux, d.due, d.ecrite, COALESCE(p.etat, 'ouverte') AS etat
+            FROM finance_dotation_garantie d LEFT JOIN finance_periode p ON p.mois = d.mois_comptable
+            WHERE d.mois_comptable = %s""", [mois])
+        return lignes[0] if lignes else None
+
+    def nb_lignes_dotation(self, mois) -> int:
+        return MouvementModel.objects.filter(
+            compte_argent_id=COMPTE_FONDS_GARANTIE, nature_id=NATURE_DOTATION_GARANTIE,
+            externe_reference__startswith=f'{PREFIXE_DOTATION}{mois:%Y-%m}').count()
+
+    def solde(self) -> int:
+        with connection.cursor() as curseur:
+            curseur.execute(f'SELECT COALESCE(-SUM({SIGNE}), 0) FROM finance_mouvement m '
+                            'WHERE m.compte_argent_code = %s', [COMPTE_FONDS_GARANTIE])
+            return int(curseur.fetchone()[0])
+
+    def creer(self, sinistre: Sinistre) -> Sinistre:
+        return _sinistre(SinistreModel.objects.create(id=sinistre.id, depense_id=sinistre.depense_id,
+                                                      **{c: getattr(sinistre, c) for c in CHAMPS_SINISTRE}))
+
+    def lire(self, sinistre_id, verrou=False) -> Sinistre | None:
+        qs = SinistreModel.objects.filter(pk=sinistre_id)
+        m = (qs.select_for_update() if verrou else qs).first()
+        return _sinistre(m) if m else None
+
+    def enregistrer(self, sinistre: Sinistre) -> None:
+        SinistreModel.objects.filter(pk=sinistre.id).update(
+            statut=sinistre.statut, mouvement_id=sinistre.mouvement_id, annule_le=sinistre.annule_le,
+            motif_annulation=sinistre.motif_annulation)
+
+    def sinistres(self, limite: int) -> list[Sinistre]:
+        return [_sinistre(m) for m in SinistreModel.objects.order_by('-impute_le')[:limite]]

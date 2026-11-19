@@ -15,12 +15,17 @@ Changes from the file, found by running its cases over two months:
 - the D01 fees of the real fee rate are read with their sign, so that a corrected fee line cancels out;
 - finance_synthese quotes the column of an axis (%I): an axis row is data, not code;
 - invariant I10 (a line written in a locked month after its locking) is added to the control view;
+- invariants I15 (an associate's current account is never in debit, articles of association art. 19) and I16 (the
+  guarantee fund never below zero), and closing checks 7 to 9 (the allocation of the month to the guarantee fund
+  written, the same two rules at the end of the month) come with GL-16 and GL-17;
+- money accounts without a provider's statement (the associates' advances, the guarantee fund) are never reconciled
+  (I5, closing check 4);
 - finance_sequence_piece and finance_prochain_numero are not created here: invoice numbers already come from the
   documents module (SequenceFactureModel, one lock per issue), which lot F3 extends to the other series.
 """
 # Tables the views read: all created by the migration 0001 of the module
 TABLES = ('finance_mouvement', 'finance_nature', 'finance_famille', 'finance_offre', 'finance_compte_argent',
-          'finance_tiers_type', 'finance_periode', 'finance_rapprochement_jour', 'finance_axe')
+          'finance_tiers_type', 'finance_periode', 'finance_rapprochement_jour', 'finance_axe', 'finance_parametre')
 
 VUES = [
     # 8.1 Signed amount, read by every view
@@ -91,6 +96,22 @@ VUES = [
            SUM(montant_signe) AS solde_livre
     FROM finance_mouvement_signe
     GROUP BY compte_argent_code
+    """,
+    # Allocation of each month to the guarantee fund (GL-17): its rate of the month's net revenue (family R), rounded
+    # to the franc, and what the G01 lines of the fund's account already allocated
+    """
+    CREATE VIEW finance_dotation_garantie AS
+    SELECT s.mois_comptable,
+           GREATEST(SUM(CASE WHEN s.famille = 'R' THEN s.montant_signe ELSE 0 END), 0)::bigint AS assiette,
+           t.taux,
+           ROUND(GREATEST(SUM(CASE WHEN s.famille = 'R' THEN s.montant_signe ELSE 0 END), 0) * t.taux / 100)::bigint
+               AS due,
+           (-SUM(CASE WHEN s.nature_code = 'G01' AND s.compte_argent_code = 'GARANTIE'
+                      THEN s.montant_signe ELSE 0 END))::bigint AS ecrite
+    FROM finance_mouvement_signe s
+    CROSS JOIN (SELECT COALESCE(MAX(valeur) FILTER (WHERE actif), 0) AS taux
+                FROM finance_parametre WHERE cle = 'fonds_garantie_taux') t
+    GROUP BY s.mois_comptable, t.taux
     """,
     # 8.8 Real payment fee rate (FIN-12.3)
     """
@@ -229,7 +250,7 @@ VUES = [
         FROM finance_compte_argent c
         CROSS JOIN generate_series((SELECT min(date_evenement)::date FROM finance_mouvement)::timestamp,
                                    (current_date - 1)::timestamp, interval '1 day') AS j(jour)
-        WHERE c.actif AND c.type <> 'avance_associe'
+        WHERE c.actif AND c.type NOT IN ('avance_associe', 'provision')
           AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                           WHERE r.jour = j.jour::date AND r.compte_argent_code = c.code
                             AND r.etat = 'fait' AND r.ecart = 0)
@@ -258,6 +279,19 @@ VUES = [
             WHERE compte_general LIKE '55%'
             GROUP BY compte_general HAVING SUM(debit) - SUM(credit) < 0
         ) x
+    ), i15 AS (
+        -- An associate's current account is never in debit (articles of association, art. 19)
+        SELECT count(*) AS n FROM (
+            SELECT tiers_id FROM finance_mouvement_signe
+            WHERE tiers_type = 'associe' AND nature_code IN ('F02', 'F03', 'F04')
+            GROUP BY tiers_id HAVING SUM(montant_signe) < 0
+        ) x
+    ), i16 AS (
+        -- The guarantee fund never uses more than was allocated to it
+        SELECT count(*) AS n FROM (
+            SELECT 1 FROM finance_mouvement_signe WHERE compte_argent_code = 'GARANTIE'
+            HAVING SUM(montant_signe) > 0
+        ) x
     )
     SELECT 'I5' AS invariant, 'Rapprochement fait et écart nul, chaque jour' AS libelle, (SELECT n FROM i5) AS anomalies
     UNION ALL SELECT 'I8', 'Cautions détenues jamais négatives',              (SELECT n FROM i8)
@@ -266,6 +300,8 @@ VUES = [
     UNION ALL SELECT 'I11', 'Débits égaux aux crédits (AUDCIF art. 17-2)',    (SELECT n FROM i11)
     UNION ALL SELECT 'I12', 'Tout mouvement porte un compte SYSCOHADA',       (SELECT n FROM i12)
     UNION ALL SELECT 'I13', 'Monnaie électronique jamais créditrice (55x)',   (SELECT n FROM i13)
+    UNION ALL SELECT 'I15', 'Comptes courants d''associés jamais débiteurs',  (SELECT n FROM i15)
+    UNION ALL SELECT 'I16', 'Fonds de garantie jamais négatif',               (SELECT n FROM i16)
     """,
     # 9.1 The single view every report reads
     """
@@ -326,7 +362,7 @@ FONCTIONS = [
                 FROM generate_series(p_mois::timestamp, (p_mois + interval '1 month' - interval '1 day'),
                                      interval '1 day') AS j(jour)
                 CROSS JOIN finance_compte_argent ca
-                WHERE ca.actif AND ca.type <> 'avance_associe'
+                WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'provision')
                   AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                                   WHERE r.jour = j.jour::date AND r.compte_argent_code = ca.code
                                     AND r.etat = 'fait' AND r.ecart = 0)),
@@ -341,6 +377,21 @@ FONCTIONS = [
                (SELECT count(*) FROM finance_mouvement
                 WHERE mois_comptable = p_mois AND (nature_code IS NULL OR offre_code IS NULL)),
                'Qualifier les lignes incompletes avant cloture'
+        UNION ALL SELECT 7, 'Dotation du mois au fonds de garantie',
+               (SELECT count(*) FROM finance_dotation_garantie WHERE mois_comptable = p_mois AND ecrite < due),
+               'Calculer la dotation (Finance, Fonds de garantie) : elle est aussi ecrite chaque nuit et a la cloture'
+        UNION ALL SELECT 8, 'Comptes courants d''associes jamais debiteurs',
+               (SELECT count(*) FROM (
+                    SELECT tiers_id FROM finance_mouvement_signe
+                    WHERE tiers_type = 'associe' AND nature_code IN ('F02', 'F03', 'F04') AND mois_comptable <= p_mois
+                    GROUP BY tiers_id HAVING SUM(montant_signe) < 0) x),
+               'Un associe a ete rembourse au-dela de ce que Kwa-Ba lui doit : verifier ses remboursements'
+        UNION ALL SELECT 9, 'Fonds de garantie jamais negatif',
+               (SELECT count(*) FROM (
+                    SELECT 1 FROM finance_mouvement_signe
+                    WHERE compte_argent_code = 'GARANTIE' AND mois_comptable <= p_mois
+                    HAVING SUM(montant_signe) > 0) x),
+               'Un sinistre impute au-dela du solde du fonds : annuler l''imputation et la reprendre'
     )
     SELECT controle,
            CASE WHEN rang = 1 THEN 'ecart de ' || valeur::text || ' F'
@@ -405,6 +456,7 @@ SUPPRESSION = [
     'DROP VIEW IF EXISTS finance_export_comptable CASCADE',
     'DROP VIEW IF EXISTS finance_ecriture CASCADE',
     'DROP VIEW IF EXISTS finance_taux_frais_reel CASCADE',
+    'DROP VIEW IF EXISTS finance_dotation_garantie CASCADE',
     'DROP VIEW IF EXISTS finance_solde_compte_argent CASCADE',
     'DROP VIEW IF EXISTS finance_cautions_detenues CASCADE',
     'DROP VIEW IF EXISTS finance_du_aux_partenaires CASCADE',

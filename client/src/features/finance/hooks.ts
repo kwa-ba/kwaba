@@ -1,5 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  annulerSinistre, doterFondsGarantie, imputerSinistre, lireComptesCourants, lireFondsGarantie, lireReleveAssocie,
+  type NouveauSinistre,
   annulerDepense, cloturerMois, creerRapport, deciderValidation, enregistrerAssocie, enregistrerFournisseur,
   importerRapprochement, lireAssocies, lireDepenses, lireFournisseurs, saisirDepense, type AssocieFinance,
   type FiltresDepenses, type FournisseurFinance, type NouvelleDepense, lireCautions, lireRapprochementJour, lireRapprochements,
@@ -35,6 +37,9 @@ export const CLES_FINANCE = {
   depenses: (filtres: FiltresDepenses, page: number) => ["admin", "finance", "depenses", filtres, page] as const,
   fournisseurs: ["admin", "finance", "fournisseurs"] as const,
   associes: ["admin", "finance", "associes"] as const,
+  comptesCourants: ["admin", "finance", "associes", "comptes"] as const,
+  releveAssocie: (id: string) => ["admin", "finance", "associes", "releve", id] as const,
+  fondsGarantie: ["admin", "finance", "fonds-garantie"] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -207,4 +212,38 @@ export function useEnregistrerAssocie() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (a: Partial<AssocieFinance> & { nom: string }) => enregistrerAssocie(a),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.associes }) });
+}
+
+/** What Kwa-Ba owes each associate, with the share capital (GL-16). */
+export function useComptesCourants() {
+  return useQuery({ queryKey: CLES_FINANCE.comptesCourants, queryFn: lireComptesCourants });
+}
+
+export function useReleveAssocie(id: string | null) {
+  return useQuery({ queryKey: CLES_FINANCE.releveAssocie(id ?? ""), queryFn: () => lireReleveAssocie(id as string),
+    enabled: !!id });
+}
+
+/** The guarantee fund, its allocations and the losses it covers (GL-17). */
+export function useFondsGarantie() {
+  return useQuery({ queryKey: CLES_FINANCE.fondsGarantie, queryFn: lireFondsGarantie });
+}
+
+/** Allocations and covers write in the ledger: every finance read may change. */
+export function useDoterFondsGarantie() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (mois?: string) => doterFondsGarantie(mois),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useImputerSinistre() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (s: NouveauSinistre) => imputerSinistre(s),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useAnnulerSinistre() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, motif }: { id: string; motif: string }) => annulerSinistre(id, motif),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
 }

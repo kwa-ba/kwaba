@@ -557,6 +557,8 @@ export interface AssocieFinance {
   email: string;
   compte_id: string | null;
   actif: boolean;
+  /** Part of the share capital, F CFA (GL-16) */
+  capital_souscrit: number;
 }
 
 export async function lireDepenses(filtres: FiltresDepenses, page: number, pageSize = 20) {
@@ -596,4 +598,118 @@ export async function enregistrerAssocie(a: Partial<AssocieFinance> & { nom: str
   const { id, ...champs } = a;
   return (id ? await api.patch<AssocieFinance>(`${FINANCE}/associes/${id}/`, champs)
     : await api.post<AssocieFinance>(`${FINANCE}/associes/`, champs)).data;
+}
+
+// --- Associates' current accounts (GL-16)
+
+export interface CompteCourantAssocie extends AssocieFinance {
+  /** Advances and expenses they paid (F02, F03) */
+  avances: number;
+  /** Paid back to them (F04) */
+  remboursements: number;
+  /** What Kwa-Ba owes them: never below zero */
+  solde: number;
+}
+
+export interface ComptesCourants {
+  associes: CompteCourantAssocie[];
+  totaux: { avances: number; remboursements: number; solde: number };
+  capital_social: number;
+  capital_souscrit: number;
+  peut_modifier: boolean;
+  remboursements_ouverts: boolean;
+}
+
+export interface LigneCompteCourant {
+  mouvement_id: number;
+  date: string;
+  piece: string | null;
+  nature: string;
+  nature_libelle: string;
+  libelle: string;
+  montant_signe: number;
+  annule_mouvement_id: number | null;
+  solde: number;
+}
+
+export async function lireComptesCourants() {
+  return (await api.get<ComptesCourants>(`${FINANCE}/associes/comptes/`)).data;
+}
+
+export async function lireReleveAssocie(id: string) {
+  return (await api.get<{ associe: AssocieFinance; lignes: LigneCompteCourant[]; solde: number }>(
+    `${FINANCE}/associes/${id}/releve/`)).data;
+}
+
+// --- Guarantee fund (GL-17)
+
+export interface DotationFonds {
+  mois: string;
+  /** Net revenue of the month (family R) */
+  assiette: number;
+  taux: number | string;
+  due: number;
+  ecrite: number;
+  etat: string;
+  termine: boolean;
+}
+
+export interface SinistreFonds {
+  id: string;
+  depense_id: string;
+  montant: number;
+  decision_reference: string;
+  motif: string;
+  statut: "impute" | "annule";
+  impute_par: string;
+  impute_le: string;
+  annule_le: string | null;
+  motif_annulation: string;
+  depense: { numero: string; libelle: string; date_depense: string; montant: number; offre: string };
+}
+
+export interface PochesTresorerie {
+  tresorerie: number;
+  du_partenaires: number;
+  du_voyageurs: number;
+  cautions_detenues: number;
+  fonds_garantie: number;
+  libre: number;
+}
+
+export interface FondsGarantie {
+  solde: number;
+  cible: number;
+  sous_cible: boolean;
+  taux: number | string;
+  poches: PochesTresorerie;
+  dotations: DotationFonds[];
+  sinistres: SinistreFonds[];
+  depenses_a_couvrir: DepenseFinance[];
+  peut_operer: boolean;
+}
+
+export interface NouveauSinistre {
+  depense: string;
+  montant: number;
+  decision_reference: string;
+  motif: string;
+}
+
+export async function lireFondsGarantie() {
+  return (await api.get<FondsGarantie>(`${FINANCE}/fonds-garantie/`)).data;
+}
+
+/** Writes what the allocation of a finished month lacks (every finished open month without `mois`). */
+export async function doterFondsGarantie(mois?: string) {
+  return (await api.post<{ dotations: DotationFonds[]; ajoute: number }>(`${FINANCE}/fonds-garantie/doter/`,
+    mois ? { mois: mois.slice(0, 7) } : {})).data;
+}
+
+export async function imputerSinistre(s: NouveauSinistre) {
+  return (await api.post<SinistreFonds>(`${FINANCE}/fonds-garantie/sinistres/`, s)).data;
+}
+
+export async function annulerSinistre(id: string, motif: string) {
+  return (await api.post<SinistreFonds>(`${FINANCE}/fonds-garantie/sinistres/${id}/annuler/`, { motif })).data;
 }

@@ -3,6 +3,7 @@ message in French; the database checks again (migration 0003) and refuses whoeve
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import date, datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 
 from .entities import (CAUTION, CAUTION_RETENUE, ENTREE, FONDS_DE_TIERS, LIGNE_CONCORDE, LIGNE_ECART,
                        LIGNE_HORS_LIVRE, LIGNE_REGULARISEE, RAPPROCHEMENT_EN_ERREUR, RAPPROCHEMENT_FAIT, SENS, SORTIE,
@@ -197,3 +198,13 @@ def juger_jour(lignes: list[dict], internes: int) -> dict:
         'etat': RAPPROCHEMENT_FAIT if not messages else RAPPROCHEMENT_EN_ERREUR,
         'message': ' '.join(messages),
     }
+
+
+# --- Guarantee fund (GL-17, FIN-06) ---------------------------------------------------------------------------------
+
+def dotation_due(assiette: int, taux) -> int:
+    """Allocation of a month to the guarantee fund: `taux` % of its net revenue, rounded half up to the franc like
+    PostgreSQL's ROUND (finance_dotation_garantie); nothing for a month without revenue."""
+    if assiette <= 0 or not taux:
+        return 0
+    return int((Decimal(assiette) * Decimal(str(taux)) / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))

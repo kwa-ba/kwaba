@@ -6,7 +6,8 @@ from decimal import Decimal
 from typing import ContextManager
 
 from apps.finance.domain.entities import (Associe, Caution, Depense, Ecriture, FiltresMouvements, Fournisseur, Ligne,
-                                          Mouvement, OperationExterne, Page, Referentiels, Regularisation, Validation)
+                                          Mouvement, OperationExterne, Page, Referentiels, Regularisation, Sinistre,
+                                          Validation)
 
 
 class Clock(ABC):
@@ -64,6 +65,10 @@ class GrandLivre(ABC):
         """Serializes the transactions working on the same key until they end (advisory lock: the application role
         has no UPDATE right on the ledger, hence no row lock)."""
 
+    @abstractmethod
+    def solde_compte_courant(self, associe_id: str) -> int:
+        """What Kwa-Ba owes an associate today (F02 + F03 - F04 of their sub-account): never below zero."""
+
 
 class Parametres(ABC):
     @abstractmethod
@@ -82,6 +87,10 @@ class Alertes(ABC):
     @abstractmethod
     def evenement_rejoue(self, mouvement_id: int, nature: str) -> None:
         """An external event delivered again with another amount: not written, to reconcile."""
+
+    @abstractmethod
+    def fonds_sous_cible(self) -> None:
+        """The guarantee fund is below its target after the allocation of a month."""
 
 
 class Journal(ABC):
@@ -118,6 +127,10 @@ class Journal(ABC):
     @abstractmethod
     def annuaire(self, action: str, par_id: uuid.UUID | None, genre: str, nom: str) -> None:
         """A supplier or an associate added or changed."""
+
+    @abstractmethod
+    def fonds_garantie(self, action: str, par_id: uuid.UUID | None, details: dict) -> None:
+        """An allocation of a month written, a loss covered by the fund, or its cancellation."""
 
 
 class Restitutions(ABC):
@@ -415,9 +428,17 @@ class Depenses(ABC):
               statut: str | None, decalage: int, limite: int) -> tuple[list[Depense], int, int]:
         """(expenses newest first, number, total amount of those written)."""
 
+    @abstractmethod
+    def couverte_par_le_fonds(self, depense_id: uuid.UUID) -> bool:
+        """The expense is a loss the guarantee fund covers now (GL-17)."""
+
 
 class Annuaire(ABC):
     """Suppliers and associates."""
+
+    @abstractmethod
+    def serialiser(self) -> None:
+        """Two changes of the associates at the same time (their parts of the capital): the second waits."""
 
     @abstractmethod
     def fournisseurs(self, actifs_seulement: bool) -> list[Fournisseur]:
@@ -442,3 +463,55 @@ class Annuaire(ABC):
     @abstractmethod
     def enregistrer_associe(self, associe: Associe, nouveau: bool) -> Associe:
         """Raises DepenseRefusee when the name is already taken."""
+
+
+class ComptesCourants(ABC):
+    """Associates' current accounts, read from the ledger (GL-16)."""
+
+    @abstractmethod
+    def soldes(self) -> dict[str, dict]:
+        """Per associate id: {avances, remboursements, solde} of their sub-account (F02, F03 and F04 lines)."""
+
+    @abstractmethod
+    def releve(self, associe_id: str) -> list[dict]:
+        """Their lines, oldest first: {mouvement_id, date, piece, nature, libelle, montant_signe}."""
+
+
+class FondsGarantie(ABC):
+    """The guarantee fund (GL-17): allocations of each month, and the losses it covers."""
+
+    @abstractmethod
+    def serialiser(self) -> None:
+        """Two operations on the fund at the same time: the second waits for the first."""
+
+    @abstractmethod
+    def dotations(self) -> list[dict]:
+        """Per month known to the ledger, newest first: {mois, assiette, taux, due, ecrite, etat}."""
+
+    @abstractmethod
+    def dotation(self, mois: date) -> dict | None:
+        pass
+
+    @abstractmethod
+    def nb_lignes_dotation(self, mois: date) -> int:
+        """Allocation lines already written for the month (to number the next one)."""
+
+    @abstractmethod
+    def solde(self) -> int:
+        """Balance of the fund: allocations less uses (positive)."""
+
+    @abstractmethod
+    def creer(self, sinistre: Sinistre) -> Sinistre:
+        pass
+
+    @abstractmethod
+    def lire(self, sinistre_id: uuid.UUID, verrou: bool = False) -> Sinistre | None:
+        pass
+
+    @abstractmethod
+    def enregistrer(self, sinistre: Sinistre) -> None:
+        pass
+
+    @abstractmethod
+    def sinistres(self, limite: int) -> list[Sinistre]:
+        """Newest first."""

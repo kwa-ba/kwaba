@@ -11,7 +11,7 @@ import pytest
 from django.utils import timezone
 
 from apps.finance import api as finance
-from apps.finance.models import CompteArgentModel, PeriodeModel, RapportModel, RapprochementJourModel
+from apps.finance.models import CompteArgentModel, NatureModel, PeriodeModel, RapportModel, RapprochementJourModel
 
 HOTE = str(uuid.uuid4())  # third party ids are text in the ledger
 APPORTEUR = uuid.uuid4()
@@ -182,7 +182,7 @@ def test_reference_booking_balances_in_double_entry():
     assert [e['ecart'] for e in finance.controle_equilibre()] == [0]
     assert finance.du_aux_partenaires() == []
     assert {i['invariant']: i['anomalies'] for i in finance.controle_invariants()} == dict.fromkeys(
-        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14'], 0)
+        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16'], 0)
 
 
 def test_internal_transfer_balances_account_585():
@@ -254,12 +254,16 @@ def _mois_rapproche(mois: date) -> None:
 
 
 def test_a_sound_month_can_be_closed():
-    """FH-17: last month, fully reconciled: the six checks are OK."""
+    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the nine checks are OK."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     sejour(CAS[0], moment=timezone.now().replace(day=1) - timedelta(days=15))
     _mois_rapproche(mois)
+    controles = {c['controle']: c['verdict'] for c in finance.peut_on_cloturer(mois)}
+    assert controles['Dotation du mois au fonds de garantie'] == 'REFUSE'
 
-    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 6
+    finance.doter_fonds_garantie(mois)
+
+    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 9
 
 
 def test_a_month_without_reconciliation_cannot_be_closed():
@@ -271,11 +275,13 @@ def test_a_month_without_reconciliation_cannot_be_closed():
 
 
 def test_a_movement_without_account_blocks_the_closing():
-    """FH-12, FH-18: the guarantee fund has no SYSCOHADA account yet (question to the chartered accountant)."""
+    """FH-12, FH-18: a nature still waiting for its SYSCOHADA account (question to the chartered accountant)."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     moment = timezone.now().replace(day=1) - timedelta(days=15)
     sejour(CAS[0], moment=moment)
-    finance.enregistrer([finance.Ligne(nature='G01', offre='STRUCTURE', montant=1_750, sens=finance.SORTIE,
+    NatureModel.objects.create(code='D99', famille_id='D', libelle='Charge sans compte', compte_syscohada=None,
+                               sens_attendu='sortie', actif=True)
+    finance.enregistrer([finance.Ligne(nature='D99', offre='STRUCTURE', montant=1_750, sens=finance.SORTIE,
                                        compte_argent='FEDAPAY', date_evenement=moment)], origine='calcul')
     _mois_rapproche(mois)
 

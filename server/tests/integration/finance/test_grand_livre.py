@@ -56,14 +56,20 @@ def executer(sql: str, params=()):
 def test_reference_data_of_the_schema_is_loaded():
     assert NatureModel.objects.count() == 54
     assert NatureModel.objects.filter(actif=True).count() == 40
-    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008) and the threshold of the expenses
-    # decided on 19 November 2026 (migration 0012)
-    assert ParametreModel.objects.count() == 97
-    assert ParametreModel.objects.filter(actif=True).count() == 55
+    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
+    # decided on 19 November 2026 (migration 0012) and the target of the guarantee fund (migration 0013)
+    assert ParametreModel.objects.count() == 98
+    assert ParametreModel.objects.filter(actif=True).count() == 56
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
-    # FedaPay, and the account of passage of the associates' advances (GL-15)
-    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == ['ASSOCIES', 'FEDAPAY']
+    # FedaPay, the account of passage of the associates' advances (GL-15) and the guarantee fund (GL-17)
+    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == [
+        'ASSOCIES', 'FEDAPAY', 'GARANTIE']
+    # The guarantee fund natures have their (proposed) accounts, with the history of the change
+    assert dict(NatureModel.objects.filter(famille_id='G').values_list('code', 'compte_syscohada')) == {
+        'G01': '6911', 'G02': '7911'}
+    assert CorrespondanceHistoModel.objects.filter(nature_id__in=['G01', 'G02'], compte_avant__isnull=True).count() == 2
+    assert finance.parametre('fonds_garantie_cible') == 0
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
     for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):
         assert finance.parametre(cle) == 0
