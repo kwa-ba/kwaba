@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .admin_views import (AuxiliairesView, CautionsView, BalanceView, ClotureMoisView, ClotureView, ComptesView,
+from .admin_views import (AssociesView, AuxiliairesView, CautionsView, DepenseAnnulationView, DepensesView,
+                          FournisseursView, BalanceView, ClotureMoisView, ClotureView, ComptesView,
                           ExportComptableView, GrandLivreCompteView, GrandLivreView, LivreJournalView, MouvementsView,
                           PilotageView, RapportExportView, RapportResultatView, RapportsView, RapprochementJourView,
                           RapprochementsView, ReferentielsView, RegularisationView, ValidationDecisionView,
@@ -23,6 +24,12 @@ urlpatterns = [
     path('rapports/resultat/', RapportResultatView.as_view(), name='admin-finance-rapport-resultat'),
     path('rapports/export/', RapportExportView.as_view(), name='admin-finance-rapport-export'),
     path('cautions/', CautionsView.as_view(), name='admin-finance-cautions'),
+    path('depenses/', DepensesView.as_view(), name='admin-finance-depenses'),
+    path('depenses/<uuid:pk>/annuler/', DepenseAnnulationView.as_view(), name='admin-finance-depense-annuler'),
+    path('fournisseurs/', FournisseursView.as_view(), name='admin-finance-fournisseurs'),
+    path('fournisseurs/<uuid:pk>/', FournisseursView.as_view(), name='admin-finance-fournisseur'),
+    path('associes/', AssociesView.as_view(), name='admin-finance-associes'),
+    path('associes/<uuid:pk>/', AssociesView.as_view(), name='admin-finance-associe'),
     path('rapprochement/', RapprochementsView.as_view(), name='admin-finance-rapprochement'),
     path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
     path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),

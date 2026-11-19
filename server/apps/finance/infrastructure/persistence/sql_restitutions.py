@@ -229,7 +229,7 @@ VUES = [
         FROM finance_compte_argent c
         CROSS JOIN generate_series((SELECT min(date_evenement)::date FROM finance_mouvement)::timestamp,
                                    (current_date - 1)::timestamp, interval '1 day') AS j(jour)
-        WHERE c.actif
+        WHERE c.actif AND c.type <> 'avance_associe'
           AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                           WHERE r.jour = j.jour::date AND r.compte_argent_code = c.code
                             AND r.etat = 'fait' AND r.ecart = 0)
@@ -326,7 +326,7 @@ FONCTIONS = [
                 FROM generate_series(p_mois::timestamp, (p_mois + interval '1 month' - interval '1 day'),
                                      interval '1 day') AS j(jour)
                 CROSS JOIN finance_compte_argent ca
-                WHERE ca.actif
+                WHERE ca.actif AND ca.type <> 'avance_associe'
                   AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                                   WHERE r.jour = j.jour::date AND r.compte_argent_code = ca.code
                                     AND r.etat = 'fait' AND r.ecart = 0)),

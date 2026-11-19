@@ -19,10 +19,12 @@ from apps.finance.application.registre import OPERATIONS, declarer
 from apps.finance.application.registre import declarer_operation as declarer_operation_registre
 from apps.finance.domain.entities import (ENTREE, SORTIE, Caution, Ecrivain, FiltresMouvements, Ligne, Operation,
                                           OperationExterne)
-from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RapprochementRefuse,
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, MouvementRefuse,
+                                            RapprochementRefuse,
                                             RestitutionRefusee, ValidationRefusee)
 from apps.finance.domain.rules import mois_de
-from apps.finance.infrastructure.container import (cloture_service, grand_livre_service, livres_service,
+from apps.finance.infrastructure.container import (cloture_service, depense_service, grand_livre_service,
+                                                   livres_service,
                                                    rapport_service, rapprochement_service, restitution_service,
                                                    validation_service, caution_service)
 
@@ -52,6 +54,9 @@ __all__ = [
     'OperationExterne', 'RapprochementRefuse', 'importer_rapprochement', 'echec_rapprochement',
     'rapprochement_du_jour', 'rapprochements_du_mois', 'detail_rapprochement', 'regulariser',
     'mois_verrouille',
+    # Expenses, suppliers and associates (GL-15)
+    'DepenseRefusee', 'saisir_depense', 'annuler_depense', 'depense', 'depenses', 'seuil_validation_depense',
+    'fournisseurs', 'enregistrer_fournisseur', 'associes', 'enregistrer_associe',
 ]
 
 
@@ -393,3 +398,71 @@ def regulariser(compte: str, jour: date, *, reference: str, nature: str, offre: 
 def mois_verrouille(mois: date) -> bool:
     """Is this accounting month locked (nothing is written in it any more)?"""
     return any(p['mois'] == mois.replace(day=1) and p['etat'] == 'verrouillee' for p in mois_comptables())
+
+
+# --- Expenses, suppliers and associates (GL-15) ----------------------------------------------------------------------
+
+def _depense_simple(d) -> dict:
+    return {'id': str(d.id), 'numero': d.numero, 'date_depense': d.date_depense, 'nature': d.nature, 'offre': d.offre,
+            'montant': d.montant, 'libelle': d.libelle, 'fournisseur_id': str(d.fournisseur_id), 'mode': d.mode,
+            'associe_id': str(d.associe_id) if d.associe_id else None, 'reference_facture': d.reference_facture,
+            'statut': d.statut, 'demandee_par_id': d.demandee_par_id, 'demandee_le': d.demandee_le,
+            'mouvement_ids': list(d.mouvement_ids), 'ecrite_le': d.ecrite_le, 'annulee_le': d.annulee_le,
+            'motif_annulation': d.motif_annulation}
+
+
+def seuil_validation_depense() -> int:
+    """Amount (F CFA) from which an expense waits for a second person; 0: no double validation."""
+    return depense_service().seuil()
+
+
+def saisir_depense(*, date_depense: date, nature: str, montant: int, libelle: str, fournisseur_id, associe_id,
+                   offre: str = 'STRUCTURE', reference_facture: str = '', par_id: uuid.UUID | None = None) -> dict:
+    """An expense advanced by an associate, written at once or after a second person from the threshold. The caller
+    attaches its evidence in the same transaction. Raises DepenseRefusee, MouvementRefuse or ValidationRefusee."""
+    return _depense_simple(depense_service().saisir(
+        date_depense=date_depense, nature=nature, montant=montant, libelle=libelle, fournisseur_id=fournisseur_id,
+        associe_id=associe_id, offre=offre, reference_facture=reference_facture, par_id=par_id))
+
+
+def annuler_depense(depense_id, *, motif: str, par_id: uuid.UUID | None) -> dict:
+    """Cancels a written expense by inverse lines; it stays visible with its reason."""
+    return _depense_simple(depense_service().annuler(depense_id, motif=motif, par_id=par_id))
+
+
+def depense(depense_id) -> dict | None:
+    d = depense_service().lire(depense_id)
+    return _depense_simple(d) if d else None
+
+
+def depenses(*, debut: date | None = None, fin: date | None = None, nature=None, fournisseur_id=None,
+             associe_id=None, statut=None, page: int = 1, taille: int = 20) -> dict:
+    """{lignes, total, montant_ecrit}: the expenses newest first, with the filters."""
+    r = depense_service().liste(debut=debut, fin=fin, nature=nature, fournisseur_id=fournisseur_id,
+                                associe_id=associe_id, statut=statut, page=page, taille=taille)
+    return {**r, 'lignes': [_depense_simple(d) for d in r['lignes']]}
+
+
+def fournisseurs(actifs_seulement: bool = False) -> list[dict]:
+    return [{'id': str(f.id), 'nom': f.nom, 'nif': f.nif, 'contact': f.contact, 'actif': f.actif}
+            for f in depense_service().fournisseurs(actifs_seulement)]
+
+
+def enregistrer_fournisseur(*, nom: str, nif: str = '', contact: str = '', actif: bool = True, fournisseur_id=None,
+                            par_id: uuid.UUID | None = None) -> dict:
+    f = depense_service().enregistrer_fournisseur(nom=nom, nif=nif, contact=contact, actif=actif,
+                                                  fournisseur_id=fournisseur_id, par_id=par_id)
+    return {'id': str(f.id), 'nom': f.nom, 'nif': f.nif, 'contact': f.contact, 'actif': f.actif}
+
+
+def associes(actifs_seulement: bool = False) -> list[dict]:
+    return [{'id': str(a.id), 'nom': a.nom, 'email': a.email, 'compte_id': str(a.compte_id) if a.compte_id else None,
+             'actif': a.actif} for a in depense_service().associes(actifs_seulement)]
+
+
+def enregistrer_associe(*, nom: str, email: str = '', compte_id=None, actif: bool = True, associe_id=None,
+                        par_id: uuid.UUID | None = None) -> dict:
+    a = depense_service().enregistrer_associe(nom=nom, email=email, compte_id=compte_id, actif=actif,
+                                              associe_id=associe_id, par_id=par_id)
+    return {'id': str(a.id), 'nom': a.nom, 'email': a.email, 'compte_id': str(a.compte_id) if a.compte_id else None,
+            'actif': a.actif}

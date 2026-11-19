@@ -1,10 +1,12 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (CautionService, ClotureService, GrandLivreService, LivresService, RapportService,
-                                              RapprochementService, RestitutionService, ValidationService)
+from apps.finance.application.service import (CautionService, ClotureService, DepenseService, GrandLivreService, LivresService,
+                                              RapportService, RapprochementService, RestitutionService,
+                                              ValidationService)
 from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
-from apps.finance.infrastructure.persistence.repositories import (DjangoCautions, DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
+from apps.finance.infrastructure.persistence.repositories import (DjangoAnnuaire, DjangoCautions, DjangoDepenses,
+                                                                  DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
                                                                   DjangoRapports, DjangoRapprochements,
                                                                   DjangoRegularisations, DjangoTransactionManager,
                                                                   DjangoValidations)
@@ -46,3 +48,9 @@ def rapprochement_service() -> RapprochementService:
     return RapprochementService(rapprochements=DjangoRapprochements(), regularisations=DjangoRegularisations(),
                                 grand_livre=grand_livre_service(), validations=validation_service(),
                                 journal=AuditJournal(), tx=DjangoTransactionManager(), clock=DjangoClock())
+
+
+def depense_service() -> DepenseService:
+    return DepenseService(depenses=DjangoDepenses(), annuaire=DjangoAnnuaire(), grand_livre=grand_livre_service(),
+                          validations=validation_service(), parametres=DjangoParametres(), journal=AuditJournal(),
+                          tx=DjangoTransactionManager(), clock=DjangoClock())

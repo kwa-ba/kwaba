@@ -16,7 +16,7 @@ their UUID (`<objet>_id`), read through the `api.py` of their module.
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import F, Q, Value
-from django.db.models.functions import Coalesce, Now
+from django.db.models.functions import Coalesce, Lower, Now
 
 from apps.finance.domain.entities import (ENTREE, PERIODE_EN_CONTROLE, PERIODE_OUVERTE, PERIODE_VERROUILLEE,
                                           SORTIE)
@@ -449,6 +449,87 @@ class RegularisationModel(models.Model):
             models.CheckConstraint(condition=Q(statut='en_attente') | Q(statut='refusee')
                                    | Q(mouvement_id__isnull=False, ecrite_le__isnull=False),
                                    name='finance_regularisation_ecrite_complete'),
+        ]
+
+
+# --- Expenses (GL-15, FIN-11.1) ----------------------------------------------------------------------------------
+
+class FournisseurModel(models.Model):
+    """A supplier of Kwa-Ba (light directory, reused from one expense to the next)."""
+    id = models.UUIDField(primary_key=True)
+    nom = models.CharField(max_length=120)
+    nif = models.CharField(max_length=40, blank=True, default='', help_text="Numéro d'identification fiscale")
+    contact = models.CharField(max_length=200, blank=True, default='')
+    actif = models.BooleanField(default=True)
+    cree_le = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        db_table = 'finance_fournisseur'
+        ordering = ['nom']
+        verbose_name = 'Fournisseur'
+        constraints = [models.UniqueConstraint(Lower('nom'), name='finance_fournisseur_nom_unique')]
+
+    def __str__(self):
+        return self.nom
+
+
+class AssocieModel(models.Model):
+    """An associate of the company, to whom Kwa-Ba owes what they advanced (compte courant 462)."""
+    id = models.UUIDField(primary_key=True)
+    nom = models.CharField(max_length=120)
+    email = models.EmailField(blank=True, default='')
+    compte_id = models.UUIDField(null=True, blank=True, help_text='Compte du site, facultatif')
+    actif = models.BooleanField(default=True)
+    cree_le = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        db_table = 'finance_associe'
+        ordering = ['nom']
+        verbose_name = 'Associé'
+        constraints = [models.UniqueConstraint(Lower('nom'), name='finance_associe_nom_unique')]
+
+    def __str__(self):
+        return self.nom
+
+
+class DepenseModel(models.Model):
+    """A charge of Kwa-Ba with its evidence (justificatifs of the documents module, type « depense »), numbered
+    DEP-YYYY-NNNNN. Written in the ledger once (two lines: the D charge, and F03 owed to the associate who advanced
+    it); from the threshold it waits for a second person. Cancelled by inverse lines, never deleted."""
+    ETATS = [('en_attente', 'En attente de validation'), ('ecrite', 'Écrite au grand livre'), ('refusee', 'Refusée'),
+             ('annulee', 'Annulée')]
+
+    id = models.UUIDField(primary_key=True)
+    numero = models.CharField(max_length=20, unique=True)
+    date_depense = models.DateField()
+    nature_code = models.CharField(max_length=5)
+    offre_code = models.CharField(max_length=30)
+    montant = models.BigIntegerField()
+    libelle = models.CharField(max_length=200)
+    fournisseur = models.ForeignKey(FournisseurModel, on_delete=models.PROTECT, related_name='depenses')
+    mode = models.CharField(max_length=20)
+    associe = models.ForeignKey(AssocieModel, on_delete=models.PROTECT, null=True, blank=True, related_name='depenses')
+    reference_facture = models.CharField(max_length=60, blank=True, default='')
+    statut = models.CharField(max_length=12, choices=ETATS, default='en_attente')
+    demandee_par_id = models.UUIDField(null=True, blank=True)
+    demandee_le = models.DateTimeField()
+    mouvement_ids = ArrayField(models.BigIntegerField(), default=list, blank=True)
+    ecrite_le = models.DateTimeField(null=True, blank=True)
+    annulee_le = models.DateTimeField(null=True, blank=True)
+    motif_annulation = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'finance_depense'
+        ordering = ['-date_depense', '-numero']
+        verbose_name = 'Dépense'
+        constraints = [
+            models.CheckConstraint(condition=Q(montant__gt=0), name='finance_depense_montant_positif'),
+            models.CheckConstraint(condition=~Q(mode='avance_associe') | Q(associe__isnull=False),
+                                   name='finance_depense_avance_a_son_associe'),
+            models.CheckConstraint(condition=~Q(statut__in=['ecrite', 'annulee']) | Q(ecrite_le__isnull=False),
+                                   name='finance_depense_ecrite_datee'),
+            models.CheckConstraint(condition=~Q(statut='annulee') | ~Q(motif_annulation=''),
+                                   name='finance_depense_annulation_motivee'),
         ]
 
 

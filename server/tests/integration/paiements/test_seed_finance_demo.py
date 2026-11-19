@@ -44,6 +44,10 @@ def test_months_of_stays_go_through_the_real_flows_and_leave_sound_books():
     # I5 (a reconciled day with a zero gap, every day) included
     assert 'Journées en écart' not in sortie.getvalue(), sortie.getvalue()
     assert MouvementModel.objects.filter(nature_id='D01').exists()
+    # Expenses with their evidence (GL-15): written, or waiting for a second person from 50 000 F
+    from apps.finance.models import DepenseModel
+    assert DepenseModel.objects.filter(statut='ecrite').exists()
+    assert DepenseModel.objects.filter(statut='en_attente', montant__gte=50_000).exists()
     anomalies = {i['invariant']: i['anomalies'] for i in finance.controle_invariants()}
     assert anomalies == {k: 0 for k in anomalies}
     aujourdhui = timezone.localdate()
@@ -54,3 +58,14 @@ def test_it_is_refused_in_production(settings):
     settings.FRONTEND_URL = 'https://kwa-ba.com'
     with pytest.raises(CommandError, match='production'):
         call_command('seed_finance_demo', mois=1, stdout=StringIO())
+
+
+def test_the_demo_expenses_alone_each_with_its_evidence():
+    sortie = StringIO()
+    call_command('seed_finance_demo', mois=1, depenses_seulement=True, graine=3, stdout=sortie)
+
+    from apps.documents.models import JustificatifCautionModel
+    from apps.finance.models import DepenseModel
+    assert DepenseModel.objects.count() == 5
+    assert JustificatifCautionModel.objects.filter(objet_type='depense').count() == 5
+    assert not PaiementModel.objects.exists()

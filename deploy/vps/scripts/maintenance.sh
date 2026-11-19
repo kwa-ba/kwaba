@@ -34,7 +34,7 @@ case "${1:-}" in
     log "Données financières de test prêtes"
     ;;
   *)
-    echo "usage: maintenance.sh flush-tokens | renew-certs | seed-demo | seed-finance [--mois N] [--par-jour N]" >&2
+    echo "usage: maintenance.sh flush-tokens | renew-certs | seed-demo | seed-finance [--mois N] [--par-jour N] [--depenses-seulement]" >&2
     exit 2
     ;;
 esac

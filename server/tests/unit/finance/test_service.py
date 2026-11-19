@@ -101,6 +101,12 @@ class FauxJournal(Journal):
     def regularisation(self, action, par_id, regularisation):
         self.validations.append((f'regularisation_{action}', par_id, regularisation.statut))
 
+    def depense(self, action, par_id, depense):
+        self.validations.append((f'depense_{action}', par_id, depense.statut))
+
+    def annuaire(self, action, par_id, genre, nom):
+        self.validations.append((f'{action}_enregistre', par_id, nom))
+
 
 class FausseTransaction(TransactionManager):
     def atomic(self):

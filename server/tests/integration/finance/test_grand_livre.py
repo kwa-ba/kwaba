@@ -56,12 +56,14 @@ def executer(sql: str, params=()):
 def test_reference_data_of_the_schema_is_loaded():
     assert NatureModel.objects.count() == 54
     assert NatureModel.objects.filter(actif=True).count() == 40
-    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008)
-    assert ParametreModel.objects.count() == 96
-    assert ParametreModel.objects.filter(actif=True).count() == 54
+    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008) and the threshold of the expenses
+    # decided on 19 November 2026 (migration 0012)
+    assert ParametreModel.objects.count() == 97
+    assert ParametreModel.objects.filter(actif=True).count() == 55
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
-    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == ['FEDAPAY']
+    # FedaPay, and the account of passage of the associates' advances (GL-15)
+    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == ['ASSOCIES', 'FEDAPAY']
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
     for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):
         assert finance.parametre(cle) == 0

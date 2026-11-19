@@ -8,17 +8,21 @@ from datetime import timezone as dt_timezone
 from decimal import Decimal
 from typing import Iterable
 
-from apps.finance.application.ports import (Alertes, Cautions, Clock, GrandLivre, Journal, Parametres, Periodes,
-                                            Rapports, Rapprochements, Regularisations, Restitutions,
-                                            TransactionManager, Validations)
-from apps.finance.domain.entities import (ENTREE, ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE,
+from apps.finance.application.ports import (Alertes, Annuaire, Cautions, Clock, Depenses, GrandLivre, Journal,
+                                            Parametres, Periodes, Rapports, Rapprochements, Regularisations,
+                                            Restitutions, TransactionManager, Validations)
+from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, DEPENSE_ANNULEE, DEPENSE_ECRITE,
+                                          DEPENSE_EN_ATTENTE, DEPENSE_REFUSEE, MODE_AVANCE_ASSOCIE,
+                                          NATURE_AVANCE_ASSOCIE, Associe, Depense, Fournisseur,
+                                          ENTREE, ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE,
                                           PERIODE_OUVERTE, PERIODE_VERROUILLEE, PREFIXE_REGULARISATION,
                                           RAPPROCHEMENT_NON_FAIT, REGULARISATION_ECRITE, REGULARISATION_EN_ATTENTE,
                                           REGULARISATION_REFUSEE, SORTIE, TYPES_OPERATION, VALIDATION_ECHOUEE,
                                           VALIDATION_EN_ATTENTE, VALIDATION_EXECUTEE, VALIDATION_REFUSEE, Caution,
                                           Ecriture, Ecrivain, FiltresMouvements, Ligne, Operation, OperationExterne, Page,
                                           Regularisation, Validation)
-from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RapprochementRefuse,
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, MouvementRefuse,
+                                            RapprochementRefuse,
                                             RestitutionRefusee, ValidationRefusee)
 from apps.finance.domain.rules import (debut_exercice, ecarts_des_modules_ouverts, est_compte_de_resultat, inverse,
                                       juger_jour, juger_operation, preparer, premier_du_mois)
@@ -724,3 +728,178 @@ class RapprochementService:
             self.journal.regularisation('ecrite', r.demandee_par_id, r)
             self.rapprocher(r.compte_argent, r.jour)
         return r
+
+
+# --- Expenses of Kwa-Ba (GL-15, FIN-11.1) ---------------------------------------------------------------------------
+
+OPERATION_DEPENSE = 'depense'
+SEUIL_VALIDATION_DEPENSE = 'depense_double_validation_seuil'
+OFFRE_PAR_DEFAUT = 'STRUCTURE'
+
+
+def _texte(valeur, longueur: int) -> str:
+    return ' '.join(str(valeur or '').split())[:longueur]
+
+
+class DepenseService:
+    """The charges of Kwa-Ba, each with its evidence: without them the result and the balance sheet are wrong. An
+    expense is numbered DEP-YYYY-NNNNN and written in the ledger as two lines on the money account of the associates'
+    advances: its D nature (the charge, by supplier) and F03 (what Kwa-Ba owes the associate who paid it). From the
+    threshold a second person approves it first. A written expense is cancelled by inverse lines, never deleted."""
+
+    def __init__(self, *, depenses: Depenses, annuaire: Annuaire, grand_livre: GrandLivreService,
+                 validations: ValidationService, parametres: Parametres, journal: Journal, tx: TransactionManager,
+                 clock: Clock):
+        self.depenses = depenses
+        self.annuaire = annuaire
+        self.grand_livre = grand_livre
+        self.validations = validations
+        self.parametres = parametres
+        self.journal = journal
+        self.tx = tx
+        self.clock = clock
+
+    def seuil(self) -> int:
+        """Amount from which a second person approves an expense; 0 leaves the rule inert."""
+        trouve = self.parametres.lire(SEUIL_VALIDATION_DEPENSE)
+        return int(trouve[0]) if trouve and trouve[1] else 0
+
+    def saisir(self, *, date_depense: date, nature: str, montant: int, libelle: str, fournisseur_id, associe_id,
+               offre: str = OFFRE_PAR_DEFAUT, reference_facture: str = '', mode: str = MODE_AVANCE_ASSOCIE,
+               par_id: uuid.UUID | None) -> Depense:
+        """Enters an expense: written at once below the threshold, otherwise waiting for a second person. The caller
+        attaches its evidence in the same transaction."""
+        libelle, reference_facture = _texte(libelle, 200), _texte(reference_facture, 60)
+        if type(montant) is not int or montant <= 0:
+            raise DepenseRefusee('Le montant doit être un nombre entier positif de francs CFA.')
+        if date_depense > self.clock.now().date():
+            raise DepenseRefusee("Une dépense se saisit une fois faite : pas à une date à venir.")
+        if len(libelle) < 3:
+            raise DepenseRefusee('Décrivez la dépense (3 caractères au moins).')
+        if not self.depenses.nature_de_depense(nature):
+            raise DepenseRefusee(f'« {nature} » n\'est pas une nature de dépense active (famille D).')
+        if mode != MODE_AVANCE_ASSOCIE:
+            raise DepenseRefusee("Aujourd'hui, une dépense est avancée par un associé : aucun autre mode n'est ouvert.")
+        fournisseur = self.annuaire.fournisseur(fournisseur_id) if fournisseur_id else None
+        if fournisseur is None or not fournisseur.actif:
+            raise DepenseRefusee('Choisissez un fournisseur actif de l\'annuaire.')
+        associe = self.annuaire.associe(associe_id) if associe_id else None
+        if associe is None or not associe.actif:
+            raise DepenseRefusee("Choisissez l'associé qui a avancé la dépense.")
+        with self.tx.atomic():
+            d = self.depenses.creer(Depense(
+                id=uuid.uuid4(), numero=self.depenses.prochain_numero(date_depense.year), date_depense=date_depense,
+                nature=nature, offre=offre or OFFRE_PAR_DEFAUT, montant=montant, libelle=libelle,
+                fournisseur_id=fournisseur.id, mode=mode, associe_id=associe.id, reference_facture=reference_facture,
+                statut=DEPENSE_EN_ATTENTE, demandee_par_id=par_id, demandee_le=self.clock.now()))
+            seuil = self.seuil()
+            if seuil and montant >= seuil:
+                self.validations.demander(OPERATION_DEPENSE, objet_type='depense', objet_id=d.id, montant=montant,
+                                          motif=f'{d.numero} · {libelle}', donnees={'id': str(d.id)}, par_id=par_id)
+                self.journal.depense('saisie', par_id, d)
+                return d
+            return self._ecrire(d, fournisseur, associe)
+
+    def executer(self, donnees: dict) -> str:
+        """Run by the double validation once a second person approves: the expense is written then."""
+        d = self.depenses.lire(uuid.UUID(str(donnees.get('id'))), verrou=True)
+        if d is None or d.statut != DEPENSE_EN_ATTENTE:
+            raise DepenseRefusee('Dépense introuvable ou déjà traitée.')
+        d = self._ecrire(d, self.annuaire.fournisseur(d.fournisseur_id), self.annuaire.associe(d.associe_id))
+        return f'Dépense {d.numero} écrite au grand livre.'
+
+    def _ecrire(self, d: Depense, fournisseur: Fournisseur, associe: Associe) -> Depense:
+        moment = datetime.combine(d.date_depense, time(12), tzinfo=dt_timezone.utc)
+        commun = {'offre': d.offre, 'montant': d.montant, 'compte_argent': COMPTE_AVANCES_ASSOCIES,
+                  'piece_reference': d.numero, 'externe_reference': f'depense:{d.id}', 'date_evenement': moment,
+                  'metadonnees': {'fournisseur': fournisseur.nom, 'facture': d.reference_facture}}
+        lignes = [
+            # The charge, by supplier (debit of its account of class 6)
+            Ligne(nature=d.nature, sens=SORTIE, tiers_type='fournisseur', tiers_id=str(fournisseur.id),
+                  motif=d.libelle, **commun),
+            # Advanced by the associate: Kwa-Ba owes it to them (credit of their compte courant 462)
+            Ligne(nature=NATURE_AVANCE_ASSOCIE, sens=ENTREE, tiers_type='associe', tiers_id=str(associe.id),
+                  motif=f'Avance de {associe.nom} : {d.libelle}', **commun),
+        ]
+        with self.tx.atomic():
+            ids = self.grand_livre.enregistrer(lignes, origine='depense', par_id=d.demandee_par_id)
+            if len(ids) != 2:
+                raise DepenseRefusee(f'La dépense {d.numero} est déjà au grand livre.')
+            d = replace(d, statut=DEPENSE_ECRITE, mouvement_ids=tuple(ids), ecrite_le=self.clock.now())
+            self.depenses.enregistrer(d)
+            self.journal.depense('ecrite', d.demandee_par_id, d)
+        return d
+
+    def annuler(self, depense_id, *, motif: str, par_id: uuid.UUID | None) -> Depense:
+        """Cancels a written expense (entered twice, wrong amount): both lines get their inverse line, dated today,
+        and the expense stays visible with its reason. A new expense is entered for the right amount."""
+        motif = _texte(motif, 500)
+        if len(motif) < 5:
+            raise DepenseRefusee("Indiquez le motif de l'annulation (5 caractères au moins).")
+        with self.tx.atomic():
+            d = self.depenses.lire(depense_id, verrou=True)
+            if d is None:
+                raise DepenseRefusee('Dépense introuvable.')
+            if d.statut != DEPENSE_ECRITE:
+                raise DepenseRefusee("Seule une dépense écrite au grand livre s'annule ; une demande en attente se "
+                                     "refuse dans Validations.")
+            for mouvement_id in d.mouvement_ids:
+                self.grand_livre.contre_passer(mouvement_id, motif=f'Annulation de {d.numero} : {motif}',
+                                               origine='depense', par_id=par_id)
+            d = replace(d, statut=DEPENSE_ANNULEE, annulee_le=self.clock.now(), motif_annulation=motif)
+            self.depenses.enregistrer(d)
+            self.journal.depense('annulee', par_id, d)
+        return d
+
+    def lire(self, depense_id) -> Depense | None:
+        d = self.depenses.lire(depense_id)
+        return self._avec_statut(d) if d else None
+
+    def liste(self, *, debut=None, fin=None, nature=None, fournisseur_id=None, associe_id=None, statut=None, page=1,
+              taille=TAILLE_PAGE) -> dict:
+        lignes, total, montant = self.depenses.liste(
+            debut=debut, fin=fin, nature=nature or None, fournisseur_id=fournisseur_id or None,
+            associe_id=associe_id or None, statut=statut or None, decalage=_page(page, taille)[0],
+            limite=_page(page, taille)[1])
+        return {'lignes': [self._avec_statut(d) for d in lignes], 'total': total, 'montant_ecrit': montant}
+
+    def _avec_statut(self, d: Depense) -> Depense:
+        """An expense waiting for a second person shows the refusal when there was one."""
+        if d.statut == DEPENSE_EN_ATTENTE and self.validations.statut_de(
+                OPERATION_DEPENSE, 'depense', d.id) == VALIDATION_REFUSEE:
+            return replace(d, statut=DEPENSE_REFUSEE)
+        return d
+
+    # --- Directory --------------------------------------------------------------------------------------------
+
+    def fournisseurs(self, actifs_seulement: bool = False) -> list[Fournisseur]:
+        return self.annuaire.fournisseurs(actifs_seulement)
+
+    def enregistrer_fournisseur(self, *, nom: str, nif: str = '', contact: str = '', actif: bool = True,
+                                fournisseur_id=None, par_id: uuid.UUID | None = None) -> Fournisseur:
+        nom = _texte(nom, 120)
+        if len(nom) < 2:
+            raise DepenseRefusee('Le nom du fournisseur est obligatoire.')
+        if fournisseur_id and self.annuaire.fournisseur(fournisseur_id) is None:
+            raise DepenseRefusee('Fournisseur introuvable.')
+        f = Fournisseur(id=uuid.UUID(str(fournisseur_id)) if fournisseur_id else uuid.uuid4(), nom=nom,
+                        nif=_texte(nif, 40), contact=_texte(contact, 200), actif=bool(actif))
+        f = self.annuaire.enregistrer_fournisseur(f, nouveau=not fournisseur_id)
+        self.journal.annuaire('fournisseur', par_id, 'fournisseur', f.nom)
+        return f
+
+    def associes(self, actifs_seulement: bool = False) -> list[Associe]:
+        return self.annuaire.associes(actifs_seulement)
+
+    def enregistrer_associe(self, *, nom: str, email: str = '', compte_id=None, actif: bool = True, associe_id=None,
+                            par_id: uuid.UUID | None = None) -> Associe:
+        nom = _texte(nom, 120)
+        if len(nom) < 2:
+            raise DepenseRefusee("Le nom de l'associé est obligatoire.")
+        if associe_id and self.annuaire.associe(associe_id) is None:
+            raise DepenseRefusee('Associé introuvable.')
+        a = Associe(id=uuid.UUID(str(associe_id)) if associe_id else uuid.uuid4(), nom=nom,
+                    email=_texte(email, 254).lower(), compte_id=compte_id or None, actif=bool(actif))
+        a = self.annuaire.enregistrer_associe(a, nouveau=not associe_id)
+        self.journal.annuaire('associe', par_id, 'associe', a.nom)
+        return a
