@@ -21,7 +21,7 @@ from django.utils import timezone
 from apps.users import api as users
 from config import prelancement
 
-from . import fedapay, grand_livre, paypal, tarifs
+from . import fedapay, grand_livre, paypal, tarifs, versements
 from .models import PaiementModel, ProfilVersementModel, RemboursementModel, VersementModel
 from .registre import PRODUITS
 
@@ -291,6 +291,8 @@ def annuler_paiement_reservation(reservation, par: str) -> int:
 
     versement = VersementModel.objects.select_for_update().filter(reservation_id=reservation.id).first()
     if versement and versement.statut in ('planifie', 'echoue'):
+        # What it withheld for an older recovery goes back to it, withheld again on the payout that really leaves
+        versements.liberer_retenues(versement)
         if bareme.nuits_retenues:
             versement.montant_brut = bareme.nuits_retenues
             versement.commission = bareme.commission_hote
@@ -300,7 +302,9 @@ def annuler_paiement_reservation(reservation, par: str) -> int:
             versement.statut = 'annule'
         versement.save()
     elif versement and versement.statut in ('en_cours', 'envoye'):
-        logger.warning("Annulation de %s après le versement à l'hôte : à régulariser", reservation.reference)
+        # Paid (or being paid) before the cancellation: the host's next payouts give it back (GL-23, FF-04)
+        versements.ouvrir_recuperation(versement, bareme.montant_hote if bareme.nuits_retenues else 0,
+                                       motif=f"{motif} après le versement ({reservation.reference})")
 
     # Ledger: what is given back leaves the host's money and the fees, then is owed to the traveller (rembourser)
     grand_livre.annulation_sejour(reservation, paiement, bareme,
@@ -385,6 +389,11 @@ def synchroniser_payout(ligne):
     elif statut == 'echoue':
         ligne.derniere_erreur = str(donnees.get('last_error_code') or 'Versement refusé par FedaPay')
         ligne.statut = 'echoue' if ligne.tentatives >= MAX_TENTATIVES else 'planifie'
+        if isinstance(ligne, VersementModel):
+            with transaction.atomic():
+                # Its stay was cancelled meanwhile: nothing was paid, nothing to recover, never sent again in full
+                if versements.versement_echoue_apres_annulation(ligne):
+                    return
     else:
         return
     with transaction.atomic():
@@ -458,6 +467,9 @@ def envoyer_versements_dus() -> int:
             if not versement.derniere_erreur:
                 versement.derniere_erreur = "L'hôte n'a pas encore indiqué où recevoir son argent."
                 versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+            continue
+        # What the host still owes on a stay cancelled after its payout is withheld first (GL-23)
+        if not versements.retenir(versement):
             continue
         envoyes += envoyer_payout(
             versement, mode=profil.operateur, numero=profil.numero, pays=profil.pays,
@@ -586,6 +598,11 @@ def passe() -> dict:
     for produit in PRODUITS.values():
         if produit.passe:
             stats.update(produit.passe())
+    try:
+        # Late or failed partner payouts: the finance team is told once a day (GL-11)
+        stats['versements_en_retard'] = versements.alerter_retards()
+    except Exception:
+        logger.exception('Alerte des versements en retard en échec')
     from . import relances
     # After the expiries: the "cancelled for lack of payment" email goes in the same pass
     stats['relances'] = relances.envoyer_relances()

@@ -33,6 +33,11 @@ class ProduitPaye:
     # Ledger of the finance module (grand_livre.py): object id -> its offer (COURTE_DUREE, HOTEL…). None: the product
     # does not write its money in the ledger yet
     offre: Callable[[object], str] | None = None
+    # Payouts page (GL-11): its partner payouts still to send (or of the state given), as rows {id, categorie,
+    # beneficiaire, objet, montant, retenue, commission, statut, date_prevue, envoye_le, tentatives, derniere_erreur}
+    a_verser: Callable[[str | None], list[dict]] | None = None
+    # A failed payout of the product planned again (paiements.api.remettre_en_route on its row)
+    relancer: Callable[[str], None] | None = None
 
 
 PRODUITS: dict[str, ProduitPaye] = {}
