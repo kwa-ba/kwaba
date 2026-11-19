@@ -47,6 +47,12 @@ l'interrupteur. Voir `documentation/modules/experiences.md`.
 Vides, elles s'affichent « à compléter ». Pour le RCCM et le NIF, la valeur saisie dans le back-office
 (Documents → Informations société, utilisée sur les factures) est reprise tant que la variable est vide.
 
+Le siège et le capital ne sont écrits nulle part dans le code (recette du 19 novembre 2026, DEV-L6). `GET /api/v1/site/` les donne dans `societe` :
+- `adresse` : l'adresse de la fiche Informations société, la même que sur les factures et les contrats, suivie du pays ;
+- `capital` : le paramètre finance `capital_social` (Finance → Paramètres, 500 000 F).
+
+Les CGV, les mentions légales et la politique de confidentialité les affichent (`components/legal/IdentiteSociete.tsx`). Tant que la fiche n'a pas d'adresse, le site affiche « à compléter : adresse du siège », jamais une adresse d'exemple.
+
 Écrire un commentaire **sur sa propre ligne**, jamais à la suite d'une valeur vide (`SOCIETE_NIF=   # …`) : il serait
 lu comme la valeur. Une valeur qui commence par `#` compte de toute façon comme vide (`_mention` dans
 `server/config/settings.py`).

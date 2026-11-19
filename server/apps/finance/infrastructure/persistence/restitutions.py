@@ -60,6 +60,11 @@ class SqlRestitutions(Restitutions):
     def controle_invariants(self) -> list[dict]:
         return _lignes('SELECT invariant, libelle, anomalies::bigint AS anomalies FROM finance_controle_invariants')
 
+    def identite_soldes(self) -> list[dict]:
+        return _lignes('SELECT compte_argent_code, revenu::bigint, du_partenaires::bigint, du_voyageurs::bigint, '
+                       'cautions::bigint, frais_paiement::bigint, autres::bigint, solde::bigint '
+                       'FROM finance_identite_soldes ORDER BY compte_argent_code')
+
     def codes_actifs(self) -> tuple[set[str], set[str]]:
         return (set(OffreModel.objects.filter(active=True).values_list('code', flat=True)),
                 set(NatureModel.objects.filter(actif=True).values_list('code', flat=True)))

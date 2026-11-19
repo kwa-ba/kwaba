@@ -56,6 +56,12 @@
     },
     "titreAccueil": "Kwa-Ba · Logements vérifiés à Lomé et partout au Togo"
   },
+  "introuvable": {
+    "titre": "Page introuvable",
+    "texte": "Cette adresse ne correspond à aucune page. Elle a peut-être changé, ou le lien est incomplet.",
+    "retourAccueil": "Retour à l'accueil",
+    "retourBackoffice": "Retour au back-office"
+  },
   "commun": {
     "allerAuContenu": "Aller au contenu principal",
     "chargement": "Chargement…",
@@ -944,7 +950,9 @@
     "informations": "Informations légales",
     "miseAJour": "Dernière mise à jour : {date}",
     "sommaire": "Sommaire",
-    "aCompleter": "À compléter"
+    "aCompleter": "À compléter",
+    "adresseSiege": "adresse du siège",
+    "capitalSocial": "capital social"
   },
   "aide": {
     "titre": "Centre d'aide",

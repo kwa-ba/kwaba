@@ -115,6 +115,8 @@ class GrandLivreView(VueAdmin):
                                                            familles=['R']))
         return Response({
             'invariants': finance.controle_invariants(),
+            # Revenue + owed to partners + owed to travellers + deposits - D01 (+ other lines) = balance, read as is
+            'identite': [i for i in finance.identite_soldes() if i['compte_argent_code'] in _soldes_reels()],
             'soldes': {
                 'revenu_du_mois': revenu,
                 'du_partenaires': sum(d['solde_du'] for d in du if d['tiers_type'] != 'voyageur'),

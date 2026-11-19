@@ -56,6 +56,12 @@
     },
     "titreAccueil": "Kwa-Ba · Verified places to stay in Lomé and across Togo"
   },
+  "introuvable": {
+    "titre": "Page not found",
+    "texte": "This address does not match any page. It may have changed, or the link is incomplete.",
+    "retourAccueil": "Back to the home page",
+    "retourBackoffice": "Back to the back-office"
+  },
   "commun": {
     "allerAuContenu": "Skip to main content",
     "chargement": "Loading…",
@@ -944,7 +950,9 @@
     "informations": "Legal information",
     "miseAJour": "Last updated: {date}",
     "sommaire": "Contents",
-    "aCompleter": "To be completed"
+    "aCompleter": "To be completed",
+    "adresseSiege": "registered office address",
+    "capitalSocial": "share capital"
   },
   "aide": {
     "titre": "Help centre",

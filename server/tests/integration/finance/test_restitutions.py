@@ -72,8 +72,6 @@ def sejour(cas: Cas, reservation=None, hote=HOTE, moment=None, ref='TX-1') -> uu
     lignes = [finance.Ligne(nature='T01', montant=cas.nuits, sens=finance.ENTREE, externe_reference=ref,
                             **tiers, **commun),
               finance.Ligne(nature='R01', montant=cas.frais_service, sens=finance.ENTREE, externe_reference=ref,
-                            **commun),
-              finance.Ligne(nature='D01', montant=cas.frais_paiement, sens=finance.SORTIE, externe_reference=ref,
                             **commun)]
     if cas.menage:
         lignes.append(finance.Ligne(nature='T02', montant=cas.menage, sens=finance.ENTREE, externe_reference=ref,
@@ -82,6 +80,9 @@ def sejour(cas: Cas, reservation=None, hote=HOTE, moment=None, ref='TX-1') -> uu
         lignes.append(finance.Ligne(nature='C01', montant=cas.caution, sens=finance.ENTREE, externe_reference=ref,
                                     **commun))
     finance.enregistrer(lignes, origine='paiement')
+    # The provider's real fees, read on its statement under the reference of the payment (GL-12)
+    finance.enregistrer([finance.Ligne(nature='D01', montant=cas.frais_paiement, sens=finance.SORTIE,
+                                       externe_reference=ref, **commun)], origine='frais_paiement')
     # At the arrival, the commission leaves the host's money for Kwa-Ba's (FIN-03, case FA-01)
     arrivee = [finance.Ligne(nature='T01', montant=cas.commission, sens=finance.SORTIE, **tiers, **commun),
                finance.Ligne(nature=cas.nature_commission, montant=cas.commission, sens=finance.ENTREE, **commun)]
@@ -182,7 +183,8 @@ def test_reference_booking_balances_in_double_entry():
     assert [e['ecart'] for e in finance.controle_equilibre()] == [0]
     assert finance.du_aux_partenaires() == []
     assert {i['invariant']: i['anomalies'] for i in finance.controle_invariants()} == dict.fromkeys(
-        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16', 'I17'], 0)
+        ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16',
+         'I17'], 0)
 
 
 def test_internal_transfer_balances_account_585():

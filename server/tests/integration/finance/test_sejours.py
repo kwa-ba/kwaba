@@ -288,3 +288,54 @@ def test_money_older_than_the_ledger_is_never_written_afterwards(sejour):
 
     assert lignes(autre) == {}
     assert RemboursementModel.objects.filter(reservation_id=autre.id).exists()
+
+
+def test_a_signed_webhook_sent_twice_writes_the_collection_once(sejour, client):
+    """Recette DEV-L3: only the server confirms a payment (signed webhook, then the status read again from FedaPay),
+    and FedaPay sending the same event twice writes its lines once."""
+    import hashlib
+    import hmac
+    import json
+    import time as horloge
+
+    r = sejour.reserver()
+    assert sejour.api.post(f'/api/v1/paiements/reservations/{r.id}/payer/').status_code == 200
+    paiement = PaiementModel.objects.get(reservation_id=r.id)
+    corps = json.dumps({'name': 'transaction.approved', 'entity': {'id': paiement.transaction_id}}).encode()
+
+    def envoyer(signature=None):
+        t = str(int(horloge.time()))
+        s = signature or hmac.new(b'whsec_test', f'{t}.'.encode() + corps, hashlib.sha256).hexdigest()
+        return client.post('/api/v1/paiements/webhooks/fedapay/', corps, content_type='application/json',
+                           HTTP_X_FEDAPAY_SIGNATURE=f't={t},s={s}')
+
+    # An unsigned (forged) event confirms nothing, even if FedaPay would say « approved »
+    sejour.faux.statut_transaction = 'approved'
+    assert envoyer(signature='0' * 64).status_code == 400
+    r.refresh_from_db()
+    assert r.status == 'pending' and not MouvementModel.objects.filter(reservation_id=r.id).exists()
+
+    assert envoyer().status_code == 200
+    assert envoyer().status_code == 200
+    r.refresh_from_db()
+    assert r.status == 'confirmed'
+    assert MouvementModel.objects.filter(reservation_id=r.id, nature_id='T01').count() == 1
+    assert MouvementModel.objects.filter(reservation_id=r.id, nature_id='R01').count() == 1
+    assert sum(m.montant for m in MouvementModel.objects.filter(reservation_id=r.id)) == paiement.montant
+
+
+def test_without_a_provider_a_booking_is_refused_never_confirmed_free(settings, make_user, make_hebergement,
+                                                                      client_for):
+    """Recette DEV-L3: in production (PAIEMENT_HORS_LIGNE off, its default when DEBUG is off), no booking is
+    « paid » without money."""
+    settings.FEDAPAY = {**FEDAPAY_TEST, 'SECRET_KEY': ''}
+    settings.PAYPAL = {**settings.PAYPAL, 'CLIENT_ID': ''}
+    logement = make_hebergement(host=make_user(role='hote'), price_per_night=20_000)
+    debut = timezone.localdate() + timedelta(days=30)
+    reponse = client_for(make_user()).post('/api/v1/reservations/', {
+        'hebergement': str(logement.id), 'check_in': debut.isoformat(),
+        'check_out': (debut + timedelta(days=2)).isoformat(), 'guests_count': 2,
+    }, format='json')
+    assert reponse.status_code >= 400
+    assert not ReservationModel.objects.filter(status='confirmed').exists()
+    assert not MouvementModel.objects.exists()

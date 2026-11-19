@@ -2,6 +2,7 @@
 
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import type { IdentiteSoldes } from "../api";
 import { useGrandLivre, usePilotage } from "../hooks";
 import Actualiser from "./Actualiser";
 import { libelleMois, moisEnCours } from "./communs";
@@ -14,6 +15,50 @@ function Chiffre({ libelle, montant, aide, accent }: { libelle: string; montant:
       <p className="font-heading font-bold text-xl mt-1 tabular-nums">{formatPrice(montant)}</p>
       <p className={`text-xs mt-0.5 ${accent ? "text-white/80" : "text-muted"}`}>{aide}</p>
     </div>
+  );
+}
+
+/**
+ * Identity of the balances of each money account, written out so that it reads without a calculation:
+ * revenue + owed to partners + owed to travellers + deposits − provider's fees (+ other lines) = balance.
+ */
+function IdentiteDesSoldes({ identite }: { identite: IdentiteSoldes[] }) {
+  if (identite.length === 0) return null;
+  return (
+    <section className="bg-background rounded-2xl border border-gray-100 p-5">
+      <h2 className="font-heading font-bold text-dark">Identité des soldes</h2>
+      <p className="text-xs text-muted mb-3">Depuis la première ligne du grand livre, par compte d&apos;argent.</p>
+      <div className="space-y-4">
+        {identite.map((i) => {
+          const termes: [string, number, string][] = [
+            ["Revenu", i.revenu, "+"],
+            ["Dû partenaires", i.du_partenaires, "+"],
+            ["Dû voyageurs", i.du_voyageurs, "+"],
+            ["Cautions", i.cautions, "+"],
+            ["Frais de paiement (D01)", i.frais_paiement, "−"],
+            ...(i.autres ? [["Autres lignes (dépenses, virements…)", i.autres, "+"] as [string, number, string]] : []),
+          ];
+          const somme = i.revenu + i.du_partenaires + i.du_voyageurs + i.cautions - i.frais_paiement + i.autres;
+          return (
+            <div key={i.compte_argent_code}>
+              <p className="text-sm font-semibold text-dark mb-1">{i.compte_argent_code === "FEDAPAY" ? "FedaPay" : i.compte_argent_code}</p>
+              <ul className="text-sm tabular-nums divide-y divide-gray-50">
+                {termes.map(([libelle, montant, signe], n) => (
+                  <li key={libelle} className="flex justify-between gap-3 py-1">
+                    <span className="text-muted">{n === 0 ? "" : `${signe} `}{libelle}</span>
+                    <span>{formatPrice(montant)}</span>
+                  </li>
+                ))}
+                <li className="flex justify-between gap-3 py-1.5 font-semibold text-dark">
+                  <span>= Solde {i.compte_argent_code === "FEDAPAY" ? "FedaPay" : i.compte_argent_code}</span>
+                  <span className={somme === i.solde ? "" : "text-red-700"}>{formatPrice(i.solde)}</span>
+                </li>
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -110,6 +155,8 @@ export default function SyntheseFinance() {
               Solde au grand livre : {Object.entries(d.soldes.comptes).map(([c, m]) => `${c === "FEDAPAY" ? "FedaPay" : c} ${formatPrice(m)}`).join(" · ")}
             </p>
           )}
+
+          <IdentiteDesSoldes identite={d.identite ?? []} />
 
           <PilotageDuMois />
 

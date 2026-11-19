@@ -2,6 +2,7 @@ import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import LegalPage, { AC } from "@/components/legal/LegalPage";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 
 /** French version. */
@@ -26,7 +27,7 @@ export default function ContenuFr() {
           titre: "Responsable du traitement",
           contenu: (
             <ul>
-              <li>Responsable : <strong>KWA-BA</strong>, <FormeSociete /> au capital de 100 000 F CFA, quartier Totsi Gblenkomé, rue 243, Lomé (Togo), RCCM <MentionSociete cle="rccm" libelle="RCCM" />.</li>
+              <li>Responsable : <strong>KWA-BA</strong>, <FormeSociete /> au capital de <CapitalSociete />, <AdresseSociete />, RCCM <MentionSociete cle="rccm" libelle="RCCM" />.</li>
               <li>Déclaration auprès de l&apos;Instance de protection des données à caractère personnel (IPDCP) : n° <MentionSociete cle="ipdcp" libelle="numéro de déclaration" />.</li>
               <li>Contact pour vos données : <LienContact sujet="Protection des données" />.</li>
               <li>Référent chargé des données au sein de KWA-BA : <AC>nom ou fonction</AC>.</li>

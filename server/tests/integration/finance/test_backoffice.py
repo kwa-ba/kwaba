@@ -25,8 +25,10 @@ def test_the_page_shows_the_invariants_the_three_balances_and_the_latest_lines(m
 
     assert r.status_code == 200
     d = r.json()
-    assert {i['invariant'] for i in d['invariants']} == {'I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15',
-                                                         'I16', 'I17'}
+    # The thirteen invariants of the brief and I14 to I17, in their order (recette DEV-L5)
+    assert [i['invariant'] for i in d['invariants']] == [f'I{n}' for n in range(1, 18)]
+    assert d['identite'] == [{'compte_argent_code': 'FEDAPAY', 'revenu': 15_000, 'du_partenaires': 265_000,
+                              'du_voyageurs': 0, 'cautions': 0, 'frais_paiement': 0, 'autres': 0, 'solde': 280_000}]
     assert d['soldes'] == {'revenu_du_mois': 15_000, 'du_partenaires': 265_000, 'du_voyageurs': 0,
                            'cautions_detenues': 0, 'comptes': {'FEDAPAY': 280_000}}
     assert d['du_aux_partenaires'] == [{'tiers_type': 'hote', 'tiers_id': str(hote.pk), 'nom': 'Ama Mensah',
