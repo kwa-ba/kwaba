@@ -39,8 +39,23 @@ export interface MouvementFinance {
   annule_mouvement_id: number | null;
 }
 
+/** Identity of the balances of a money account: revenu + du_partenaires + du_voyageurs + cautions − frais_paiement + autres = solde. */
+export interface IdentiteSoldes {
+  compte_argent_code: string;
+  revenu: number;
+  du_partenaires: number;
+  du_voyageurs: number;
+  cautions: number;
+  /** Provider's fees (D01), positive */
+  frais_paiement: number;
+  /** Every other line of the account (expenses, transfers, fund…) */
+  autres: number;
+  solde: number;
+}
+
 export interface GrandLivre {
   invariants: InvariantFinance[];
+  identite: IdentiteSoldes[];
   soldes: {
     revenu_du_mois: number;
     du_partenaires: number;

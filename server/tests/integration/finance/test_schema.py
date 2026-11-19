@@ -10,7 +10,7 @@ from apps.finance.infrastructure.checks import modules_ouverts_et_referentiel
 from apps.finance.infrastructure.persistence import sql_restitutions
 
 VUES = ['finance_mouvement_signe', 'finance_recettes_par_type', 'finance_depenses_par_type', 'finance_marge_par_offre',
-        'finance_du_aux_partenaires', 'finance_cautions_detenues', 'finance_solde_compte_argent',
+        'finance_du_aux_partenaires', 'finance_cautions_detenues', 'finance_solde_compte_argent', 'finance_identite_soldes',
         'finance_taux_frais_reel', 'finance_dotation_garantie', 'finance_ecriture', 'finance_export_comptable', 'finance_livre_journal',
         'finance_grand_livre', 'finance_balance_generale', 'finance_controle_equilibre',
         'finance_ecritures_sans_compte', 'finance_controle_invariants', 'finance_pivot']

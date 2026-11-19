@@ -59,6 +59,16 @@ def test_numeros_legaux_depuis_l_environnement_puis_le_back_office(settings):
     assert APIClient().get(SITE).json()['mentions']['rccm'] == 'RCCM-ENV'
 
 
+def test_siege_et_capital_lus_a_leur_source():
+    # Sheet not filled in: empty address, the site shows "to be completed" (never a sample street)
+    societe = APIClient().get(SITE).json()['societe']
+    assert societe == {'adresse': '', 'capital': 500000}  # capital_social, finance parameter (migration 0008)
+    ParametresSocieteModel.objects.create(adresse='Quartier Bè\n  Rue des Cocotiers\n', pays='Togo')
+    assert APIClient().get(SITE).json()['societe']['adresse'] == 'Quartier Bè, Rue des Cocotiers (Togo)'
+    ParametresSocieteModel.objects.filter(pk=1).update(adresse='Rue des Cocotiers, Lomé, Togo')
+    assert APIClient().get(SITE).json()['societe']['adresse'] == 'Rue des Cocotiers, Lomé, Togo'
+
+
 def test_societe_immatriculee_par_l_environnement(settings):
     # The day of the RCCM: SOCIETE_EN_FORMATION=False removes "en formation" from the site, without a code change
     settings.SOCIETE_EN_FORMATION = False

@@ -170,9 +170,10 @@ class RestitutionService:
 
     def controle_invariants(self) -> list[dict]:
         """The invariants of the database, and I14: no open module writes to an inactive offer or nature."""
-        return [*self.restitutions.controle_invariants(),
-                {'invariant': 'I14', 'libelle': 'Modules ouverts : offres et natures actives',
-                 'anomalies': len(self.ecarts_des_modules_ouverts())}]
+        invariants = [*self.restitutions.controle_invariants(),
+                      {'invariant': 'I14', 'libelle': 'Modules ouverts : offres et natures actives',
+                       'anomalies': len(self.ecarts_des_modules_ouverts())}]
+        return sorted(invariants, key=lambda i: int(i['invariant'][1:]))
 
     def ecarts_des_modules_ouverts(self) -> list[str]:
         offres, natures = self.restitutions.codes_actifs()
@@ -203,6 +204,9 @@ class RestitutionService:
 
     def soldes_comptes_argent(self) -> dict[str, int]:
         return self.restitutions.soldes_comptes_argent()
+
+    def identite_soldes(self) -> list[dict]:
+        return self.restitutions.identite_soldes()
 
     def balance_generale(self, mois: date | None = None) -> list[dict]:
         return self.restitutions.balance_generale(premier_du_mois(mois) if mois else None)

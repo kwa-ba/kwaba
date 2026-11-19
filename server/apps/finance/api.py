@@ -40,7 +40,7 @@ __all__ = [
     # Reports
     'balance_generale', 'cautions_detenues', 'controle_equilibre', 'controle_invariants', 'derniers_mouvements',
     'du_aux_partenaires',
-    'ecritures', 'marge_par_offre', 'peut_on_cloturer', 'rapport', 'soldes_comptes_argent', 'synthese',
+    'ecritures', 'identite_soldes', 'marge_par_offre', 'peut_on_cloturer', 'rapport', 'soldes_comptes_argent', 'synthese',
     # Books of article 19, steering (GL-2 to GL-6, GL-18)
     'FiltresMouvements', 'mouvements', 'livre_journal', 'comptes', 'auxiliaires', 'grand_livre_compte', 'balance',
     'export_comptable', 'pilotage',
@@ -124,7 +124,7 @@ def parametre(cle: str) -> Decimal:
 # --- Reports --------------------------------------------------------------------------------------------------------
 
 def controle_invariants() -> list[dict]:
-    """One row per invariant (I5, I8 to I13): {invariant, libelle, anomalies}, 0 = respected."""
+    """One row per invariant (I1 to I17): {invariant, libelle, anomalies}, 0 = respected."""
     return restitution_service().controle_invariants()
 
 
@@ -157,6 +157,13 @@ def derniers_mouvements(limite: int = 50) -> list[dict]:
 def cautions_detenues() -> list[dict]:
     """Deposits held for the travellers: {reservation_id, location_id, solde_detenu}."""
     return restitution_service().cautions_detenues()
+
+
+def identite_soldes() -> list[dict]:
+    """Identity of the balances, by money account: {compte_argent_code, revenu, du_partenaires, du_voyageurs, cautions,
+    frais_paiement, autres, solde}, where revenu + du_partenaires + du_voyageurs + cautions - frais_paiement + autres
+    = solde (recette DEV-L5)."""
+    return restitution_service().identite_soldes()
 
 
 def soldes_comptes_argent() -> dict[str, int]:

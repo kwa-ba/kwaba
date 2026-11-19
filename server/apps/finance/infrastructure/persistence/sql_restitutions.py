@@ -21,12 +21,17 @@ Changes from the file, found by running its cases over two months:
 - money accounts without a provider's statement (the associates' advances, the guarantee fund) are never reconciled
   (I5, closing check 4); an account opened later (the bank, GL-22) from its first day only (actif_depuis);
 - invariant I17 and closing check 10: every internal transfer brings the transit account 585 back to zero (GL-22);
+- invariants I1 to I4, I6 and I7 of the developers' brief (03_Prompt, « les dix invariants ») are named on the control
+  screen too (recette of 19 November 2026, DEV-L5), read from the ledger: I2 and I3 compare what Kwa-Ba recorded
+  for each reconciled operation (GL-12) with its lines, I7 the R, D and G lines with the classes 6 to 8 of the
+  balance;
 - finance_sequence_piece and finance_prochain_numero are not created here: invoice numbers already come from the
   documents module (SequenceFactureModel, one lock per issue), which lot F3 extends to the other series.
 """
-# Tables the views read: all created by the migration 0001 of the module
+# Tables the views read: created by the migrations 0001 and 0011 (lines of the reconciliation, invariants I2 and I3)
 TABLES = ('finance_mouvement', 'finance_nature', 'finance_famille', 'finance_offre', 'finance_compte_argent',
-          'finance_tiers_type', 'finance_periode', 'finance_rapprochement_jour', 'finance_axe', 'finance_parametre')
+          'finance_tiers_type', 'finance_periode', 'finance_rapprochement_jour', 'finance_axe', 'finance_parametre',
+          'finance_rapprochement_ligne')
 
 VUES = [
     # 8.1 Signed amount, read by every view
@@ -95,6 +100,23 @@ VUES = [
     CREATE VIEW finance_solde_compte_argent AS
     SELECT compte_argent_code,
            SUM(montant_signe) AS solde_livre
+    FROM finance_mouvement_signe
+    GROUP BY compte_argent_code
+    """,
+    # Identity of the balances, by money account (recette of 19 November 2026, DEV-L5): revenue + owed to the
+    # partners + owed to the travellers + deposits - provider's fees (D01) + the other lines = balance of the account
+    """
+    CREATE VIEW finance_identite_soldes AS
+    SELECT compte_argent_code,
+           SUM(CASE WHEN famille = 'R' THEN montant_signe ELSE 0 END)                             AS revenu,
+           SUM(CASE WHEN famille = 'T' AND tiers_type IS DISTINCT FROM 'voyageur'
+                    THEN montant_signe ELSE 0 END)                                                AS du_partenaires,
+           SUM(CASE WHEN famille = 'T' AND tiers_type = 'voyageur' THEN montant_signe ELSE 0 END) AS du_voyageurs,
+           SUM(CASE WHEN famille = 'C' THEN montant_signe ELSE 0 END)                             AS cautions,
+           -SUM(CASE WHEN nature_code = 'D01' THEN montant_signe ELSE 0 END)                      AS frais_paiement,
+           SUM(CASE WHEN famille NOT IN ('R', 'T', 'C') AND nature_code <> 'D01'
+                    THEN montant_signe ELSE 0 END)                                                AS autres,
+           SUM(montant_signe)                                                                     AS solde
     FROM finance_mouvement_signe
     GROUP BY compte_argent_code
     """,
@@ -245,7 +267,64 @@ VUES = [
     # 8.10 Control screen of the invariants (specification, section 4)
     """
     CREATE VIEW finance_controle_invariants AS
-    WITH i5 AS (
+    WITH i1 AS (
+        -- Collected = R + T + C: each payment is split, at collection, into revenue, partner money and deposit only
+        SELECT count(*) AS n FROM (
+            SELECT externe_reference FROM finance_mouvement_signe
+            WHERE origine = 'paiement' AND annule_mouvement_id IS NULL
+            GROUP BY externe_reference HAVING bool_or(famille NOT IN ('R', 'T', 'C'))
+        ) x
+    ), i2 AS (
+        -- Total paid = owed to the partners + Kwa-Ba's revenue + deposit: on each reconciled collection, the amount
+        -- Kwa-Ba recorded equals its split in the ledger, to the franc
+        SELECT count(*) AS n
+        FROM finance_rapprochement_ligne l
+        WHERE l.type = 'encaissement' AND NOT l.hors_grand_livre AND l.kwaba_montant IS NOT NULL
+          AND l.kwaba_montant <> COALESCE((
+              SELECT SUM(m.montant_signe) FROM finance_mouvement_signe m
+              WHERE m.compte_argent_code = l.compte_argent_code AND m.externe_reference = l.reference
+                AND m.origine = 'paiement' AND m.annule_mouvement_id IS NULL), 0)
+    ), i3 AS (
+        -- Balance of the day = collected - refunded - paid out: Kwa-Ba's records of each reconciled day equal the
+        -- ledger lines of the same operations (before the provider's fees D01 and the regularisations)
+        SELECT count(*) AS n FROM (
+            SELECT l.compte_argent_code, l.jour
+            FROM finance_rapprochement_ligne l
+            WHERE NOT l.hors_grand_livre AND l.type <> 'inconnu' AND l.etat <> 'regularisee'
+            GROUP BY l.compte_argent_code, l.jour
+            HAVING SUM(CASE WHEN l.kwaba_montant IS NULL THEN 0
+                            WHEN l.sens = 'entree' THEN l.kwaba_montant ELSE -l.kwaba_montant END)
+                <> SUM(COALESCE((SELECT SUM(m.montant_signe) FROM finance_mouvement_signe m
+                                 WHERE m.compte_argent_code = l.compte_argent_code
+                                   AND m.externe_reference = l.reference AND m.nature_code <> 'D01'
+                                   AND m.annule_mouvement_id IS NULL), 0))
+        ) x
+    ), i4 AS (
+        -- Sum of the T lines by third party = total « owed to the partners »: every T line names its kind of third
+        -- party (a driver not assigned yet has no id: his share is the « to be assigned » row of the same total)
+        SELECT count(*) AS n
+        FROM finance_mouvement_signe
+        WHERE famille = 'T' AND tiers_type IS NULL
+    ), i6 AS (
+        -- Total debit = total credit on each exported journal (VT, AC, OD, TR), month by month
+        SELECT count(*) AS n FROM (
+            SELECT mois_comptable, journal FROM finance_ecriture
+            GROUP BY mois_comptable, journal HAVING SUM(debit) <> SUM(credit)
+        ) x
+    ), i7 AS (
+        -- Sum R - sum D (and the allocations to the guarantee fund, family G) = result of the trial balance
+        -- (accounts of classes 6, 7 and 8), month by month
+        SELECT count(*) AS n FROM (
+            SELECT mois_comptable FROM (
+                SELECT mois_comptable, SUM(montant_signe) AS livre, 0 AS balance
+                FROM finance_mouvement_signe WHERE famille IN ('R', 'D', 'G') GROUP BY mois_comptable
+                UNION ALL
+                SELECT mois_comptable, 0, SUM(credit - debit)
+                FROM finance_ecriture WHERE compte_general ~ '^[678]' GROUP BY mois_comptable
+            ) u
+            GROUP BY mois_comptable HAVING SUM(livre) <> SUM(balance)
+        ) x
+    ), i5 AS (
         -- Every day since the first movement, up to yesterday, reconciled with a zero gap on each active account
         SELECT count(*) AS n
         FROM finance_compte_argent c
@@ -303,7 +382,14 @@ VUES = [
             GROUP BY 1 HAVING SUM(CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END) <> 0
         ) x
     )
-    SELECT 'I5' AS invariant, 'Rapprochement fait et écart nul, chaque jour' AS libelle, (SELECT n FROM i5) AS anomalies
+    SELECT 'I1' AS invariant, 'Encaissé = R + T + C (revenu, fonds de tiers, caution)' AS libelle,
+           (SELECT n FROM i1) AS anomalies
+    UNION ALL SELECT 'I2', 'Total payé = dû aux partenaires + revenu + caution, par encaissement', (SELECT n FROM i2)
+    UNION ALL SELECT 'I3', 'Solde du jour = encaissé − remboursé − versé (Kwa-Ba = grand livre)', (SELECT n FROM i3)
+    UNION ALL SELECT 'I4', 'Lignes T par tiers = total dû aux partenaires',   (SELECT n FROM i4)
+    UNION ALL SELECT 'I5', 'Rapprochement fait et écart nul, chaque jour',    (SELECT n FROM i5)
+    UNION ALL SELECT 'I6', 'Débit = crédit sur chaque journal exporté',       (SELECT n FROM i6)
+    UNION ALL SELECT 'I7', 'R − D = résultat de la balance (classes 6 à 8)',  (SELECT n FROM i7)
     UNION ALL SELECT 'I8', 'Cautions détenues jamais négatives',              (SELECT n FROM i8)
     UNION ALL SELECT 'I9', 'Aucune ligne sans nature ni offre',               (SELECT n FROM i9)
     UNION ALL SELECT 'I10', 'Aucune écriture dans un mois verrouillé',        (SELECT n FROM i10)
@@ -476,6 +562,7 @@ SUPPRESSION = [
     'DROP VIEW IF EXISTS finance_ecriture CASCADE',
     'DROP VIEW IF EXISTS finance_taux_frais_reel CASCADE',
     'DROP VIEW IF EXISTS finance_dotation_garantie CASCADE',
+    'DROP VIEW IF EXISTS finance_identite_soldes CASCADE',
     'DROP VIEW IF EXISTS finance_solde_compte_argent CASCADE',
     'DROP VIEW IF EXISTS finance_cautions_detenues CASCADE',
     'DROP VIEW IF EXISTS finance_du_aux_partenaires CASCADE',

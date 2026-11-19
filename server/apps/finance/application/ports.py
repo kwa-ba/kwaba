@@ -153,6 +153,12 @@ class Restitutions(ABC):
         pass
 
     @abstractmethod
+    def identite_soldes(self) -> list[dict]:
+        """By money account: revenue, owed to the partners, owed to the travellers, deposits, provider's fees (D01),
+        the other lines and the balance (revenu + du_partenaires + du_voyageurs + cautions - frais_paiement + autres
+        = solde)."""
+
+    @abstractmethod
     def codes_actifs(self) -> tuple[set[str], set[str]]:
         """(active offers, active natures)."""
 

@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 import type { TauxCgv } from "./taux";
 import LegalPage, { AC, VersionFrancaiseFaitFoi } from "@/components/legal/LegalPage";
@@ -22,12 +23,11 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
           <VersionFrancaiseFaitFoi />
           <p>
             The kwa-ba.com website and its applications (the “Platform”) are operated by <strong>KWA-BA</strong>, <FormeSociete /> with a
-            share capital of 100,000 F CFA, whose registered office is in the Totsi Gblenkomé district, street 243,
-            Lomé (Togo), registered with the Lomé RCCM under number <MentionSociete cle="rccm" libelle="RCCM" />, tax number (NIF) <MentionSociete cle="nif" libelle="NIF" />, registered as an
+            share capital of <CapitalSociete />, whose registered office is at <AdresseSociete />, registered with the Lomé RCCM under number <MentionSociete cle="rccm" libelle="RCCM" />, tax number (NIF) <MentionSociete cle="nif" libelle="NIF" />, registered as an
             e-commerce provider under number <MentionSociete cle="commerce_electronique" libelle="registration number" />, represented by its President, Mr MENDE Fadel, and its General Manager, Mr KPOGLO Dzidoula Godwin Trésor.
           </p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Contact: <LienContact sujet="Terms of sale" />; postal address: Totsi Gblenkomé district, street 243, Lomé, Togo.</li>
+            <li>Contact: <LienContact sujet="Terms of sale" />; postal address: <AdresseSociete />.</li>
             <li>President: Mr MENDE Fadel — General Manager: Mr KPOGLO Dzidoula Godwin Trésor — Publication director: Mr MENDE Fadel.</li>
           </ul>
           <p>
