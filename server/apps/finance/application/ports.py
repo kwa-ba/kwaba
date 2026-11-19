@@ -602,3 +602,52 @@ class Releves(ABC):
     @abstractmethod
     def liste(self, compte: str | None, limite: int) -> list[dict]:
         pass
+
+
+class Pilotage(ABC):
+    """Reads of the ledger for the steering (GL-18), the partner statements (GL-21) and the inventory (GL-23)."""
+
+    @abstractmethod
+    def resultat(self, debut: date, fin: date) -> dict:
+        """{chiffre_affaires, produits, charges, hao, resultat} of [debut, fin], from the double-entry lines."""
+
+    @abstractmethod
+    def activite(self, debut: date, fin: date) -> dict:
+        """{reservations_payees, volume_encaisse, annulations, rembourse, conserve, frais_perdus, publicite,
+        frais_paiement}."""
+
+    @abstractmethod
+    def marge_par_offre(self, debut: date, fin: date) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def jours_en_ecart(self, debut: date, fin: date) -> int:
+        pass
+
+    @abstractmethod
+    def partenaires(self) -> list[dict]:
+        """Every third party with partner money in the ledger: {tiers_type, tiers_id, solde}."""
+
+    @abstractmethod
+    def releve_partenaire(self, tiers_type: str, tiers_id: str, debut: date, fin: date) -> dict:
+        """{solde_ouverture, lignes, commissions, verse, du, solde_cloture} of a partner on [debut, fin]."""
+
+    @abstractmethod
+    def ecritures_inventaire(self, annee: int) -> list[dict]:
+        """Inventory lines of the financial year (amortisation, guarantee fund allocations)."""
+
+    @abstractmethod
+    def amortissement_ecrit(self, annee: int) -> int:
+        pass
+
+    @abstractmethod
+    def amortissement_cumule_avant(self, annee: int) -> int:
+        pass
+
+    @abstractmethod
+    def commentaire(self, mois: date) -> dict | None:
+        pass
+
+    @abstractmethod
+    def enregistrer_commentaire(self, mois: date, texte: str, par_id, quand) -> None:
+        pass

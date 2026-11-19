@@ -220,3 +220,25 @@ describe("virements et relevés bancaires (GL-22)", () => {
     expect([(corpsReleve as FormData).get("compte"), (corpsReleve as FormData).get("col_debit")]).toEqual(["BANQUE_EXP", "Débit"]);
   });
 });
+
+describe("pilotage, relevés, rapport aux associés et inventaire (GL-18, GL-21, GL-23)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post, api.patch]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit le tableau de bord, un relevé, le rapport et le livre d'inventaire, avec leurs exports", async () => {
+    await finance.lireTableauDeBord("2026-11-01");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/tableau-de-bord/?mois=2026-11`);
+    expect(finance.urlExportTableau("2026-11-01")).toBe(`${F}/tableau-de-bord/?mois=2026-11&export=csv`);
+    await finance.lireReleveCompte("hote", "h1", "2026-11-01");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/releves-partenaires/?tiers_type=hote&tiers_id=h1&mois=2026-11`);
+    expect(finance.urlReleveCompte("hote", "h1", "2026-11-01")).toContain("export=pdf");
+    await finance.commenterRapportAssocies("2026-10-01", "Bon mois");
+    expect(api.patch).toHaveBeenLastCalledWith(`${F}/rapport-associes/`, { mois: "2026-10", commentaire: "Bon mois" });
+    await finance.lireLivreInventaire(2026);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/inventaire/?annee=2026`);
+    await finance.ecrireInventaire(2026);
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/inventaire/`, { annee: 2026 });
+  });
+});

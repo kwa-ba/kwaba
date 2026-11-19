@@ -71,6 +71,9 @@ __all__ = [
     # Internal transfers, money accounts and bank statements (GL-22)
     'VirementRefuse', 'demander_virement', 'annuler_virement', 'virements', 'comptes_argent', 'activer_compte_argent',
     'importer_releve_bancaire', 'releves_bancaires',
+    # Dashboard, partner statements, report to the associates, inventory (GL-18, GL-21, GL-23)
+    'tableau_de_bord', 'partenaires_avec_argent', 'releve_partenaire', 'recapitulatif_partenaire', 'rapport_associes',
+    'commenter_rapport_associes', 'livre_inventaire', 'ecrire_inventaire',
 ]
 
 
@@ -629,3 +632,52 @@ def importer_releve_bancaire(compte: str, texte: str, colonnes: dict, *, nom_fic
 
 def releves_bancaires(compte: str | None = None) -> list[dict]:
     return tresorerie_service().liste_releves(compte)
+
+
+# --- Dashboard, partner statements, report to the associates, inventory (GL-18, GL-21, GL-23) ---------------------
+
+def _pilotage():
+    from apps.finance.infrastructure.container import pilotage_service
+
+    return pilotage_service()
+
+
+def tableau_de_bord(mois: date) -> dict:
+    """The finance officer's figures of a month and of the year to date, with the thresholds decided."""
+    return _pilotage().tableau_de_bord(mois, solde_prestataire=soldes_comptes_argent().get('FEDAPAY', 0))
+
+
+def partenaires_avec_argent() -> list[dict]:
+    """Every partner with money in the ledger: {tiers_type, tiers_id, solde, derniere}."""
+    return _pilotage().partenaires()
+
+
+def releve_partenaire(tiers_type: str, tiers_id, mois: date) -> dict:
+    return _pilotage().releve(tiers_type, tiers_id, mois)
+
+
+def recapitulatif_partenaire(tiers_type: str, tiers_id, annee: int) -> list[dict]:
+    return _pilotage().recapitulatif_annuel(tiers_type, tiers_id, annee)
+
+
+def rapport_associes(mois: date) -> dict:
+    """The monthly report to the associates: the dashboard of the month and the referent's comment."""
+    return {'tableau': tableau_de_bord(mois), 'commentaire': _pilotage().commentaire(mois)}
+
+
+def commenter_rapport_associes(mois: date, texte: str, *, par_id: uuid.UUID | None) -> dict:
+    return _pilotage().commenter(mois, texte, par_id=par_id)
+
+
+def livre_inventaire(annee: int) -> dict:
+    """The inventory book of a financial year (closing balances, inventory entries, summary statements, balances
+    carried forward)."""
+    from datetime import date as jour
+
+    fin = min(jour(annee, 12, 31), jour.today())
+    return _pilotage().livre_inventaire(annee, livres_service().balance(jour(annee, 1, 1), fin)['comptes'])
+
+
+def ecrire_inventaire(annee: int, *, par_id: uuid.UUID | None) -> dict:
+    """Writes the amortisation of the Solution of a finished year. Raises RestitutionRefusee or MouvementRefuse."""
+    return _pilotage().ecrire_inventaire(annee, par_id=par_id)

@@ -861,3 +861,108 @@ export async function importerReleve(compte: string, fichier: File, colonnes: Co
   for (const [cle, valeur] of Object.entries(colonnes)) corps.append(`col_${cle}`, valeur);
   return (await api.post<ResultatReleve>(`${FINANCE}/releves-bancaires/`, corps)).data;
 }
+
+// --- Dashboard, partner statements, report to the associates, inventory (GL-18, GL-21, GL-23)
+
+export interface SeuilPilotage {
+  code: string;
+  libelle: string;
+  valeur: number;
+  /** 0: not decided yet */
+  seuil: number;
+  plafond?: number;
+  ok: boolean;
+}
+
+export interface TableauDeBord {
+  mois: string;
+  au: string;
+  activite: {
+    reservations_payees: number; volume_encaisse: number; annulations: number; rembourse: number; conserve: number;
+    frais_perdus: number; publicite: number; frais_paiement: number; taux_annulation: number | null; taux_frais_reel: number | null;
+  };
+  resultat: { chiffre_affaires: number; produits: number; charges: number; hao: number; resultat: number };
+  cumul_annee: { chiffre_affaires: number; produits: number; charges: number; hao: number; resultat: number };
+  marge_par_offre: { offre_code: string; recettes: number; charges_variables: number; marge: number }[];
+  fiscal: { impot_estime: number; taux_is: string | number; taux_minimum: string | number; tva_seuil: number; part_du_seuil_tva: number | null };
+  jours_en_ecart: number;
+  seuils: SeuilPilotage[];
+  poches: { tresorerie: number; du_partenaires: number; du_voyageurs: number; cautions_detenues: number; fonds_garantie: number; libre: number };
+  du_aux_associes: number;
+  anomalies: number;
+}
+
+export interface PartenaireAvecArgent {
+  tiers_type: string;
+  tiers_id: string;
+  nom: string;
+  solde: number;
+  derniere: string;
+}
+
+export interface ReleveCompte {
+  mois: string;
+  nom: string;
+  solde_ouverture: number;
+  du: number;
+  verse: number;
+  commissions: number;
+  solde_cloture: number;
+  lignes: { id: number; date: string; piece: string | null; nature: string; nature_libelle: string; motif: string; montant_signe: number }[];
+  recapitulatif: { mois: string; du: number; verse: number; commissions: number; solde_cloture: number }[];
+}
+
+export interface RapportAssocies {
+  tableau: TableauDeBord;
+  commentaire: { mois: string; commentaire: string; maj_le: string } | null;
+  peut_commenter: boolean;
+}
+
+export interface LivreInventaire {
+  annee: number;
+  ecritures: { id: number; date: string; piece: string; nature: string; nature_libelle: string; compte: string; contrepartie: string; motif: string; montant_signe: number }[];
+  amortissement: { annee: number; valeur: number; duree_mois: number; mois: number; du: number; ecrit: number };
+  bilan: { actif: { compte_general: string; libelle: string; solde_cloture: number }[]; passif: { compte_general: string; libelle: string; solde_cloture: number }[];
+    total_actif: number; total_passif: number };
+  compte_de_resultat: { produits: number; charges: number; resultat: number };
+  a_nouveaux: { compte_general: string; libelle: string; solde: number }[];
+  equilibre: boolean;
+  peut_ecrire: boolean;
+}
+
+export async function lireTableauDeBord(mois: string) {
+  return (await api.get<TableauDeBord>(`${FINANCE}/tableau-de-bord/${parametres({ mois: mois.slice(0, 7) })}`)).data;
+}
+
+export const urlExportTableau = (mois: string) => `${FINANCE}/tableau-de-bord/${parametres({ mois: mois.slice(0, 7), export: "csv" })}`;
+
+export async function lirePartenairesAvecArgent() {
+  return (await api.get<PartenaireAvecArgent[]>(`${FINANCE}/releves-partenaires/`)).data;
+}
+
+export async function lireReleveCompte(tiersType: string, tiersId: string, mois: string) {
+  return (await api.get<ReleveCompte>(`${FINANCE}/releves-partenaires/${parametres({ tiers_type: tiersType, tiers_id: tiersId, mois: mois.slice(0, 7) })}`)).data;
+}
+
+export const urlReleveCompte = (tiersType: string, tiersId: string, mois: string) =>
+  `${FINANCE}/releves-partenaires/${parametres({ tiers_type: tiersType, tiers_id: tiersId, mois: mois.slice(0, 7), export: "pdf" })}`;
+
+export async function lireRapportAssocies(mois: string) {
+  return (await api.get<RapportAssocies>(`${FINANCE}/rapport-associes/${parametres({ mois: mois.slice(0, 7) })}`)).data;
+}
+
+export const urlRapportAssocies = (mois: string) => `${FINANCE}/rapport-associes/${parametres({ mois: mois.slice(0, 7), export: "pdf" })}`;
+
+export async function commenterRapportAssocies(mois: string, commentaire: string) {
+  return (await api.patch(`${FINANCE}/rapport-associes/`, { mois: mois.slice(0, 7), commentaire })).data;
+}
+
+export async function lireLivreInventaire(annee: number) {
+  return (await api.get<LivreInventaire>(`${FINANCE}/inventaire/${parametres({ annee })}`)).data;
+}
+
+export const urlLivreInventaire = (annee: number) => `${FINANCE}/inventaire/${parametres({ annee, export: "csv" })}`;
+
+export async function ecrireInventaire(annee: number) {
+  return (await api.post<{ ajoute: number; du: number; ecrit: number }>(`${FINANCE}/inventaire/`, { annee })).data;
+}

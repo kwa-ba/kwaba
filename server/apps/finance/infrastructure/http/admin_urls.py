@@ -8,7 +8,8 @@ from .admin_views import (AssociesView, AuxiliairesView, BalanceView, CautionsVi
                           RapportResultatView, RapportsView, RapprochementJourView, RapprochementsView,
                           ReferentielsView, RegularisationView, ReleveCompteCourantView, SinistreAnnulationView,
                           SinistresView, ValidationDecisionView, ValidationsView, VirementsView,
-                          VirementAnnulationView, CompteArgentActivationView, ReleveBancaireView)
+                          VirementAnnulationView, CompteArgentActivationView, ReleveBancaireView, TableauDeBordView,
+                          RelevesPartenairesView, RapportAssociesView, InventaireView)
 
 urlpatterns = [
     path('grand-livre/', GrandLivreView.as_view(), name='admin-finance-grand-livre'),
@@ -44,6 +45,10 @@ urlpatterns = [
     path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
     path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),
          name='admin-finance-regularisation'),
+    path('tableau-de-bord/', TableauDeBordView.as_view(), name='admin-finance-tableau-de-bord'),
+    path('releves-partenaires/', RelevesPartenairesView.as_view(), name='admin-finance-releves-partenaires'),
+    path('rapport-associes/', RapportAssociesView.as_view(), name='admin-finance-rapport-associes'),
+    path('inventaire/', InventaireView.as_view(), name='admin-finance-inventaire'),
     path('virements/', VirementsView.as_view(), name='admin-finance-virements'),
     path('virements/<uuid:pk>/annuler/', VirementAnnulationView.as_view(), name='admin-finance-virement-annuler'),
     path('comptes-argent/<str:code>/activation/', CompteArgentActivationView.as_view(),

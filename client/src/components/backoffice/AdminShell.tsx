@@ -33,6 +33,7 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
   // One heading for all the money pages (GL-1): its pages open below it while one of them is shown
   { href: "/backoffice/finances", label: "Finance", icon: Landmark, section: "finances", sousPages: [
     { href: "/backoffice/finances", label: "Synthèse" },
+    { href: "/backoffice/finances/tableau-de-bord", label: "Tableau de bord" },
     { href: "/backoffice/finances/grand-livre", label: "Grand livre" },
     { href: "/backoffice/finances/livre-journal", label: "Livre-journal" },
     { href: "/backoffice/finances/comptes", label: "Grand-livre par compte" },
@@ -48,8 +49,11 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
     { href: "/backoffice/finances/validations", label: "Validations" },
     { href: "/backoffice/finances/cautions", label: "Cautions" },
     { href: "/backoffice/finances/rapports", label: "Rapports" },
+    { href: "/backoffice/finances/releves-partenaires", label: "Relevés des partenaires" },
+    { href: "/backoffice/finances/rapport-associes", label: "Rapport aux associés" },
     { href: "/backoffice/finances/parametres", label: "Paramètres" },
     { href: "/backoffice/finances/cloture", label: "Clôture mensuelle" },
+    { href: "/backoffice/finances/inventaire", label: "Livre d'inventaire" },
     { href: "/backoffice/finances/export", label: "Export comptable" },
   ] },
   { href: "/backoffice/tarifs", label: "Tarifs", icon: Percent, section: "tarifs" },
