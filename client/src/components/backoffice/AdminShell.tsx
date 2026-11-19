@@ -40,6 +40,8 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
     { href: "/backoffice/finances/encaissements", label: "Encaissements et versements" },
     { href: "/backoffice/finances/rapprochement", label: "Rapprochement FedaPay" },
     { href: "/backoffice/finances/depenses", label: "Dépenses" },
+    { href: "/backoffice/finances/associes", label: "Comptes des associés" },
+    { href: "/backoffice/finances/fonds-garantie", label: "Fonds de garantie" },
     { href: "/backoffice/finances/remboursements", label: "Remboursements" },
     { href: "/backoffice/finances/validations", label: "Validations" },
     { href: "/backoffice/finances/cautions", label: "Cautions" },

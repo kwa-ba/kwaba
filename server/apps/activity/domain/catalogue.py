@@ -102,7 +102,7 @@ def _rights(details: dict, target: str) -> str:
 
 OBJECT_NAMES = {
     'projet': 'Projet Give', 'reversements': 'Reversements Give', 'reversement': 'Reversement Give',
-    'lancement': 'Lancement', 'societe': 'Société', 'contrats_hotes': 'Contrats des hôtes', 'facture': 'Facture', 'avoir': 'Avoir', 'regularisation': 'Régularisation', 'depense': 'Dépense',
+    'lancement': 'Lancement', 'societe': 'Société', 'contrats_hotes': 'Contrats des hôtes', 'facture': 'Facture', 'avoir': 'Avoir', 'regularisation': 'Régularisation', 'depense': 'Dépense', 'sinistre': 'Sinistre',
     'regles_location': 'Règles de location', 'categorie_vehicule': 'Catégorie de véhicule', 'location': 'Location',
     'tarifs_transfert': 'Tarifs de transfert', 'transfert': 'Transfert', 'alerte_fraude': 'Alerte anti-fraude',
     'experience': 'Expérience', 'ong': 'Association',
@@ -196,6 +196,14 @@ ACTIONS: dict[str, ActionSpec] = {
                                          summary=lambda d, t: str(d.get('nom', ''))),
     'associe_enregistre': ActionSpec('Associé enregistré', MONEY, IMPORTANT,
                                      summary=lambda d, t: str(d.get('nom', ''))),
+    'fonds_garantie_dotation': ActionSpec('Dotation du mois au fonds de garantie', MONEY, IMPORTANT,
+                                          summary=lambda d, t: _join(d.get('mois', ''), d.get('montant', ''),
+                                                                     d.get('taux', ''))),
+    'fonds_garantie_sinistre_impute': ActionSpec('Sinistre couvert par le fonds de garantie', MONEY, SENSITIVE,
+                                                 summary=lambda d, t: _join(d.get('numero', ''), d.get('montant', ''),
+                                                                            d.get('decision', ''))),
+    'fonds_garantie_sinistre_annule': ActionSpec('Couverture par le fonds de garantie annulée', MONEY, SENSITIVE,
+                                                 summary=lambda d, t: _join(d.get('montant', ''), d.get('motif', ''))),
     'rapprochement_importe': ActionSpec('Rapprochement du prestataire importé', MONEY, IMPORTANT,
                                         summary=lambda d, t: _join(d.get('compte', ''), d.get('jour', ''),
                                                                    d.get('etat', ''))),

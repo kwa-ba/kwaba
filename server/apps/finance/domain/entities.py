@@ -273,12 +273,14 @@ class Fournisseur:
 
 @dataclass(frozen=True)
 class Associe:
-    """A partner of Kwa-Ba (the company's associates), to whom Kwa-Ba owes what they advanced."""
+    """A partner of Kwa-Ba (the company's associates), to whom Kwa-Ba owes what they advanced. `capital_souscrit`: their
+    part of the share capital (F CFA), shown with the capital; its opening entry comes with the chartered accountant."""
     id: uuid.UUID
     nom: str
     email: str = ''
     compte_id: uuid.UUID | None = None
     actif: bool = True
+    capital_souscrit: int = 0
 
 
 @dataclass(frozen=True)
@@ -302,4 +304,45 @@ class Depense:
     mouvement_ids: tuple = ()
     ecrite_le: datetime | None = None
     annulee_le: datetime | None = None
+    motif_annulation: str = ''
+
+
+# --- Associates' current accounts (GL-16, FIN-11.2 to 11.4) ---------------------------------------------------------
+
+# What Kwa-Ba owes an associate: their advances in compte courant (F02), the expenses they paid (F03), less what Kwa-Ba
+# paid them back (F04). A current account is never in debit (articles of association, art. 19)
+TIERS_ASSOCIE = 'associe'
+NATURES_COMPTE_COURANT = ('F02', 'F03', 'F04')
+
+
+# --- Guarantee fund (GL-17, FIN-06) ---------------------------------------------------------------------------------
+
+# A provision for the guarantees given to customers (proposal 6911 / 192 / 7911, to be confirmed by the chartered
+# accountant): each finished month, 10 % of its net revenue (family R) is allocated to it (G01, on the account of the
+# fund); a loss the fund covers is a D04 expense, and its use takes the provision back (G02). The fund is never cash
+# of its own: it is the part of the money Kwa-Ba holds that is not free
+COMPTE_FONDS_GARANTIE = 'GARANTIE'
+TYPE_COMPTE_PROVISION = 'provision'
+# Money accounts without a provider's statement: never reconciled (I5, closing check 4)
+TYPES_SANS_RELEVE = (TYPE_COMPTE_AVANCES, TYPE_COMPTE_PROVISION)
+NATURE_DOTATION_GARANTIE, NATURE_UTILISATION_GARANTIE = 'G01', 'G02'
+NATURE_SINISTRE = 'D04'
+PREFIXE_DOTATION = 'garantie:dotation:'
+SINISTRE_IMPUTE, SINISTRE_ANNULE = 'impute', 'annule'
+
+
+@dataclass(frozen=True)
+class Sinistre:
+    """A loss covered by the guarantee fund: a D04 expense already in the ledger (Kwa-Ba paid it), the decision that
+    granted the guarantee, and the part of the fund used for it (G02)."""
+    id: uuid.UUID
+    depense_id: uuid.UUID
+    montant: int
+    decision_reference: str
+    motif: str
+    statut: str
+    impute_par_id: uuid.UUID | None
+    impute_le: datetime
+    mouvement_id: int | None = None
+    annule_le: datetime | None = None
     motif_annulation: str = ''

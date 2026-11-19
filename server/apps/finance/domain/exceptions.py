@@ -26,3 +26,8 @@ class RapprochementRefuse(ValueError):
 
 class DepenseRefusee(ValueError):
     """An expense the ledger cannot take (not a D nature, evidence or supplier missing, month locked…), in French."""
+
+
+class FondsGarantieRefuse(ValueError):
+    """An operation of the guarantee fund that cannot be done (month not finished or locked, loss above the fund,
+    decision missing), in French."""

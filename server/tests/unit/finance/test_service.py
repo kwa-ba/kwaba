@@ -62,6 +62,11 @@ class FauxGrandLivre(GrandLivre):
         return [m for m in self.lignes.values() if m.ligne.nature == nature and m.annule_mouvement_id is None
                 and m.id not in corrigees and m.ligne.reservation_id == reservation_id]
 
+    def solde_compte_courant(self, associe_id):
+        return sum((m.ligne.montant if m.ligne.sens == ENTREE else -m.ligne.montant) for m in self.lignes.values()
+                   if m.ligne.tiers_type == 'associe' and str(m.ligne.tiers_id) == associe_id
+                   and m.ligne.nature in ('F02', 'F03', 'F04'))
+
 
 class FauxParametres(Parametres):
     def lire(self, cle):
@@ -77,6 +82,9 @@ class FaussesAlertes(Alertes):
 
     def evenement_rejoue(self, mouvement_id, nature):
         self.envoyees.append(('rejoue', mouvement_id, nature))
+
+    def fonds_sous_cible(self):
+        self.envoyees.append(('fonds_sous_cible',))
 
 
 class FauxJournal(Journal):
@@ -106,6 +114,9 @@ class FauxJournal(Journal):
 
     def annuaire(self, action, par_id, genre, nom):
         self.validations.append((f'{action}_enregistre', par_id, nom))
+
+    def fonds_garantie(self, action, par_id, details):
+        self.validations.append((f'fonds_garantie_{action}', par_id, details))
 
 
 class FausseTransaction(TransactionManager):
@@ -202,3 +213,44 @@ def test_rectifying_cancels_the_lines_in_force_and_writes_the_right_amount(servi
     assert (nouvelle.ligne.montant, nouvelle.ligne.sens, nouvelle.ligne.motif) == (7_500, ENTREE, 'Pack Séjour')
     with pytest.raises(MouvementRefuse, match='rien à rectifier'):
         service.rectifier('R02', 0, motif='x', origine='x', objet={'reservation_id': reservation})
+
+
+# --- An associate's current account is never in debit (GL-16) ------------------------------------------------------
+
+ASSOCIE = str(uuid.uuid4())
+
+
+def _f(nature, sens, montant):
+    return Ligne(nature=nature, offre='STRUCTURE', montant=montant, sens=sens, compte_argent='FEDAPAY',
+                 tiers_type='associe', tiers_id=ASSOCIE)
+
+
+@pytest.fixture
+def associes(service):
+    service.grand_livre.referentiels = lambda lignes: Referentiels(
+        natures={c: Nature(c, 'F', s, True) for c, s in (('F03', 'entree'), ('F04', 'sortie'))},
+        offres={'STRUCTURE': True}, comptes_argent={'FEDAPAY': True}, tiers_types={'associe': True},
+        moyens_paiement={})
+    return service
+
+
+def test_a_repayment_above_the_balance_is_refused(associes):
+    associes.enregistrer([_f('F03', ENTREE, 30_000)], origine='depense')
+
+    with pytest.raises(MouvementRefuse, match='jamais débiteur'):
+        associes.enregistrer([_f('F04', 'sortie', 30_001)], origine='remboursement')
+
+    assert associes.enregistrer([_f('F04', 'sortie', 30_000)], origine='remboursement')
+    assert f'finance:compte_courant:{ASSOCIE}' in associes.grand_livre.verrous
+
+
+def test_an_advance_and_its_repayment_in_one_batch_are_checked_together(associes):
+    assert len(associes.enregistrer([_f('F03', ENTREE, 10_000), _f('F04', 'sortie', 10_000)], origine='test')) == 2
+
+
+def test_cancelling_an_advance_already_repaid_is_refused(associes):
+    [avance] = associes.enregistrer([_f('F03', ENTREE, 10_000)], origine='depense')
+    associes.enregistrer([_f('F04', 'sortie', 6_000)], origine='remboursement')
+
+    with pytest.raises(MouvementRefuse, match='débiteur'):
+        associes.contre_passer(avance, motif='Saisie en double')

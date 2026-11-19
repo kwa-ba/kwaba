@@ -39,3 +39,7 @@ class EmailAlertes(Alertes):
                      mouvement_id, nature)
         _envoyer('evenement_rejoue', 'Événement de paiement rejoué avec un autre montant',
                  {'mouvement_id': mouvement_id, 'nature': nature})
+
+    def fonds_sous_cible(self) -> None:
+        logger.warning('Fonds de garantie sous sa cible')
+        _envoyer('fonds_sous_cible', 'Fonds de garantie sous sa cible', {})

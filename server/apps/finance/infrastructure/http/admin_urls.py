@@ -1,11 +1,12 @@
 from django.urls import path
 
-from .admin_views import (AssociesView, AuxiliairesView, CautionsView, DepenseAnnulationView, DepensesView,
-                          FournisseursView, BalanceView, ClotureMoisView, ClotureView, ComptesView,
-                          ExportComptableView, GrandLivreCompteView, GrandLivreView, LivreJournalView, MouvementsView,
-                          PilotageView, RapportExportView, RapportResultatView, RapportsView, RapprochementJourView,
-                          RapprochementsView, ReferentielsView, RegularisationView, ValidationDecisionView,
-                          ValidationsView)
+from .admin_views import (AssociesView, AuxiliairesView, BalanceView, CautionsView, ClotureMoisView, ClotureView,
+                          ComptesCourantsView, ComptesView, DepenseAnnulationView, DepensesView, DotationView,
+                          ExportComptableView, FondsGarantieView, FournisseursView, GrandLivreCompteView,
+                          GrandLivreView, LivreJournalView, MouvementsView, PilotageView, RapportExportView,
+                          RapportResultatView, RapportsView, RapprochementJourView, RapprochementsView,
+                          ReferentielsView, RegularisationView, ReleveCompteCourantView, SinistreAnnulationView,
+                          SinistresView, ValidationDecisionView, ValidationsView)
 
 urlpatterns = [
     path('grand-livre/', GrandLivreView.as_view(), name='admin-finance-grand-livre'),
@@ -29,7 +30,14 @@ urlpatterns = [
     path('fournisseurs/', FournisseursView.as_view(), name='admin-finance-fournisseurs'),
     path('fournisseurs/<uuid:pk>/', FournisseursView.as_view(), name='admin-finance-fournisseur'),
     path('associes/', AssociesView.as_view(), name='admin-finance-associes'),
+    path('associes/comptes/', ComptesCourantsView.as_view(), name='admin-finance-comptes-courants'),
     path('associes/<uuid:pk>/', AssociesView.as_view(), name='admin-finance-associe'),
+    path('associes/<uuid:pk>/releve/', ReleveCompteCourantView.as_view(), name='admin-finance-releve-associe'),
+    path('fonds-garantie/', FondsGarantieView.as_view(), name='admin-finance-fonds-garantie'),
+    path('fonds-garantie/doter/', DotationView.as_view(), name='admin-finance-dotation'),
+    path('fonds-garantie/sinistres/', SinistresView.as_view(), name='admin-finance-sinistres'),
+    path('fonds-garantie/sinistres/<uuid:pk>/annuler/', SinistreAnnulationView.as_view(),
+         name='admin-finance-sinistre-annuler'),
     path('rapprochement/', RapprochementsView.as_view(), name='admin-finance-rapprochement'),
     path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
     path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),

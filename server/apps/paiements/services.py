@@ -596,6 +596,12 @@ def passe() -> dict:
         stats['jours_rapproches'] = rapprochement.importer_si_du()
     except Exception:
         logger.exception('Rapprochement FedaPay en échec')
+    from apps.finance import api as finance  # local import: finance is read at the worker's pass only
+    try:
+        # The allocations of the finished months to the guarantee fund (GL-17), once an hour at most
+        stats['dotations_fonds_garantie'] = finance.doter_fonds_garantie_si_du()
+    except Exception:
+        logger.exception('Dotation du fonds de garantie en échec')
     return {k: v for k, v in stats.items() if v}
 
 

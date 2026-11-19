@@ -8,12 +8,16 @@ from datetime import timezone as dt_timezone
 from decimal import Decimal
 from typing import Iterable
 
-from apps.finance.application.ports import (Alertes, Annuaire, Cautions, Clock, Depenses, GrandLivre, Journal,
-                                            Parametres, Periodes, Rapports, Rapprochements, Regularisations,
-                                            Restitutions, TransactionManager, Validations)
-from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, DEPENSE_ANNULEE, DEPENSE_ECRITE,
-                                          DEPENSE_EN_ATTENTE, DEPENSE_REFUSEE, MODE_AVANCE_ASSOCIE,
-                                          NATURE_AVANCE_ASSOCIE, Associe, Depense, Fournisseur,
+from apps.finance.application.ports import (Alertes, Annuaire, Cautions, Clock, ComptesCourants, Depenses,
+                                            FondsGarantie, GrandLivre, Journal, Parametres, Periodes, Rapports,
+                                            Rapprochements, Regularisations, Restitutions, TransactionManager,
+                                            Validations)
+from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, COMPTE_FONDS_GARANTIE, DEPENSE_ANNULEE,
+                                          DEPENSE_ECRITE, DEPENSE_EN_ATTENTE, DEPENSE_REFUSEE, MODE_AVANCE_ASSOCIE,
+                                          NATURE_AVANCE_ASSOCIE, NATURE_DOTATION_GARANTIE, NATURE_SINISTRE,
+                                          NATURE_UTILISATION_GARANTIE, NATURES_COMPTE_COURANT, PREFIXE_DOTATION,
+                                          SINISTRE_ANNULE, SINISTRE_IMPUTE, TIERS_ASSOCIE, Associe, Depense,
+                                          Fournisseur, Sinistre,
                                           ENTREE, ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE,
                                           PERIODE_OUVERTE, PERIODE_VERROUILLEE, PREFIXE_REGULARISATION,
                                           RAPPROCHEMENT_NON_FAIT, REGULARISATION_ECRITE, REGULARISATION_EN_ATTENTE,
@@ -21,11 +25,12 @@ from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, DEPENSE_ANNUL
                                           VALIDATION_EN_ATTENTE, VALIDATION_EXECUTEE, VALIDATION_REFUSEE, Caution,
                                           Ecriture, Ecrivain, FiltresMouvements, Ligne, Operation, OperationExterne, Page,
                                           Regularisation, Validation)
-from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, MouvementRefuse,
-                                            RapprochementRefuse,
-                                            RestitutionRefusee, ValidationRefusee)
-from apps.finance.domain.rules import (debut_exercice, ecarts_des_modules_ouverts, est_compte_de_resultat, inverse,
-                                      juger_jour, juger_operation, preparer, premier_du_mois)
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, FondsGarantieRefuse,
+                                            MouvementRefuse, RapprochementRefuse, RestitutionRefusee,
+                                            ValidationRefusee)
+from apps.finance.domain.rules import (debut_exercice, dotation_due, ecarts_des_modules_ouverts,
+                                      est_compte_de_resultat, inverse, juger_jour, juger_operation, preparer,
+                                      premier_du_mois)
 
 
 class GrandLivreService:
@@ -55,6 +60,7 @@ class GrandLivreService:
                          for ligne in lignes]
             crees = []
             with self.tx.atomic():
+                self._verifier_comptes_courants(ecritures)
                 for ecriture in ecritures:
                     self._verifier_periode(ecriture)
                     pk = self.grand_livre.ecrire(ecriture)
@@ -80,6 +86,7 @@ class GrandLivreService:
             self.grand_livre.verrouiller(f'finance:correction:{mouvement_id}')
             if self.grand_livre.est_corrige(mouvement_id):
                 raise MouvementRefuse(f'La ligne {mouvement_id} a déjà été corrigée.')
+            self._verifier_comptes_courants([ecriture])
             self._verifier_periode(ecriture)
             pk = self.grand_livre.ecrire(ecriture)
             self.journal.correction(par_id, mouvement_id, pk, ecriture.ligne.motif)
@@ -116,6 +123,26 @@ class GrandLivreService:
         if not actif:
             raise ValueError(f'Paramètre « {cle} » inactif : son offre n\'est pas ouverte.')
         return valeur
+
+    def _verifier_comptes_courants(self, ecritures: list[Ecriture]) -> None:
+        """An associate's current account is never in debit (articles of association, art. 19): lines that would take
+        out more than Kwa-Ba owes them are refused (a repayment above the balance, an advance cancelled after its
+        repayment). The associate's account is locked until the end of the transaction."""
+        variations: dict[str, int] = {}
+        for e in ecritures:
+            ligne = e.ligne
+            if ligne.tiers_type == TIERS_ASSOCIE and ligne.tiers_id and ligne.nature in NATURES_COMPTE_COURANT:
+                signe = ligne.montant if ligne.sens == ENTREE else -ligne.montant
+                variations[str(ligne.tiers_id)] = variations.get(str(ligne.tiers_id), 0) + signe
+        for associe_id, variation in sorted(variations.items()):
+            if variation >= 0:
+                continue
+            self.grand_livre.verrouiller(f'finance:compte_courant:{associe_id}')
+            solde = self.grand_livre.solde_compte_courant(associe_id)
+            if solde + variation < 0:
+                raise MouvementRefuse(
+                    f"Le compte courant de l'associé deviendrait débiteur ({solde + variation} F CFA) : un compte "
+                    "courant d'associé n'est jamais débiteur (statuts, art. 19).")
 
     def _verifier_periode(self, ecriture: Ecriture) -> None:
         if self.grand_livre.etat_periode(ecriture.mois) == PERIODE_VERROUILLEE:
@@ -281,12 +308,14 @@ class ClotureService:
     are locked in order, and the current month never."""
 
     def __init__(self, *, restitutions: Restitutions, periodes: Periodes, journal: Journal, tx: TransactionManager,
-                 clock: Clock):
+                 clock: Clock, avant_cloture=None):
         self.restitutions = restitutions
         self.periodes = periodes
         self.journal = journal
         self.tx = tx
         self.clock = clock
+        # What the closing writes before its checks: the allocation of the month to the guarantee fund (GL-17)
+        self.avant_cloture = avant_cloture
 
     def _mois_courant(self) -> date:
         return self.clock.now().date().replace(day=1)
@@ -316,6 +345,11 @@ class ClotureService:
             ouverts = sorted(m for m, p in periodes.items() if m < mois and p['etat'] != PERIODE_VERROUILLEE)
             if ouverts:
                 raise ClotureRefusee(f"Clôturez d'abord {ouverts[0]:%m/%Y} : les mois se clôturent dans l'ordre.")
+            if self.avant_cloture:
+                try:
+                    self.avant_cloture(mois, par_id)
+                except ValueError as refus:  # every refusal of the module is a ValueError, in French
+                    raise ClotureRefusee(f'Dotation du fonds de garantie impossible : {refus}') from refus
             controles = self.restitutions.peut_on_cloturer(mois)
             refuses = [c['controle'] for c in controles if c['verdict'] != 'OK']
             if refuses:
@@ -735,6 +769,9 @@ class RapprochementService:
 OPERATION_DEPENSE = 'depense'
 SEUIL_VALIDATION_DEPENSE = 'depense_double_validation_seuil'
 OFFRE_PAR_DEFAUT = 'STRUCTURE'
+CAPITAL_SOCIAL = 'capital_social'
+# « Not given » for a field where None means something (an associate without a site account)
+VIDE = object()
 
 
 def _texte(valeur, longueur: int) -> str:
@@ -843,6 +880,9 @@ class DepenseService:
             if d.statut != DEPENSE_ECRITE:
                 raise DepenseRefusee("Seule une dépense écrite au grand livre s'annule ; une demande en attente se "
                                      "refuse dans Validations.")
+            if self.depenses.couverte_par_le_fonds(d.id):
+                raise DepenseRefusee("Cette dépense est couverte par le fonds de garantie : annulez d'abord son "
+                                     "imputation (Finance → Fonds de garantie).")
             for mouvement_id in d.mouvement_ids:
                 self.grand_livre.contre_passer(mouvement_id, motif=f'Annulation de {d.numero} : {motif}',
                                                origine='depense', par_id=par_id)
@@ -875,15 +915,21 @@ class DepenseService:
     def fournisseurs(self, actifs_seulement: bool = False) -> list[Fournisseur]:
         return self.annuaire.fournisseurs(actifs_seulement)
 
-    def enregistrer_fournisseur(self, *, nom: str, nif: str = '', contact: str = '', actif: bool = True,
-                                fournisseur_id=None, par_id: uuid.UUID | None = None) -> Fournisseur:
-        nom = _texte(nom, 120)
+    def enregistrer_fournisseur(self, *, nom: str | None = None, nif: str | None = None, contact: str | None = None,
+                                actif: bool | None = None, fournisseur_id=None,
+                                par_id: uuid.UUID | None = None) -> Fournisseur:
+        """A new supplier, or a change of one: a field left to None keeps its value."""
+        avant = Fournisseur(id=uuid.uuid4(), nom='')
+        if fournisseur_id:
+            avant = self.annuaire.fournisseur(fournisseur_id)
+            if avant is None:
+                raise DepenseRefusee('Fournisseur introuvable.')
+        nom = _texte(avant.nom if nom is None else nom, 120)
         if len(nom) < 2:
             raise DepenseRefusee('Le nom du fournisseur est obligatoire.')
-        if fournisseur_id and self.annuaire.fournisseur(fournisseur_id) is None:
-            raise DepenseRefusee('Fournisseur introuvable.')
-        f = Fournisseur(id=uuid.UUID(str(fournisseur_id)) if fournisseur_id else uuid.uuid4(), nom=nom,
-                        nif=_texte(nif, 40), contact=_texte(contact, 200), actif=bool(actif))
+        f = Fournisseur(id=avant.id, nom=nom, nif=_texte(avant.nif if nif is None else nif, 40),
+                        contact=_texte(avant.contact if contact is None else contact, 200),
+                        actif=avant.actif if actif is None else bool(actif))
         f = self.annuaire.enregistrer_fournisseur(f, nouveau=not fournisseur_id)
         self.journal.annuaire('fournisseur', par_id, 'fournisseur', f.nom)
         return f
@@ -891,15 +937,228 @@ class DepenseService:
     def associes(self, actifs_seulement: bool = False) -> list[Associe]:
         return self.annuaire.associes(actifs_seulement)
 
-    def enregistrer_associe(self, *, nom: str, email: str = '', compte_id=None, actif: bool = True, associe_id=None,
+    def enregistrer_associe(self, *, nom: str | None = None, email: str | None = None, compte_id=VIDE,
+                            actif: bool | None = None, capital_souscrit: int | None = None, associe_id=None,
                             par_id: uuid.UUID | None = None) -> Associe:
-        nom = _texte(nom, 120)
+        """A new associate, or a change of one: a field left to None keeps its value. Their parts of the share capital
+        never add up to more than the capital (parameter capital_social)."""
+        avant = Associe(id=uuid.uuid4(), nom='')
+        if associe_id:
+            avant = self.annuaire.associe(associe_id)
+            if avant is None:
+                raise DepenseRefusee('Associé introuvable.')
+        nom = _texte(avant.nom if nom is None else nom, 120)
         if len(nom) < 2:
             raise DepenseRefusee("Le nom de l'associé est obligatoire.")
-        if associe_id and self.annuaire.associe(associe_id) is None:
-            raise DepenseRefusee('Associé introuvable.')
-        a = Associe(id=uuid.UUID(str(associe_id)) if associe_id else uuid.uuid4(), nom=nom,
-                    email=_texte(email, 254).lower(), compte_id=compte_id or None, actif=bool(actif))
-        a = self.annuaire.enregistrer_associe(a, nouveau=not associe_id)
+        capital = avant.capital_souscrit if capital_souscrit is None else capital_souscrit
+        if type(capital) is not int or capital < 0:
+            raise DepenseRefusee('La part du capital est un nombre entier positif ou nul de francs CFA.')
+        a = Associe(id=avant.id, nom=nom, email=_texte(avant.email if email is None else email, 254).lower(),
+                    compte_id=avant.compte_id if compte_id is VIDE else (compte_id or None),
+                    actif=avant.actif if actif is None else bool(actif), capital_souscrit=capital)
+        with self.tx.atomic():
+            self.annuaire.serialiser()
+            if a.actif and capital:
+                trouve = self.parametres.lire(CAPITAL_SOCIAL)
+                capital_social = int(trouve[0]) if trouve and trouve[1] else 0
+                autres = sum(x.capital_souscrit for x in self.annuaire.associes(True) if x.id != a.id)
+                if autres + capital > capital_social:
+                    raise DepenseRefusee(f'Les parts des associés dépasseraient le capital social ({capital_social} '
+                                         f'F CFA) : {autres} F déjà souscrits par les autres.')
+            a = self.annuaire.enregistrer_associe(a, nouveau=not associe_id)
         self.journal.annuaire('associe', par_id, 'associe', a.nom)
         return a
+
+
+# --- Associates' current accounts (GL-16, FIN-11.2 to 11.4) ---------------------------------------------------------
+
+class ComptesCourantsService:
+    """What Kwa-Ba owes each associate, read from the ledger: their advances (F02), the expenses they paid (F03) and
+    what was paid back to them (F04, not open yet: decision of 2026-11-19). A current account is never in debit; the
+    ledger refuses a line that would make it so (GrandLivreService). The share capital is shown with each associate's
+    part; its opening entry is written later with the chartered accountant."""
+
+    def __init__(self, *, annuaire: Annuaire, comptes: ComptesCourants, parametres: Parametres):
+        self.annuaire = annuaire
+        self.comptes = comptes
+        self.parametres = parametres
+
+    def capital_social(self) -> int:
+        trouve = self.parametres.lire(CAPITAL_SOCIAL)
+        return int(trouve[0]) if trouve and trouve[1] else 0
+
+    def liste(self) -> dict:
+        soldes = self.comptes.soldes()
+        vide = {'avances': 0, 'remboursements': 0, 'solde': 0}
+        associes = [{'associe': a, **soldes.get(str(a.id), vide)} for a in self.annuaire.associes(False)]
+        totaux = {cle: sum(x[cle] for x in associes) for cle in ('avances', 'remboursements', 'solde')}
+        souscrit = sum(x['associe'].capital_souscrit for x in associes if x['associe'].actif)
+        return {'associes': associes, 'totaux': totaux, 'capital_social': self.capital_social(),
+                'capital_souscrit': souscrit}
+
+    def releve(self, associe_id) -> dict:
+        """The lines of an associate's current account, oldest first, with the balance after each."""
+        associe = self.annuaire.associe(associe_id)
+        if associe is None:
+            raise DepenseRefusee('Associé introuvable.')
+        solde, lignes = 0, []
+        for ligne in self.comptes.releve(str(associe.id)):
+            solde += ligne['montant_signe']
+            lignes.append({**ligne, 'solde': solde})
+        return {'associe': associe, 'lignes': lignes, 'solde': solde}
+
+
+# --- Guarantee fund (GL-17, FIN-06) ---------------------------------------------------------------------------------
+
+TAUX_FONDS_GARANTIE = 'fonds_garantie_taux'
+CIBLE_FONDS_GARANTIE = 'fonds_garantie_cible'
+
+
+def _pourcent(taux) -> str:
+    """10.0000 → « 10 », 7.5 → « 7.5 »."""
+    return format(Decimal(str(taux)).normalize(), 'f')
+
+
+def _fin_du_mois(mois: date) -> datetime:
+    dernier = (mois + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    return datetime.combine(dernier, time(23), tzinfo=dt_timezone.utc)
+
+
+class FondsGarantieService:
+    """The guarantee fund, a provision kept apart from the free money: each finished month, its rate (10 %) of the
+    month's net revenue is allocated to it (G01), by the worker each night, by the closing, or by hand. A loss Kwa-Ba
+    pays under its guarantee (a D04 expense) is covered by the fund with the reference of the decision (G02), up to the
+    fund's balance. Below its target, the finance team is alerted."""
+
+    def __init__(self, *, fonds: FondsGarantie, depenses: Depenses, grand_livre: GrandLivreService,
+                 parametres: Parametres, alertes: Alertes, journal: Journal, tx: TransactionManager, clock: Clock):
+        self.fonds = fonds
+        self.depenses = depenses
+        self.grand_livre = grand_livre
+        self.parametres = parametres
+        self.alertes = alertes
+        self.journal = journal
+        self.tx = tx
+        self.clock = clock
+
+    def _valeur(self, cle: str):
+        trouve = self.parametres.lire(cle)
+        return trouve[0] if trouve and trouve[1] else Decimal(0)
+
+    def etat(self) -> dict:
+        solde, cible = self.fonds.solde(), int(self._valeur(CIBLE_FONDS_GARANTIE))
+        return {'solde': solde, 'cible': cible, 'sous_cible': bool(cible) and solde < cible,
+                'taux': self._valeur(TAUX_FONDS_GARANTIE)}
+
+    def dotations(self) -> list[dict]:
+        courant = self.clock.now().date().replace(day=1)
+        return [{**d, 'termine': d['mois'] < courant} for d in self.fonds.dotations()]
+
+    # --- Monthly allocation --------------------------------------------------------------------------------------
+
+    def doter(self, mois: date, *, par_id: uuid.UUID | None = None) -> dict:
+        """Writes what the allocation of a finished month still lacks (never less: a month whose revenue went down
+        afterwards keeps its allocation, prudently). Returns {mois, assiette, taux, due, ecrite, ajoute}."""
+        mois = premier_du_mois(mois)
+        if mois >= self.clock.now().date().replace(day=1):
+            raise FondsGarantieRefuse('Un mois se dote au fonds de garantie une fois terminé.')
+        with self.tx.atomic():
+            self.fonds.serialiser()
+            d = self.fonds.dotation(mois)
+            if d is None:
+                return {'mois': mois, 'assiette': 0, 'taux': self._valeur(TAUX_FONDS_GARANTIE), 'due': 0, 'ecrite': 0,
+                        'ajoute': 0}
+            if d['etat'] == PERIODE_VERROUILLEE:
+                raise FondsGarantieRefuse(f'{mois:%m/%Y} est clôturé : sa dotation ne change plus.')
+            # The rule of the database view, checked again in Python (same rounding)
+            manque = dotation_due(d['assiette'], d['taux']) - d['ecrite']
+            if manque <= 0:
+                return {**d, 'ajoute': 0}
+            rang = self.fonds.nb_lignes_dotation(mois) + 1
+            ligne = Ligne(nature=NATURE_DOTATION_GARANTIE, offre=OFFRE_PAR_DEFAUT, montant=manque, sens=SORTIE,
+                          compte_argent=COMPTE_FONDS_GARANTIE, piece_reference=f'DOT-{mois:%Y-%m}',
+                          externe_reference=f'{PREFIXE_DOTATION}{mois:%Y-%m}:{rang}', date_evenement=_fin_du_mois(mois),
+                          motif=f'Dotation de {mois:%m/%Y} au fonds de garantie : {_pourcent(d["taux"])} % du '
+                                f'revenu net ({d["assiette"]} F CFA)',
+                          metadonnees={'assiette': d['assiette'], 'taux': _pourcent(d['taux'])})
+            self.grand_livre.enregistrer([ligne], origine='fonds_garantie', par_id=par_id)
+            self.journal.fonds_garantie('dotation', par_id, {'mois': f'{mois:%Y-%m}', 'montant': manque,
+                                                             'assiette': d['assiette'], 'taux': _pourcent(d['taux'])})
+            if self.etat()['sous_cible']:
+                self.alertes.fonds_sous_cible()
+        return {**d, 'ecrite': d['ecrite'] + manque, 'ajoute': manque}
+
+    def doter_mois_termines(self, *, par_id: uuid.UUID | None = None) -> list[dict]:
+        """Every finished month still open whose allocation is short (the worker, each night; the button)."""
+        courant = self.clock.now().date().replace(day=1)
+        faites = []
+        for d in sorted(self.fonds.dotations(), key=lambda x: x['mois']):
+            if d['mois'] < courant and d['etat'] != PERIODE_VERROUILLEE and d['ecrite'] < d['due']:
+                faites.append(self.doter(d['mois'], par_id=par_id))
+        return faites
+
+    # --- Losses covered by the fund ------------------------------------------------------------------------------
+
+    def imputer(self, depense_id, *, montant: int, decision_reference: str, motif: str,
+                par_id: uuid.UUID | None) -> Sinistre:
+        """The fund covers a loss Kwa-Ba paid under its guarantee: a written D04 expense, the reference of the
+        decision that granted it, at most the expense and the fund's balance."""
+        decision_reference, motif = _texte(decision_reference, 120), _texte(motif, 1000)
+        if type(montant) is not int or montant <= 0:
+            raise FondsGarantieRefuse('Le montant doit être un nombre entier positif de francs CFA.')
+        if len(decision_reference) < 3:
+            raise FondsGarantieRefuse('Indiquez la référence de la décision qui accorde la garantie.')
+        if len(motif) < 10:
+            raise FondsGarantieRefuse('Expliquez le sinistre (10 caractères au moins) : il reste au grand livre.')
+        with self.tx.atomic():
+            self.fonds.serialiser()
+            d = self.depenses.lire(depense_id, verrou=True)
+            if d is None or d.statut != DEPENSE_ECRITE:
+                raise FondsGarantieRefuse('Choisissez une dépense écrite au grand livre.')
+            if d.nature != NATURE_SINISTRE:
+                raise FondsGarantieRefuse(f'Seule une dépense {NATURE_SINISTRE} (litige pris en charge par la Garantie '
+                                          'Kwa-Ba) se couvre par le fonds.')
+            if self.depenses.couverte_par_le_fonds(d.id):
+                raise FondsGarantieRefuse(f'{d.numero} est déjà couverte par le fonds.')
+            if montant > d.montant:
+                raise FondsGarantieRefuse(f'Le fonds couvre au plus la dépense ({d.montant} F CFA).')
+            solde = self.fonds.solde()
+            if montant > solde:
+                raise FondsGarantieRefuse(f'Le fonds de garantie ne couvre que {solde} F CFA aujourd\'hui.')
+            s = self.fonds.creer(Sinistre(id=uuid.uuid4(), depense_id=d.id, montant=montant,
+                                          decision_reference=decision_reference, motif=motif, statut=SINISTRE_IMPUTE,
+                                          impute_par_id=par_id, impute_le=self.clock.now()))
+            ligne = Ligne(nature=NATURE_UTILISATION_GARANTIE, offre=d.offre, montant=montant, sens=ENTREE,
+                          compte_argent=COMPTE_FONDS_GARANTIE, piece_reference=d.numero,
+                          externe_reference=f'garantie:sinistre:{s.id}', motif=f'{d.numero} · décision '
+                          f'{decision_reference} : {motif}', metadonnees={'decision': decision_reference})
+            ids = self.grand_livre.enregistrer([ligne], origine='fonds_garantie', par_id=par_id)
+            s = replace(s, mouvement_id=ids[0])
+            self.fonds.enregistrer(s)
+            self.journal.fonds_garantie('sinistre_impute', par_id, {
+                'objet': f'sinistre:{s.id}', 'numero': d.numero, 'montant': montant, 'decision': decision_reference,
+                'motif': motif})
+            if self.etat()['sous_cible']:
+                self.alertes.fonds_sous_cible()
+        return s
+
+    def annuler_sinistre(self, sinistre_id, *, motif: str, par_id: uuid.UUID | None) -> Sinistre:
+        """The use of the fund is cancelled by its inverse line (wrong expense or amount); it stays visible."""
+        motif = _texte(motif, 500)
+        if len(motif) < 5:
+            raise FondsGarantieRefuse("Indiquez le motif de l'annulation (5 caractères au moins).")
+        with self.tx.atomic():
+            self.fonds.serialiser()
+            s = self.fonds.lire(sinistre_id, verrou=True)
+            if s is None or s.statut != SINISTRE_IMPUTE:
+                raise FondsGarantieRefuse('Imputation introuvable ou déjà annulée.')
+            self.grand_livre.contre_passer(s.mouvement_id, motif=f'Annulation de l\'imputation au fonds : {motif}',
+                                           origine='fonds_garantie', par_id=par_id)
+            s = replace(s, statut=SINISTRE_ANNULE, annule_le=self.clock.now(), motif_annulation=motif)
+            self.fonds.enregistrer(s)
+            self.journal.fonds_garantie('sinistre_annule', par_id, {'objet': f'sinistre:{s.id}',
+                                                                    'montant': s.montant, 'motif': motif})
+        return s
+
+    def sinistres(self, limite: int = 200) -> list[Sinistre]:
+        return self.fonds.sinistres(max(1, min(limite, 500)))

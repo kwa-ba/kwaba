@@ -46,8 +46,12 @@ VOYAGEURS = 15
 CREATIONS_PAR_VOYAGEUR = 19
 # Expenses of the demo (GL-15): suppliers, associates marked « démo », and a month of charges each with its evidence
 FOURNISSEURS_DEMO = ['OVH (démo)', 'Meta Ads (démo)', 'Twilio WhatsApp (démo)', 'Cabinet comptable (démo)',
-                     'Imprimerie du Golfe (démo)']
+                     'Imprimerie du Golfe (démo)', 'Vitrerie de Lomé (démo)']
 ASSOCIES_DEMO = ['Associé démo A', 'Associé démo B', 'Associé démo C']
+# Their parts of the 500 000 F share capital (GL-16), set only while no associate has a part yet
+CAPITAL_DEMO = [200_000, 150_000, 150_000]
+# A loss of last month that the guarantee fund covers (GL-17): a D04 expense, then its cover with the decision
+SINISTRE_DEMO = ('Remplacement d\'une vitre cassée chez un hôte', 15_000)
 # (nature, supplier, label, amount): every month; the 50 000 F and more wait for a second person
 DEPENSES_DU_MOIS = [('D10', 0, 'Hébergement du site et domaine', 18_500), ('D03', 1, 'Publicité en ligne', 45_000),
                     ('D11', 2, 'Messages WhatsApp et SMS', 12_300), ('D15', 3, 'Tenue de la comptabilité', 60_000),
@@ -113,7 +117,8 @@ class Command(BaseCommand):
             aujourdhui = timezone.localdate()
             rang = aujourdhui.year * 12 + aujourdhui.month - 1 - max(mois - 1, 0)
             nombre = self._depenses(date(rang // 12, rang % 12 + 1, 1), aujourdhui, aleatoire)
-            self.stdout.write(self.style.SUCCESS(f'{nombre} dépenses de démonstration saisies.'))
+            fonds = self._associes_et_fonds(aujourdhui)
+            self.stdout.write(self.style.SUCCESS(f'{nombre} dépenses de démonstration saisies. {fonds}'))
             return
         # Same password as the other demo accounts (seed_demo)
         mot_de_passe = os.getenv('DEMO_HOST_PASSWORD', 'Kwa-Ba2026!')
@@ -218,6 +223,7 @@ class Command(BaseCommand):
             jour += timedelta(days=1)
 
         stats['depenses'] = self._depenses(premier, aujourdhui, aleatoire)
+        stats['fonds'] = self._associes_et_fonds(aujourdhui)
         stats['lignes_grand_livre'] = finance.mouvements(finance.FiltresMouvements(), 1, 1)['total'] - avant['lignes']
         stats['versements_envoyes'] = VersementModel.objects.filter(payout_id__startswith='demo-', statut='envoye').count()
         stats['remboursements_envoyes'] = RemboursementModel.objects.filter(payout_id__startswith='demo-',
@@ -227,7 +233,7 @@ class Command(BaseCommand):
             f"prises), {stats['payees']} payées, {stats['annulees']} annulées, {stats['versements_envoyes']} versements "
             f"et {stats['remboursements_envoyes']} remboursements envoyés au total, "
             f"{stats['lignes_grand_livre']} lignes ajoutées au grand livre, {stats['jours_rapproches']} journées "
-            f"rapprochées avec FedaPay, {stats['depenses']} dépenses saisies."))
+            f"rapprochées avec FedaPay, {stats['depenses']} dépenses saisies. {stats['fonds']}"))
         if stats['jours_en_ecart']:
             self.stdout.write(self.style.WARNING('Journées en écart : ' + ' ; '.join(stats['jours_en_ecart'][:20])))
 
@@ -255,6 +261,37 @@ class Command(BaseCommand):
                 saisies += 1
             mois = (mois + timedelta(days=32)).replace(day=1)
         return saisies
+
+    @staticmethod
+    def _associes_et_fonds(aujourdhui: date) -> str:
+        """The demo associates' parts of the capital, the allocations of the finished months to the guarantee fund,
+        and a loss of last month it covers (GL-16, GL-17). Says what it did."""
+        associes = {a['nom']: a for a in finance.associes()}
+        if not any(a['capital_souscrit'] for a in associes.values()):
+            for nom, part in zip(ASSOCIES_DEMO, CAPITAL_DEMO):
+                if nom in associes:
+                    finance.enregistrer_associe(associe_id=associes[nom]['id'], capital_souscrit=part)
+        dotations = finance.doter_fonds_garantie()
+        fournisseur = next(f for f in finance.fournisseurs() if f['nom'] == FOURNISSEURS_DEMO[-1])
+        libelle, montant = SINISTRE_DEMO
+        jour = aujourdhui.replace(day=1) - timedelta(days=3)
+        couvert = 0
+        try:
+            with transaction.atomic():
+                d = finance.saisir_depense(
+                    date_depense=jour, nature='D04', montant=montant, libelle=f'{libelle} ({jour:%m/%Y})',
+                    fournisseur_id=fournisseur['id'], associe_id=associes[ASSOCIES_DEMO[0]]['id'],
+                    reference_facture=f'DEMO-{jour:%Y%m}-VITRE')
+                documents.ajouter_justificatifs('depense', d['id'], [SimpleUploadedFile(
+                    f'facture-{d["numero"]}.pdf', PDF_DEMO, content_type='application/pdf')])
+            couvert = min(montant, finance.fonds_garantie()['solde'])
+            if couvert:
+                finance.imputer_sinistre(d['id'], montant=couvert, decision_reference=f'DEC-DEMO-{jour:%Y%m}',
+                                         motif='Garantie Kwa-Ba accordée par les associés (démonstration)', par_id=None)
+        except (finance.DepenseRefusee, finance.MouvementRefuse, finance.FondsGarantieRefuse) as refus:
+            return f'Sinistre de démonstration non saisi : {refus}'
+        return (f"Fonds de garantie : {sum(x['ajoute'] for x in dotations)} F dotés sur {len(dotations)} mois, "
+                f"{couvert} F couverts pour un sinistre, solde {finance.fonds_garantie()['solde']} F.")
 
     @staticmethod
     def _moment(jour: date, heure: time) -> datetime:

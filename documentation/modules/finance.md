@@ -48,19 +48,21 @@ Une seule rubrique **Finance** dans le menu (GL-1, section de droits « finances
 | Grand-livre par compte | GL-4 | un compte général, ou un tiers (compte auxiliaire), avec son solde progressif, d'ouverture et de clôture | `comptes/`, `comptes/<compte>/auxiliaires/`, `grand-livre-compte/` |
 | Balance générale | GL-5 | par compte : solde d'ouverture, débits, crédits, solde de clôture ; totaux et équilibre | `balance/` |
 | Rapprochement FedaPay | GL-12 | chaque journée terminée sur trois colonnes (Kwa-Ba, grand livre, FedaPay net et frais réels), verte, rouge ou non importée ; détail opération par opération ; importer ou réimporter une journée ou le mois ; régulariser un écart avec pièces | `rapprochement/?mois=`, `rapprochement/<AAAA-MM-JJ>/`, `rapprochement/<jour>/regulariser/` ; import : `paiements/rapprochement/importer/` (module `paiements`) |
+| Comptes des associés | GL-16 | ce que Kwa-Ba doit à chaque associé (avancé, remboursé, solde), son relevé avec le solde après chaque ligne, le capital social et la part de chacun (modifiable) | `associes/comptes/`, `associes/<id>/releve/`, `associes/<id>/` |
+| Fonds de garantie | GL-17 | solde, cible et alerte, poches de la trésorerie (dû aux partenaires, aux voyageurs, cautions, fonds, trésorerie libre), dotation de chaque mois, sinistres couverts et leur annulation | `fonds-garantie/`, `fonds-garantie/doter/`, `fonds-garantie/sinistres/`, `fonds-garantie/sinistres/<id>/annuler/` |
 | Dépenses | GL-15 | les charges de Kwa-Ba avec leur justificatif : liste filtrée (période, nature, statut) et total écrit, saisie (date, nature D, offre, montant TTC, fournisseur, associé qui a avancé, n° de facture, pièces), annulation motivée ; onglets Fournisseurs et Associés | `depenses/`, `depenses/<id>/annuler/`, `fournisseurs/`, `associes/` |
 | Encaissements et versements | (AN-B2) | page Finances d'origine (module `paiements`) : période, rapprochement jour par jour, versements, exports CSV et PDF | `paiements/finances/` |
 | Remboursements | GL-9 | rembourser un séjour payé depuis ses montants figés (conditions du voyageur, ou intégral par Kwa-Ba) ; suivre chaque remboursement, saisir le compte Mobile Money, relancer, enregistrer un remboursement fait à la main (carte) | `paiements/finances/remboursements/` (module `paiements`) |
 | Validations | GL-10 | les opérations à partir du seuil qui attendent une deuxième personne ; approuver ou refuser (motif) | `validations/`, `validations/<id>/approuver|refuser/` |
 | Rapports | GL-19 | les rapports enregistrés, un rapport libre sur un ou deux axes, l'enregistrement d'un nouveau rapport (une ligne de `finance_rapport`) ; export CSV | `rapports/`, `rapports/resultat/`, `rapports/export/` |
-| Clôture mensuelle | GL-7 | les six contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
+| Clôture mensuelle | GL-7 | les neuf contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
 | Export comptable | GL-6 | le fichier des écritures (CSV `;`, UTF-8 avec BOM) pour le cabinet | `export/ecritures/` |
 
 Règles :
 
 - **Périodes** : `?debut=&fin=` (AAAA-MM-JJ, bornes comprises), ce mois-ci par défaut, un an au plus. **Listes** : `page`, `page_size` (20 par défaut, 100 au plus), réponse `{results, count, page, page_size}` comme le reste du back-office.
 - **Comptes de résultat** (classes 6, 7, 8) : leur solde repart de zéro au 1er janvier (exercice civil) ; les comptes de bilan (1 à 5) reprennent leur solde depuis la première écriture. En attendant les écritures d'à-nouveaux (GL-23), c'est la balance et le grand-livre par compte qui l'appliquent.
-- **Clôture** : un mois se clôture une fois terminé, dans l'ordre (le plus ancien mois ouvert d'abord), quand les six contrôles de `finance_peut_on_cloturer` sont verts, par un **super administrateur** (décision du 18 novembre 2026), qui saisit le mois (« 10/2026 ») pour confirmer. Les clôtures simultanées s'attendent (verrou consultatif). Un mois verrouillé ne reçoit plus aucune écriture et **ne se rouvre jamais** : la base refuse toute modification ou suppression d'un mois verrouillé (trigger de la migration `0007`). Journal : `periode_cloturee`.
+- **Clôture** : un mois se clôture une fois terminé, dans l'ordre (le plus ancien mois ouvert d'abord), quand les neuf contrôles de `finance_peut_on_cloturer` sont verts (la clôture écrit d'abord la dotation du mois au fonds de garantie, GL-17), par un **super administrateur** (décision du 18 novembre 2026), qui saisit le mois (« 10/2026 ») pour confirmer. Les clôtures simultanées s'attendent (verrou consultatif). Un mois verrouillé ne reçoit plus aucune écriture et **ne se rouvre jamais** : la base refuse toute modification ou suppression d'un mois verrouillé (trigger de la migration `0007`). Journal : `periode_cloturee`.
 - **Exports** : écritures et rapports en CSV, cellules protégées contre l'injection de formules ; chaque export va au journal (`finances_exportees`, format `ecritures` ou `rapport`).
 - **Rapports** : code de 3 à 40 caractères (minuscules, chiffres, `_`), titre de 3 à 120, axes de `finance_axe`, filtres de familles et d'offres en codes ; un axe inconnu est refusé par la base. Journal : `rapport_cree`.
 - **Rapprochement** : le contrôle 4 de la clôture exige chaque journée du mois rapprochée (état `fait`, écart nul). Une journée jamais importée reste « non importée », jamais un écart nul (FIN-02.7). Voir la section suivante.
@@ -92,6 +94,26 @@ Décisions du 19 novembre 2026 : aujourd'hui, **chaque dépense est avancée par
 - **Journal** : `depense_saisie`, `depense_ecrite`, `depense_annulee`, `fournisseur_enregistre`, `associe_enregistre`.
 - **Limites** : montants TTC (TVA non suivie, natures I inactives) ; le remboursement des avances aux associés et leurs comptes courants viennent avec GL-16 ; une dépense payée par la banque, FedaPay ou en espèces n'est pas encore ouverte. Quand le compte bancaire sera activé, la clôture exigera chaque fin de mois le solde du relevé bancaire, saisi avec le relevé en pièce jointe, jusqu'à l'import du relevé (GL-22).
 - **Préprod** : `seed_finance_demo` saisit cinq dépenses par mois (fournisseurs et associés « démo », un PDF chacune) ; `--depenses-seulement` ajoute les dépenses sans nouvelles réservations (`scripts/maintenance.sh seed-finance --depenses-seulement`).
+
+## Comptes courants d'associés (GL-16)
+
+Décisions du 19 novembre 2026 : **pas de plafond** sur les dépenses d'un associé (au-delà de 50 000 F, c'est la double validation de GL-15) ; **pas encore de remboursement** des avances (il viendra avec le compte bancaire) ; le **capital** (500 000 F) est affiché avec la part de chaque associé, son écriture d'ouverture sera passée avec l'expert-comptable.
+
+- **Solde** (`ComptesCourantsService`, lu au grand livre) : par associé, ses lignes de tiers `associe` en F02 (avance en compte courant), F03 (dépense avancée, GL-15) et F04 (remboursement) ; avancé = F02 + F03, remboursé = F04, solde = ce que Kwa-Ba lui doit (compte 462, sous-compte `ASSOCIE-<id>`). Le relevé donne chaque ligne, lignes inverses comprises, avec le solde après elle.
+- **Jamais débiteur** (statuts, art. 19) : `GrandLivreService` refuse toute ligne, écrite ou inverse, qui rendrait un compte courant débiteur (un remboursement au-delà du solde, l'annulation d'une dépense déjà remboursée), avec un verrou consultatif par associé. Invariant **I15** et contrôle **8** de la clôture.
+- **Capital** : `finance_associe.capital_souscrit` (migration `0013`) ; les parts des associés actifs ne dépassent jamais `capital_social`. Une modification (PATCH) ne change que les champs envoyés.
+
+## Fonds de garantie (GL-17)
+
+Décisions des 18 et 19 novembre 2026 : dotation de **10 % du revenu net du mois** (famille R : frais de service et commissions, moins les remises) ; le fonds est distinct de la caution du voyageur.
+
+- **Traitement comptable** (proposition à confirmer par l'expert-comptable, doc 26) : une **provision pour garanties données aux clients**. Dotation G01 au **6911**, fonds au **192** (compte d'argent `GARANTIE`, type `provision`), reprise G02 au **7911** quand il couvre un sinistre. Le changement de compte des natures G est dans `finance_correspondance_histo`. Le fonds n'a pas de relevé : il est exclu du rapprochement (I5, contrôle 4).
+- **Dotation** (`FondsGarantieService.doter`) : pour un mois terminé et ouvert, la vue `finance_dotation_garantie` donne l'assiette, le taux (`fonds_garantie_taux`), la dotation due (arrondie au franc) et celle déjà écrite ; le service écrit ce qui manque, une ligne G01 datée du dernier jour du mois, pièce `DOT-AAAA-MM`, référence `garantie:dotation:AAAA-MM:<n>`. Jamais moins : un mois dont le revenu baisse après coup garde sa dotation (prudence). Elle est écrite **chaque nuit** (worker, une fois par heure au plus), **à la clôture** (avant ses contrôles) ou par le bouton. Contrôle **7** de la clôture : dotation du mois écrite.
+- **Sinistre** : il est d'abord saisi comme une dépense **D04** (« Litige pris en charge par la Garantie Kwa-Ba ») avec sa facture (GL-15) ; le fonds le couvre ensuite (`imputer`), avec la **référence de la décision** et le récit, au plus la dépense et le solde du fonds : ligne G02 sur `GARANTIE`, pièce = n° de la dépense (`finance_sinistre`). Une dépense couverte ne s'annule pas avant l'annulation de sa couverture (ligne inverse). Invariant **I16** et contrôle **9** : le fonds n'est jamais négatif.
+- **Trésorerie libre** : l'argent des comptes réels moins ce qui est dû aux partenaires et aux voyageurs, les cautions détenues et le fonds.
+- **Cible** : `fonds_garantie_cible` (0 tant que les associés ne l'ont pas fixée : pas d'alerte). En dessous, après une dotation ou un sinistre, l'équipe finance reçoit un email, sans montant.
+- **Journal** : `fonds_garantie_dotation`, `fonds_garantie_sinistre_impute`, `fonds_garantie_sinistre_annule`.
+- **Préprod** : `seed_finance_demo` donne leurs parts aux associés démo (200 000, 150 000, 150 000 F, seulement si personne n'a de part), écrit les dotations et un sinistre D04 du mois dernier couvert par le fonds.
 
 ## Lot UI-A : avoirs, remboursements, rôle Finance, double validation
 
@@ -190,8 +212,10 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 
 | Fonction | Contenu |
 | --- | --- |
-| `controle_invariants()` | I5, I8 à I13, et I14 (modules ouverts : offres et natures actives) : nombre d'anomalies, 0 = respecté |
-| `peut_on_cloturer(mois)` | les six contrôles, OK ou REFUSE, et quoi faire |
+| `controle_invariants()` | I5, I8 à I13, I15 (comptes courants jamais débiteurs), I16 (fonds de garantie jamais négatif) et I14 (modules ouverts : offres et natures actives) : nombre d'anomalies, 0 = respecté |
+| `peut_on_cloturer(mois)` | les neuf contrôles, OK ou REFUSE, et quoi faire |
+| `comptes_courants()`, `releve_compte_courant(id)` | ce que Kwa-Ba doit à chaque associé, et son relevé (GL-16) |
+| `fonds_garantie()`, `dotations_fonds_garantie()`, `doter_fonds_garantie(mois)`, `imputer_sinistre(…)`, `annuler_sinistre(…)` | le fonds de garantie (GL-17) |
 | `synthese(debut, fin, axe1, axe2, familles, offres)`, `rapport(code, debut, fin)` | le moteur unique des rapports ; un rapport de plus est une ligne de `finance_rapport` |
 | `du_aux_partenaires()`, `cautions_detenues()`, `soldes_comptes_argent()` | les trois soldes, jamais mélangés |
 | `balance_generale(mois)`, `ecritures(mois)`, `controle_equilibre()`, `marge_par_offre(mois)` | partie double et pilotage |
@@ -212,12 +236,12 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 | FIN-03 ventilation figée au paiement | Séjours : fait (FIN-03.1, 03.3, 03.5 ; les montants figés à la réservation tiennent lieu d'instantané, FA-11). Écran du détail d'une réservation (FIN-03.4) : à venir |
 | FIN-04 sommes dues aux partenaires | Vue faite. Écran, échéances, alertes, gel des versements : lot F2 |
 | FIN-05 registre des cautions | Fait pour la location : registre `finance_caution`, écran, alertes de retard, reçus REC et avis RET avec pièces (GL-13, GL-14). Séjours : projet séparé. Lignes C du grand livre : avec FIN-03 des locations |
-| FIN-06 fonds de garantie | Taux à 0 ; natures G sans compte (bloquent la clôture, I12) : lot F4, après l'expert-comptable |
+| FIN-06 fonds de garantie | Fait (GL-17) : dotation mensuelle de 10 % du revenu net (nuit, clôture, bouton), sinistres couverts avec la référence de la décision, solde séparé de la trésorerie libre, alerte sous la cible (cible à fixer). Comptes 6911 / 192 / 7911 proposés, à confirmer par l'expert-comptable |
 | FIN-07 livres comptables et export | Fait : vues (partie double, livre-journal, grand-livre, balance, contrôles), écrans Livre-journal, Grand-livre par compte, Balance générale et fichier CSV des écritures (GL-3 à GL-6). À-nouveaux et livre d'inventaire : GL-23 |
 | FIN-08 clôture mensuelle | Fait : refus en base dans un mois verrouillé, `peut_on_cloturer`, écran et verrouillage par un super admin, dans l'ordre, définitif en base (GL-7). Contrôle « toute facture annulée a son avoir » : avec GL-8 |
 | FIN-09 facturation | Factures (module `documents`) ; avoirs AVO sur toute vente remboursée (GL-8). Documents de caution REC/RET : GL-14 |
 | FIN-10 tarifs complets et historique | Paramètres chargés ; page Tarifs : avec FIN-16 |
-| FIN-11 dépenses, comptes courants | Dépenses (FIN-11.1) : faites (GL-15), avancées par un associé, justificatif obligatoire, double validation à partir de 50 000 F. Comptes courants d'associés et remboursement des avances : GL-16 |
+| FIN-11 dépenses, comptes courants | Dépenses (FIN-11.1) : faites (GL-15), avancées par un associé, justificatif obligatoire, double validation à partir de 50 000 F. Comptes courants d'associés (FIN-11.2 à 11.4) : faits (GL-16), soldes et relevés, jamais débiteurs, capital et parts. Remboursement des avances : avec le compte bancaire |
 | FIN-12 tableau de bord | Synthèse : marge par offre, taux de frais réel, fonds de garantie du mois. Tableau de bord DAF complet (quatre poches, seuils, scénario prudent) : GL-18 |
 | FIN-13 rôle Finance, double validation, journal | Fait : rôle Finance en lecture seule, permission « Opérations financières », double validation à partir de 250 000 F des remboursements et des versements, garantie en base, journal (GL-10) |
 | FIN-16 référentiel unique des paramètres | Table et 95 valeurs (53 actives). Lecture par le site à la place de `ReglagesTarifsModel`, ajout par l'interface, historique écrit : PR dédiée |
@@ -265,26 +289,30 @@ Le fichier a été traduit dans notre architecture : modèles Django et migratio
 - La rubrique Finance regroupe toutes les pages d'argent et de comptabilité du back-office (GL-1) ; livraison par lots : d'abord les livres (GL-2 à GL-7, GL-19), puis les écritures du lot UI-A (GL-8 avoirs, GL-9 remboursements, GL-10 rôle Finance, GL-14 documents de caution), puis le reste.
 - Clôture d'un mois : super administrateurs seulement.
 - Lot UI-A : seuil de double validation **250 000 F** (H-4), appliqué aux remboursements décidés au back-office **et** aux versements automatiques aux hôtes ; avoir d'un remboursement partiel = le montant remboursé ; rôle Finance = admin en lecture seule, opérations d'argent sous la permission « Opérations financières ».
-- Fonds de garantie : **10 %** (au lieu de 5 ou 7 % ; d'abord fixé à 8 %, corrigé le même jour). Il est distinct de la caution du voyageur, qui garde sa règle propre. Capital social : **500 000 F CFA**. Ils entreront dans `finance_parametre`, avec leur historique, avec GL-17 et GL-16 (le fonds reste à zéro tant que ses natures G n'ont pas de compte SYSCOHADA, sinon il bloquerait la clôture).
+- Fonds de garantie : **10 %** (au lieu de 5 ou 7 % ; d'abord fixé à 8 %, corrigé le même jour). Il est distinct de la caution du voyageur, qui garde sa règle propre. Capital social : **500 000 F CFA**. Ils entreront dans `finance_parametre`, avec leur historique, avec GL-17 et GL-16 (fait le 19 novembre : voir GL-16 et GL-17).
 - Données de test de la préprod : par les vrais parcours (réservation, paiement, arrivée, annulation, versement), comptes `*.demo@`. Le grand livre étant en ajout seul, elles y restent : la base de production est distincte.
 
 ## Décisions prises le 2026-11-19
 
 - Frais FedaPay (H-2) : à la charge de Kwa-Ba, une ligne D01 par transaction au montant réel du relevé.
 - Dépenses (GL-15) : avancées par un associé (compte courant 462) ; double validation à partir de 50 000 F ; annuaire léger des fournisseurs ; liste des associés au back-office. Compte bancaire, quand il sera activé : solde du relevé de fin de mois exigé à la clôture jusqu'à GL-22.
+- Comptes courants (GL-16) : pas de plafond sur les dépenses (au-delà de 50 000 F, la double validation suffit) ; remboursements des avances pas encore ouverts (avec le compte bancaire) ; capital affiché avec la part de chaque associé, écriture d'ouverture avec l'expert-comptable.
+- Fonds de garantie (GL-17) : 10 % du revenu net de chaque mois terminé.
 - Rapprochement : API FedaPay chaque nuit et bouton « Réimporter » ; argent hors grand livre montré à part, hors écart ; écart inexpliqué fermé par une écriture de régularisation (motif, pièce, double validation à partir de 250 000 F, journal).
 
 ## Paramètres à zéro, en attente de décision
 
-`fonds_garantie_taux` (10 % décidé, voir ci-dessus), `double_validation_seuil` (250 000 F décidé, appliqué au lot UI-A), `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
+`fonds_garantie_cible` (à fixer : l'alerte sous la cible reste inerte), `fonds_garantie_taux` (10 % décidé, appliqué par GL-17), `double_validation_seuil` (250 000 F décidé, appliqué au lot UI-A), `garantie_renforcee_beneficiaire`, `prime_verification`, `experience_commission`, `experience_apporteur_hote`, `caution_evasion_plafond`, `caution_evasion_nuits`, `pack_remise_max`. Une valeur à zéro rend la règle inerte : le module tourne, mais ne produit aucun montant pour elle.
 
-Les natures G01 et G02 (fonds de garantie) n'ont pas de compte SYSCOHADA : une ligne G apparaîtrait dans `finance_ecritures_sans_compte` et bloquerait la clôture (I12). C'est voulu, jusqu'à l'avis de l'expert-comptable.
+Les natures G01 et G02 (fonds de garantie) ont reçu le 19 novembre 2026 les comptes 6911 et 7911 (migration `0013`, historique dans `finance_correspondance_histo`) : une proposition, à confirmer par l'expert-comptable. Jusque-là, une ligne G aurait bloqué la clôture (I12).
 
 ## Tests
 
 - `server/tests/unit/finance/` : règles du domaine et cas d'usage avec des adaptateurs factices, sans base ; `test_livres.py` : pagination, périodes, comptes de résultat, clôture (mois en cours, ordre, contrôles), rapports.
 - `server/tests/unit/finance/test_cautions.py` : caution reçue une fois, retenue motivée et bornée, solde cohérent avec son document et unique, retard signalé. `server/tests/integration/locations/test_locations.py` : registre au paiement, retenue refusée sans pièce ou avec un fichier non reconnu, avis RET joint au voyageur et au propriétaire, REC à l'annulation.
 - `server/tests/unit/finance/test_rapprochement.py` : une opération juge ses trois côtés (frais manquants nommés, inconnue d'un côté, montants différents, régularisée, hors grand livre) ; une journée n'est verte que si tout concorde et que les mouvements internes font zéro. `server/tests/integration/finance/test_rapprochement.py` : par le vrai parcours d'un séjour, journée payée verte une fois les frais écrits (une seule fois), journée jamais importée, aujourd'hui refusé, annulation et remboursement équilibrés, montants différents et transaction inconnue en rouge (clôture refusée), argent antérieur au grand livre à part, régularisation avec pièce qui ferme l'écart, régularisation au-dessus du seuil validée par une autre personne, écran et import du back-office, import de nuit une fois par jour.
+- `server/tests/integration/finance/test_associes_fonds.py` : solde et relevé d'un associé (dépense annulée comprise), compte courant jamais débiteur (remboursement au-delà du solde, annulation d'une avance remboursée), parts du capital bornées par le capital social, PATCH partiel qui garde les autres champs ; dotation de 10 % du revenu net (6911 au débit, 192 au crédit), écrite une fois, complétée par une ligne tardive du mois, refusée pour le mois en cours ou un mois clôturé, écrite par le worker une fois par heure, alerte sous la cible sans montant ; sinistre D04 couvert au plus du solde, une seule fois, dépense non annulable avant l'annulation de la couverture ; seule une D04 se couvre ; poches de la trésorerie ; permission exigée.
+- `server/tests/unit/finance/test_service.py` et `test_regles.py` : garde du compte courant (lot d'écritures, ligne inverse) et calcul de la dotation (arrondi au franc, rien sans revenu).
 - `server/tests/integration/finance/test_depenses.py` : dépense sous le seuil écrite (charge au nom du fournisseur, dû à l'associé, compte de passage à zéro, balance équilibrée, numérotation continue), refus sans justificatif ou avec un champ faux, permission, double validation à partir de 50 000 F, refus affiché, annulation par lignes inverses, filtres et total, annuaire, compte de passage hors rapprochement.
 - `server/tests/unit/finance/test_validations.py` : deux personnes différentes, deux accords quand le système demande, exécution par le dernier accord, échec enregistré, refus motivé, seuil à zéro inerte.
 - `server/tests/integration/finance/test_lot_ui_a.py` : par le vrai parcours d'un séjour, avoirs (annulation totale et partielle, facture émise après l'annulation, factures à régulariser), remboursement sous et au-dessus du seuil, contrainte en base, annulation depuis Réservations, refus, versement retenu puis accepté par deux personnes, compte en lecture seule.

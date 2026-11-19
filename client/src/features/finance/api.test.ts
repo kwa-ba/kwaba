@@ -149,3 +149,33 @@ describe("dépenses (GL-15)", () => {
     expect(api.post).toHaveBeenLastCalledWith(`${F}/associes/`, { nom: "Ama" });
   });
 });
+
+describe("comptes des associés et fonds de garantie (GL-16, GL-17)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post, api.patch]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit les comptes courants et le relevé d'un associé, et change sa part du capital", async () => {
+    await finance.lireComptesCourants();
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/associes/comptes/`);
+    await finance.lireReleveAssocie("a1");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/associes/a1/releve/`);
+    await finance.enregistrerAssocie({ id: "a1", nom: "Ama", capital_souscrit: 200000 });
+    expect(api.patch).toHaveBeenLastCalledWith(`${F}/associes/a1/`, { nom: "Ama", capital_souscrit: 200000 });
+  });
+
+  it("lit le fonds, écrit les dotations, couvre un sinistre et l'annule", async () => {
+    await finance.lireFondsGarantie();
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/fonds-garantie/`);
+    await finance.doterFondsGarantie();
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/fonds-garantie/doter/`, {});
+    await finance.doterFondsGarantie("2026-10-01");
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/fonds-garantie/doter/`, { mois: "2026-10" });
+    const sinistre = { depense: "d1", montant: 15000, decision_reference: "DEC-1", motif: "Vitre cassée chez un hôte" };
+    await finance.imputerSinistre(sinistre);
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/fonds-garantie/sinistres/`, sinistre);
+    await finance.annulerSinistre("s1", "Mauvaise dépense");
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/fonds-garantie/sinistres/s1/annuler/`, { motif: "Mauvaise dépense" });
+  });
+});

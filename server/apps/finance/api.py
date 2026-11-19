@@ -19,14 +19,15 @@ from apps.finance.application.registre import OPERATIONS, declarer
 from apps.finance.application.registre import declarer_operation as declarer_operation_registre
 from apps.finance.domain.entities import (ENTREE, SORTIE, Caution, Ecrivain, FiltresMouvements, Ligne, Operation,
                                           OperationExterne)
-from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, MouvementRefuse,
-                                            RapprochementRefuse,
-                                            RestitutionRefusee, ValidationRefusee)
+from apps.finance.application.service import VIDE
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, FondsGarantieRefuse,
+                                            MouvementRefuse, RapprochementRefuse, RestitutionRefusee,
+                                            ValidationRefusee)
 from apps.finance.domain.rules import mois_de
-from apps.finance.infrastructure.container import (cloture_service, depense_service, grand_livre_service,
-                                                   livres_service,
-                                                   rapport_service, rapprochement_service, restitution_service,
-                                                   validation_service, caution_service)
+from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service,
+                                                   depense_service, fonds_garantie_service, grand_livre_service,
+                                                   livres_service, rapport_service, rapprochement_service,
+                                                   restitution_service, validation_service)
 
 __all__ = [
     'ENTREE', 'SORTIE', 'Ligne', 'MouvementRefuse', 'RestitutionRefusee',
@@ -57,6 +58,11 @@ __all__ = [
     # Expenses, suppliers and associates (GL-15)
     'DepenseRefusee', 'saisir_depense', 'annuler_depense', 'depense', 'depenses', 'seuil_validation_depense',
     'fournisseurs', 'enregistrer_fournisseur', 'associes', 'enregistrer_associe',
+    # Associates' current accounts (GL-16)
+    'comptes_courants', 'releve_compte_courant',
+    # Guarantee fund (GL-17)
+    'FondsGarantieRefuse', 'fonds_garantie', 'dotations_fonds_garantie', 'doter_fonds_garantie',
+    'doter_fonds_garantie_si_du', 'imputer_sinistre', 'annuler_sinistre', 'sinistres',
 ]
 
 
@@ -448,21 +454,94 @@ def fournisseurs(actifs_seulement: bool = False) -> list[dict]:
             for f in depense_service().fournisseurs(actifs_seulement)]
 
 
-def enregistrer_fournisseur(*, nom: str, nif: str = '', contact: str = '', actif: bool = True, fournisseur_id=None,
-                            par_id: uuid.UUID | None = None) -> dict:
+def enregistrer_fournisseur(*, nom: str | None = None, nif: str | None = None, contact: str | None = None,
+                            actif: bool | None = None, fournisseur_id=None, par_id: uuid.UUID | None = None) -> dict:
+    """A new supplier, or a change of one (a field left to None keeps its value)."""
     f = depense_service().enregistrer_fournisseur(nom=nom, nif=nif, contact=contact, actif=actif,
                                                   fournisseur_id=fournisseur_id, par_id=par_id)
     return {'id': str(f.id), 'nom': f.nom, 'nif': f.nif, 'contact': f.contact, 'actif': f.actif}
 
 
-def associes(actifs_seulement: bool = False) -> list[dict]:
-    return [{'id': str(a.id), 'nom': a.nom, 'email': a.email, 'compte_id': str(a.compte_id) if a.compte_id else None,
-             'actif': a.actif} for a in depense_service().associes(actifs_seulement)]
-
-
-def enregistrer_associe(*, nom: str, email: str = '', compte_id=None, actif: bool = True, associe_id=None,
-                        par_id: uuid.UUID | None = None) -> dict:
-    a = depense_service().enregistrer_associe(nom=nom, email=email, compte_id=compte_id, actif=actif,
-                                              associe_id=associe_id, par_id=par_id)
+def _associe_simple(a) -> dict:
     return {'id': str(a.id), 'nom': a.nom, 'email': a.email, 'compte_id': str(a.compte_id) if a.compte_id else None,
-            'actif': a.actif}
+            'actif': a.actif, 'capital_souscrit': a.capital_souscrit}
+
+
+def associes(actifs_seulement: bool = False) -> list[dict]:
+    return [_associe_simple(a) for a in depense_service().associes(actifs_seulement)]
+
+
+def enregistrer_associe(*, nom: str | None = None, email: str | None = None, compte_id=VIDE, actif: bool | None = None,
+                        capital_souscrit: int | None = None, associe_id=None, par_id: uuid.UUID | None = None) -> dict:
+    """A new associate, or a change of one (a field not given keeps its value). Their parts of the capital never
+    exceed the share capital. Raises DepenseRefusee."""
+    return _associe_simple(depense_service().enregistrer_associe(
+        nom=nom, email=email, compte_id=compte_id, actif=actif, capital_souscrit=capital_souscrit,
+        associe_id=associe_id, par_id=par_id))
+
+
+# --- Associates' current accounts (GL-16) ----------------------------------------------------------------------------
+
+def comptes_courants() -> dict:
+    """{associes: [{...associate, avances, remboursements, solde}], totaux, capital_social, capital_souscrit}: what
+    Kwa-Ba owes each associate, from the ledger."""
+    r = comptes_courants_service().liste()
+    return {**r, 'associes': [{**_associe_simple(x.pop('associe')), **x} for x in r['associes']]}
+
+
+def releve_compte_courant(associe_id) -> dict:
+    """{associe, lignes: [{mouvement_id, date, piece, nature, nature_libelle, libelle, montant_signe, solde}],
+    solde}. Raises DepenseRefusee for an unknown associate."""
+    r = comptes_courants_service().releve(associe_id)
+    return {**r, 'associe': _associe_simple(r['associe'])}
+
+
+# --- Guarantee fund (GL-17) ------------------------------------------------------------------------------------------
+
+def _sinistre_simple(s) -> dict:
+    return {'id': str(s.id), 'depense_id': str(s.depense_id), 'montant': s.montant,
+            'decision_reference': s.decision_reference, 'motif': s.motif, 'statut': s.statut,
+            'impute_par_id': s.impute_par_id, 'impute_le': s.impute_le, 'mouvement_id': s.mouvement_id,
+            'annule_le': s.annule_le, 'motif_annulation': s.motif_annulation}
+
+
+def fonds_garantie() -> dict:
+    """{solde, cible, sous_cible, taux}: the fund today, kept apart from the free money."""
+    return fonds_garantie_service().etat()
+
+
+def dotations_fonds_garantie() -> list[dict]:
+    """Per month, newest first: {mois, assiette, taux, due, ecrite, etat, termine}."""
+    return fonds_garantie_service().dotations()
+
+
+def doter_fonds_garantie(mois: date | None = None, *, par_id: uuid.UUID | None = None) -> list[dict]:
+    """Writes what the allocation of a finished month lacks (every finished open month if `mois` is None). Raises
+    FondsGarantieRefuse or MouvementRefuse."""
+    service = fonds_garantie_service()
+    return service.doter_mois_termines(par_id=par_id) if mois is None else [service.doter(mois, par_id=par_id)]
+
+
+def doter_fonds_garantie_si_du() -> int:
+    """Worker: once an hour at most, the allocations of the finished months still short. Returns how many months
+    received a line."""
+    from django.core.cache import cache  # local import: only the worker paces itself
+
+    if not cache.add('finance:dotation_garantie', 1, timeout=3600):
+        return 0
+    return sum(1 for d in fonds_garantie_service().doter_mois_termines() if d['ajoute'])
+
+
+def imputer_sinistre(depense_id, *, montant: int, decision_reference: str, motif: str,
+                     par_id: uuid.UUID | None) -> dict:
+    """The fund covers a written D04 expense, with the reference of the decision. Raises FondsGarantieRefuse."""
+    return _sinistre_simple(fonds_garantie_service().imputer(
+        depense_id, montant=montant, decision_reference=decision_reference, motif=motif, par_id=par_id))
+
+
+def annuler_sinistre(sinistre_id, *, motif: str, par_id: uuid.UUID | None) -> dict:
+    return _sinistre_simple(fonds_garantie_service().annuler_sinistre(sinistre_id, motif=motif, par_id=par_id))
+
+
+def sinistres() -> list[dict]:
+    return [_sinistre_simple(s) for s in fonds_garantie_service().sinistres()]

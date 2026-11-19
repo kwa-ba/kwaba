@@ -48,6 +48,11 @@ def test_months_of_stays_go_through_the_real_flows_and_leave_sound_books():
     from apps.finance.models import DepenseModel
     assert DepenseModel.objects.filter(statut='ecrite').exists()
     assert DepenseModel.objects.filter(statut='en_attente', montant__gte=50_000).exists()
+    # The associates' parts of the capital, the allocations to the guarantee fund and a loss it covers (GL-16, GL-17)
+    from apps.finance.models import SinistreModel
+    assert sum(a['capital_souscrit'] for a in finance.associes()) == 500_000
+    assert MouvementModel.objects.filter(nature_id='G01', compte_argent_id='GARANTIE').exists()
+    assert SinistreModel.objects.filter(statut='impute').exists()
     anomalies = {i['invariant']: i['anomalies'] for i in finance.controle_invariants()}
     assert anomalies == {k: 0 for k in anomalies}
     aujourdhui = timezone.localdate()
@@ -66,6 +71,8 @@ def test_the_demo_expenses_alone_each_with_its_evidence():
 
     from apps.documents.models import JustificatifCautionModel
     from apps.finance.models import DepenseModel
-    assert DepenseModel.objects.count() == 5
-    assert JustificatifCautionModel.objects.filter(objet_type='depense').count() == 5
+    # Five expenses of the month, and the D04 loss of last month (no revenue yet: the fund has nothing to cover it)
+    assert DepenseModel.objects.count() == 6
+    assert JustificatifCautionModel.objects.filter(objet_type='depense').count() == 6
+    assert 'Fonds de garantie' in sortie.getvalue()
     assert not PaiementModel.objects.exists()
