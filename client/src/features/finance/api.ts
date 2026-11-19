@@ -330,3 +330,55 @@ export async function lireValidations(statut: string) {
 export async function deciderValidation(id: string, decision: "approuver" | "refuser", motif = "") {
   return (await api.post<ValidationFinance>(`${FINANCE}/validations/${id}/${decision}/`, decision === "refuser" ? { motif } : {})).data;
 }
+
+// --- Register of the deposits (GL-13, GL-14) -----------------------------------------------------------------------
+
+export type StatutCaution = "detenue" | "restituee" | "retenue";
+
+export interface CautionFinance {
+  objet_type: string;
+  objet_id: string;
+  reference: string;
+  offre: string;
+  voyageur: string;
+  montant: number;
+  recue_le: string;
+  date_limite: string;
+  statut: StatutCaution;
+  montant_retenu: number;
+  montant_rendu: number;
+  motif_retenue: string;
+  cgv_article: string;
+  decision_par: string;
+  decision_le: string | null;
+  soldee_le: string | null;
+  mode_restitution: string;
+  /** REC receipt or RET notice, once settled */
+  document_numero: string;
+  en_retard: boolean;
+}
+
+export interface Justificatif {
+  id: string;
+  nom: string;
+  taille: number;
+  ajoute_le: string;
+}
+
+export async function lireCautions(statut: string, retard: boolean) {
+  return (await api.get<{ cautions: CautionFinance[]; total_detenu: number; en_retard: number }>(
+    `${FINANCE}/cautions/${parametres({ statut, retard: retard ? "1" : "" })}`)).data;
+}
+
+/** PDF of a REC receipt or RET notice, by its number. */
+export function urlDocumentCaution(numero: string) {
+  return `/v1/admin/documents/cautions/${encodeURIComponent(numero)}/pdf/`;
+}
+
+export async function lireJustificatifs(objetType: string, objetId: string) {
+  return (await api.get<Justificatif[]>(`/v1/admin/documents/justificatifs/${parametres({ objet_type: objetType, objet_id: objetId })}`)).data;
+}
+
+export function urlJustificatif(id: string) {
+  return `/v1/admin/documents/justificatifs/${id}/`;
+}

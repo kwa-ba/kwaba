@@ -12,3 +12,8 @@ class ClotureRefusee(ValueError):
 
 class ValidationRefusee(ValueError):
     """A double validation that cannot go on (same person twice, already decided, unknown operation), in French."""
+
+
+class CautionRefusee(ValueError):
+    """A deposit operation the register refuses (more withheld than held, reason missing, already settled), in
+    French."""

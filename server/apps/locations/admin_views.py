@@ -3,7 +3,7 @@ from django.db import transaction
 from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -331,11 +331,14 @@ class LocationAttribuerView(APIView):
 class RetenueSerializer(serializers.Serializer):
     montant = serializers.IntegerField(min_value=0)
     motif = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    cgv_article = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
 
 
 class LocationCautionView(APIView):
-    """Amount withheld from the deposit (damage reported by the owner), before it is returned to the traveller; 0 cancels it."""
+    """Amount withheld from the deposit (damage reported by the owner), before it is returned to the traveller; 0 cancels it.
+    Multipart: montant, motif, cgv_article (14.3 by default) and the evidence files `justificatifs` (GL-14)."""
     permission_classes = [EstAdministrateur]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request, pk):
         loc = _locations().filter(pk=pk).first()
@@ -344,7 +347,8 @@ class LocationCautionView(APIView):
         donnees = RetenueSerializer(data=request.data)
         donnees.is_valid(raise_exception=True)
         try:
-            services.retenir_caution(loc, **donnees.validated_data)
+            services.retenir_caution(loc, **donnees.validated_data, par=request.user,
+                                     justificatifs=request.FILES.getlist('justificatifs'))
         except services.LocationErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         activity.record("backoffice_modification", request, actor=request.user, objet="location", id=str(loc.pk),

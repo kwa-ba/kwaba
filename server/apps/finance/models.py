@@ -1,5 +1,6 @@
 from apps.finance.infrastructure.persistence.models import (
     AxeModel,
+    CautionModel,
     CompteArgentModel,
     CorrespondanceHistoModel,
     FamilleModel,
@@ -17,6 +18,6 @@ from apps.finance.infrastructure.persistence.models import (
     ValidationModel,
 )
 
-__all__ = ['AxeModel', 'CompteArgentModel', 'CorrespondanceHistoModel', 'FamilleModel', 'MouvementModel',
+__all__ = ['AxeModel', 'CautionModel', 'CompteArgentModel', 'CorrespondanceHistoModel', 'FamilleModel', 'MouvementModel',
            'MoyenPaiementModel', 'NatureModel', 'OffreModel', 'ParametreHistoModel', 'ParametreModel', 'PeriodeModel',
            'RapportModel', 'RapprochementJourModel', 'ReleveExterneModel', 'TiersTypeModel', 'ValidationModel']

@@ -7,12 +7,15 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Iterable
 
-from apps.finance.application.ports import (Alertes, Clock, GrandLivre, Journal, Parametres, Periodes, Rapports,
-                                            Restitutions, TransactionManager, Validations)
-from apps.finance.domain.entities import (PERIODE_OUVERTE, PERIODE_VERROUILLEE, VALIDATION_ECHOUEE,
-                                          VALIDATION_EN_ATTENTE, VALIDATION_EXECUTEE, VALIDATION_REFUSEE, Ecriture,
-                                          Ecrivain, FiltresMouvements, Ligne, Operation, Page, Validation)
-from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse, RestitutionRefusee, ValidationRefusee
+from apps.finance.application.ports import (Alertes, Cautions, Clock, GrandLivre, Journal, Parametres, Periodes,
+                                            Rapports, Restitutions, TransactionManager, Validations)
+from apps.finance.domain.entities import (ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE,
+                                          PERIODE_OUVERTE,
+                                          PERIODE_VERROUILLEE, VALIDATION_ECHOUEE, VALIDATION_EN_ATTENTE,
+                                          VALIDATION_EXECUTEE, VALIDATION_REFUSEE, Caution, Ecriture, Ecrivain,
+                                          FiltresMouvements, Ligne, Operation, Page, Validation)
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RestitutionRefusee,
+                                            ValidationRefusee)
 from apps.finance.domain.rules import (debut_exercice, ecarts_des_modules_ouverts, est_compte_de_resultat, inverse,
                                       preparer, premier_du_mois)
 
@@ -477,3 +480,71 @@ class ValidationService:
         if v.statut != VALIDATION_EN_ATTENTE:
             raise ValidationRefusee('Cette demande a déjà été décidée.')
         return v
+
+
+# --- Register of the deposits (GL-13, FIN-05) ----------------------------------------------------------------------
+
+class CautionService:
+    """Every deposit held for a traveller, from its receipt to its settlement: the traveller's money, never Kwa-Ba's.
+    A deposit is settled once, with its document (receipt REC, or notice RET for a motivated withholding)."""
+
+    def __init__(self, *, cautions: Cautions, tx: TransactionManager, clock: Clock):
+        self.cautions = cautions
+        self.tx = tx
+        self.clock = clock
+
+    def enregistrer(self, caution: Caution) -> Caution:
+        """The deposit received (idempotent: the same object gives one entry)."""
+        if type(caution.montant) is not int or caution.montant <= 0:
+            raise CautionRefusee('Le montant de la caution doit être un nombre entier positif de francs CFA.')
+        with self.tx.atomic():
+            existante = self.cautions.lire(caution.objet_type, caution.objet_id, verrou=True)
+            return existante or self.cautions.creer(replace(caution, statut=ETAT_CAUTION_DETENUE))
+
+    def decider_retenue(self, objet_type: str, objet_id, *, montant: int, motif: str, cgv_article: str,
+                        par_id: uuid.UUID | None) -> Caution:
+        """Amount to withhold, decided before the settlement (0 cancels it). A withholding needs its reason and the
+        article of the terms of sale it relies on."""
+        motif, cgv_article = (motif or '').strip(), (cgv_article or '').strip()
+        with self.tx.atomic():
+            c = self._detenue(objet_type, objet_id)
+            if not 0 <= montant <= c.montant:
+                raise CautionRefusee(f'La retenue doit être comprise entre 0 et la caution ({c.montant} F CFA).')
+            if montant and (len(motif) < 5 or not cgv_article):
+                raise CautionRefusee("Une retenue exige son motif et l'article des conditions générales qui la fonde.")
+            c = replace(c, montant_retenu=montant, motif_retenue=motif if montant else '',
+                        cgv_article=cgv_article if montant else '', decision_par_id=par_id if montant else None,
+                        decision_le=self.clock.now() if montant else None)
+            self.cautions.enregistrer(c)
+        return c
+
+    def solder(self, objet_type: str, objet_id, *, rendu: int, mode: str, document_numero: str) -> Caution:
+        """The deposit settled: `rendu` given back, the rest withheld as decided; its document must exist."""
+        with self.tx.atomic():
+            c = self._detenue(objet_type, objet_id)
+            if rendu != c.montant - c.montant_retenu:
+                raise CautionRefusee(f'Rendu attendu : {c.montant - c.montant_retenu} F CFA (caution moins la retenue).')
+            if not document_numero:
+                raise CautionRefusee('Une caution ne se solde pas sans son document (reçu ou avis de retenue).')
+            c = replace(c, statut=ETAT_CAUTION_RETENUE if c.montant_retenu else ETAT_CAUTION_RESTITUEE, montant_rendu=rendu,
+                        soldee_le=self.clock.now(), mode_restitution=mode[:120], document_numero=document_numero)
+            self.cautions.enregistrer(c)
+        return c
+
+    def lire(self, objet_type: str, objet_id) -> Caution | None:
+        return self.cautions.lire(objet_type, str(objet_id))
+
+    def liste(self, statut: str | None = None, en_retard: bool = False, limite: int = 200) -> dict:
+        """The register, with the total held (third pocket: never free money) and the deposits past their date."""
+        maintenant = self.clock.now()
+        retard = self.cautions.liste(ETAT_CAUTION_DETENUE, maintenant, 500)
+        lignes = retard if en_retard else self.cautions.liste(statut, None, max(1, min(limite, 500)))
+        return {'cautions': lignes, 'total_detenu': self.cautions.total_detenu(), 'en_retard': len(retard)}
+
+    def _detenue(self, objet_type, objet_id) -> Caution:
+        c = self.cautions.lire(objet_type, str(objet_id), verrou=True)
+        if c is None:
+            raise CautionRefusee('Caution inconnue du registre.')
+        if c.statut != ETAT_CAUTION_DETENUE:
+            raise CautionRefusee('Cette caution est déjà soldée.')
+        return c

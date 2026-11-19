@@ -17,11 +17,13 @@ from collections.abc import Callable
 
 from apps.finance.application.registre import OPERATIONS, declarer
 from apps.finance.application.registre import declarer_operation as declarer_operation_registre
-from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, FiltresMouvements, Ligne, Operation
-from apps.finance.domain.exceptions import ClotureRefusee, MouvementRefuse, RestitutionRefusee, ValidationRefusee
+from apps.finance.domain.entities import ENTREE, SORTIE, Caution, Ecrivain, FiltresMouvements, Ligne, Operation
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RestitutionRefusee,
+                                            ValidationRefusee)
 from apps.finance.domain.rules import mois_de
 from apps.finance.infrastructure.container import (cloture_service, grand_livre_service, livres_service,
-                                                   rapport_service, restitution_service, validation_service)
+                                                   rapport_service, restitution_service, validation_service,
+                                                   caution_service)
 
 __all__ = [
     'ENTREE', 'SORTIE', 'Ligne', 'MouvementRefuse', 'RestitutionRefusee',
@@ -43,6 +45,8 @@ __all__ = [
     # Double validation (GL-10)
     'ValidationRefusee', 'declarer_operation', 'seuil_double_validation', 'validation_requise', 'demander_validation',
     'approuver_validation', 'refuser_validation', 'statut_validation', 'validations', 'libelle_operation',
+    # Register of the deposits (GL-13)
+    'CautionRefusee', 'enregistrer_caution', 'decider_retenue', 'solder_caution', 'caution', 'registre_cautions',
 ]
 
 
@@ -290,3 +294,46 @@ def validations(statut: str | None = None) -> list[dict]:
 def libelle_operation(code: str) -> str:
     operation = OPERATIONS.get(code)
     return operation.libelle if operation else code
+
+
+# --- Register of the deposits (GL-13) --------------------------------------------------------------------------------
+
+def _caution_simple(c) -> dict:
+    return {'objet_type': c.objet_type, 'objet_id': c.objet_id, 'reference': c.reference, 'offre': c.offre,
+            'voyageur_id': c.voyageur_id, 'montant': c.montant, 'recue_le': c.recue_le, 'date_limite': c.date_limite,
+            'statut': c.statut, 'montant_retenu': c.montant_retenu, 'montant_rendu': c.montant_rendu,
+            'motif_retenue': c.motif_retenue, 'cgv_article': c.cgv_article, 'decision_par_id': c.decision_par_id,
+            'decision_le': c.decision_le, 'soldee_le': c.soldee_le, 'mode_restitution': c.mode_restitution,
+            'document_numero': c.document_numero}
+
+
+def enregistrer_caution(objet_type: str, objet_id, *, reference: str, offre: str, montant: int, recue_le,
+                        date_limite, voyageur_id=None) -> dict:
+    """A deposit received for a traveller, in the caller's transaction (idempotent: one entry per object)."""
+    return _caution_simple(caution_service().enregistrer(Caution(
+        objet_type=objet_type, objet_id=str(objet_id), reference=reference, offre=offre, montant=montant,
+        recue_le=recue_le, date_limite=date_limite, voyageur_id=voyageur_id)))
+
+
+def decider_retenue(objet_type: str, objet_id, *, montant: int, motif: str, cgv_article: str,
+                    par_id: uuid.UUID | None = None) -> dict:
+    """Amount to withhold before the settlement (0 cancels it); raises CautionRefusee."""
+    return _caution_simple(caution_service().decider_retenue(objet_type, objet_id, montant=montant, motif=motif,
+                                                             cgv_article=cgv_article, par_id=par_id))
+
+
+def solder_caution(objet_type: str, objet_id, *, rendu: int, mode: str, document_numero: str) -> dict:
+    """The deposit settled with its document (REC or RET); raises CautionRefusee."""
+    return _caution_simple(caution_service().solder(objet_type, objet_id, rendu=rendu, mode=mode,
+                                                    document_numero=document_numero))
+
+
+def caution(objet_type: str, objet_id) -> dict | None:
+    c = caution_service().lire(objet_type, objet_id)
+    return _caution_simple(c) if c else None
+
+
+def registre_cautions(statut: str | None = None, en_retard: bool = False) -> dict:
+    """{cautions, total_detenu, en_retard}: the register, newest first (by deadline for those held)."""
+    r = caution_service().liste(statut, en_retard)
+    return {**r, 'cautions': [_caution_simple(c) for c in r['cautions']]}

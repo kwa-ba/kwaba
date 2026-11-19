@@ -8,7 +8,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import generateurs
-from .models import AvoirModel, FactureModel, ParametresSocieteModel, SequenceFactureModel, SequencePieceModel
+from .models import (AvoirModel, DocumentCautionModel, FactureModel, JustificatifCautionModel, ParametresSocieteModel,
+                     SequenceFactureModel, SequencePieceModel)
 from .registre import PRODUITS
 
 logger = logging.getLogger('apps.documents')
@@ -142,3 +143,73 @@ def pieces_confirmation(type_objet: str, objet_id) -> list[tuple[str, bytes, str
     except Exception:
         logger.exception("Documents non générés pour %s %s", type_objet, objet_id)
     return pieces
+
+
+# --- Documents of the deposits (GL-14) ------------------------------------------------------------------------------
+
+JUSTIFICATIF_TYPES = {'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp'}
+JUSTIFICATIF_TAILLE_MAX = 10 * 1024 * 1024
+JUSTIFICATIFS_MAX = 10
+# Magic numbers: the type sent by the browser is not trusted
+SIGNATURES = {b'%PDF': 'application/pdf', b'\xff\xd8\xff': 'image/jpeg', b'\x89PNG': 'image/png', b'RIFF': 'image/webp'}
+
+
+def _type_reel(fichier) -> str | None:
+    debut = fichier.read(12)
+    fichier.seek(0)
+    for signature, type_ in SIGNATURES.items():
+        if debut.startswith(signature) and (type_ != 'image/webp' or debut[8:12] == b'WEBP'):
+            return type_
+    return None
+
+
+def ajouter_justificatifs(objet_type: str, objet_id, fichiers, par=None) -> list[JustificatifCautionModel]:
+    """Evidence of a withholding (PDF, JPEG, PNG or WebP, 10 MB at most each), in private storage."""
+    fichiers = list(fichiers or [])
+    deja = JustificatifCautionModel.objects.filter(objet_type=objet_type, objet_id=objet_id).count()
+    if deja + len(fichiers) > JUSTIFICATIFS_MAX:
+        raise DocumentErreur(f"{JUSTIFICATIFS_MAX} pièces justificatives au plus par caution.")
+    for f in fichiers:
+        if f.size > JUSTIFICATIF_TAILLE_MAX:
+            raise DocumentErreur(f"« {f.name} » dépasse 10 Mo.")
+        if _type_reel(f) is None:
+            raise DocumentErreur(f"« {f.name} » : PDF, JPEG, PNG ou WebP attendu.")
+    ajoutes = []
+    with transaction.atomic():
+        for f in fichiers:
+            j = JustificatifCautionModel(objet_type=objet_type, objet_id=objet_id, nom=f.name[:150], taille=f.size,
+                                         ajoute_par_id=getattr(par, 'pk', None))
+            j.fichier.save(f"{uuid.uuid4().hex}{JUSTIFICATIF_TYPES[_type_reel(f)]}", f, save=False)
+            j.save()
+            ajoutes.append(j)
+    return ajoutes
+
+
+def emettre_document_caution(*, objet_type: str, objet_id, reference: str, client_nom: str, client_email: str,
+                             montant_caution: int, montant_retenu: int, mode_restitution: str, motif: str = '',
+                             cgv_article: str = '', decision: str = '') -> DocumentCautionModel:
+    """REC receipt (given back in full) or RET notice (part kept): numbered in its series, PDF frozen. Once per
+    deposit: a second call returns the document already issued."""
+    existant = DocumentCautionModel.objects.filter(objet_type=objet_type, objet_id=objet_id).first()
+    if existant:
+        return existant
+    if not 0 <= montant_retenu <= montant_caution:
+        raise DocumentErreur("Montant retenu hors de la caution.")
+    serie = 'RET' if montant_retenu else 'REC'
+    if serie == 'RET' and not (motif.strip() and cgv_article.strip()):
+        raise DocumentErreur("Un avis de retenue exige son motif et l'article des conditions générales.")
+    justificatifs = list(JustificatifCautionModel.objects.filter(objet_type=objet_type, objet_id=objet_id)
+                         .values_list('nom', flat=True))
+    if serie == 'RET' and not justificatifs:
+        raise DocumentErreur("Un avis de retenue exige au moins une pièce justificative.")
+    with transaction.atomic():
+        d = DocumentCautionModel.objects.create(
+            numero=_numero_serie(serie), type=serie, objet_type=objet_type, objet_id=objet_id, reference=reference,
+            client_nom=client_nom, client_email=client_email, montant_caution=montant_caution,
+            montant_rendu=montant_caution - montant_retenu, montant_retenu=montant_retenu,
+            mode_restitution=mode_restitution[:120], motif=motif.strip() if serie == 'RET' else '',
+            cgv_article=cgv_article.strip() if serie == 'RET' else '', decision=decision[:200],
+            justificatifs=justificatifs if serie == 'RET' else [])
+        d.pdf.save(f"{d.numero}.pdf", ContentFile(generateurs.document_caution(d)), save=True)
+    logger.info("%s %s : caution de %s", d.get_type_display(), d.numero, reference)
+    return d

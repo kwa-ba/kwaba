@@ -40,6 +40,7 @@ export default function Suivi() {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [retenue, setRetenue] = useState<AdminLocation | null>(null);
   const [formRetenue, setFormRetenue] = useState({ montant: "", motif: "" });
+  const [pieces, setPieces] = useState<File[]>([]);
 
   const { data: choix } = useQuery({
     queryKey: ["admin", "location", "attribution", attribution?.id],
@@ -77,6 +78,7 @@ export default function Suivi() {
   const ouvrirRetenue = (l: AdminLocation) => {
     setRetenue(l);
     setFormRetenue({ montant: l.caution_retenue ? String(l.caution_retenue) : "", motif: l.caution_motif });
+    setPieces([]);
     setErreurs({});
   };
 
@@ -84,7 +86,7 @@ export default function Suivi() {
     if (!retenue) return;
     setEnvoi(true);
     try {
-      await retenirCaution(retenue.id, { montant: Number(formRetenue.montant || 0), motif: formRetenue.motif });
+      await retenirCaution(retenue.id, { montant: Number(formRetenue.montant || 0), motif: formRetenue.motif, cgv_article: "14.3", justificatifs: pieces });
       toast.success(Number(formRetenue.montant) > 0 ? "Retenue enregistrée : elle sera versée au propriétaire" : "Retenue annulée");
       setRetenue(null);
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -203,6 +205,11 @@ export default function Suivi() {
         <Champ label="Motif" aide="Communiqué au voyageur" erreur={erreurs.motif}>
           <Saisie value={formRetenue.motif} maxLength={255} onChange={(e) => setFormRetenue({ ...formRetenue, motif: e.target.value })} placeholder="Rétroviseur cassé (photos du propriétaire)" />
         </Champ>
+        <Champ label="Pièces justificatives" aide="Obligatoire pour une retenue : photos du dommage, constat ou devis (PDF, JPEG, PNG, 10 Mo au plus). Citées dans l'avis de retenue envoyé au voyageur ; fondement : CGV art. 14.3.">
+          <input type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm"
+            onChange={(e) => setPieces(Array.from(e.target.files ?? []))} />
+        </Champ>
+        {pieces.length > 0 && <p className="text-xs text-muted">{pieces.map((p) => p.name).join(", ")}</p>}
       </Panneau>
       <ConfirmDialog confirmation={confirmation} onClose={() => setConfirmation(null)} />
     </div>

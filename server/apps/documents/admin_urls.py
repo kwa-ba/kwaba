@@ -1,7 +1,8 @@
 """Back-office routes, mounted under /api/v1/admin/documents/."""
 from django.urls import path
 
-from .views import (AvoirPdfView, AvoirsARegulariserView, AvoirsView, FacturePdfView, FacturesView,
+from .views import (AvoirPdfView, AvoirsARegulariserView, AvoirsView, DocumentCautionPdfView, DocumentsCautionView,
+                    JustificatifsView, FacturePdfView, FacturesView,
                     RegulariserFactureView, SignatureRepresentantView, SocieteView)
 
 urlpatterns = [
@@ -13,4 +14,8 @@ urlpatterns = [
     path('avoirs/', AvoirsView.as_view(), name='documents-avoirs'),
     path('avoirs/a-regulariser/', AvoirsARegulariserView.as_view(), name='documents-avoirs-a-regulariser'),
     path('avoirs/<uuid:pk>/pdf/', AvoirPdfView.as_view(), name='documents-avoir-pdf'),
+    path('cautions/', DocumentsCautionView.as_view(), name='documents-cautions'),
+    path('cautions/<str:numero>/pdf/', DocumentCautionPdfView.as_view(), name='documents-caution-pdf'),
+    path('justificatifs/', JustificatifsView.as_view(), name='documents-justificatifs'),
+    path('justificatifs/<uuid:pk>/', JustificatifsView.as_view(), name='documents-justificatif'),
 ]

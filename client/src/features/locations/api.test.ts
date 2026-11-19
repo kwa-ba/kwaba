@@ -65,8 +65,12 @@ describe("locations", () => {
     expect(api.get).toHaveBeenLastCalledWith("/v1/admin/location/locations/l1/loueurs/", { params: { chauffeurs: 1 } });
     await locations.attribuerLocation("l1", { partenaire: 3 });
     expect(api.post).toHaveBeenLastCalledWith("/v1/admin/location/locations/l1/attribuer/", { partenaire: 3 });
-    await locations.retenirCaution("l1", { montant: 5000, motif: "Rayure" });
-    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/location/locations/l1/caution/", { montant: 5000, motif: "Rayure" });
+    const photo = new File(["x"], "rayure.jpg", { type: "image/jpeg" });
+    await locations.retenirCaution("l1", { montant: 5000, motif: "Rayure", cgv_article: "14.3", justificatifs: [photo] });
+    const corps = vi.mocked(api.post).mock.lastCall?.[1] as FormData;
+    expect(vi.mocked(api.post).mock.lastCall?.[0]).toBe("/v1/admin/location/locations/l1/caution/");
+    expect([corps.get("montant"), corps.get("motif"), corps.get("cgv_article"), (corps.get("justificatifs") as File).name])
+      .toEqual(["5000", "Rayure", "14.3", "rayure.jpg"]);
     await locations.annulerLocationAdmin("l1", "Panne");
     expect(api.post).toHaveBeenLastCalledWith("/v1/admin/location/locations/l1/annuler/", { motif: "Panne" });
   });

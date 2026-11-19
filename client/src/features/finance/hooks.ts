@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cloturerMois, creerRapport, deciderValidation, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
+  cloturerMois, creerRapport, deciderValidation, lireCautions, lireJustificatifs, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
   lireGrandLivreCompte, lireLivreJournal, lireMoisComptables, lireMouvements, lirePilotage, lireRapports,
   lireReferentiels, lireResultatRapport, type DemandeRapport, type FiltresMouvements, type NouveauRapport,
 } from "./api";
@@ -24,6 +24,8 @@ export const CLES_FINANCE = {
   rapports: ["admin", "finance", "rapports"] as const,
   resultat: (demande: DemandeRapport, debut: string, fin: string) => ["admin", "finance", "rapports", demande, debut, fin] as const,
   validations: (statut: string) => ["admin", "finance", "validations", statut] as const,
+  cautions: (statut: string, retard: boolean) => ["admin", "finance", "cautions", statut, retard] as const,
+  justificatifs: (objetType: string, objetId: string) => ["admin", "finance", "justificatifs", objetType, objetId] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -120,4 +122,12 @@ export function useDeciderValidation() {
       deciderValidation(id, decision, motif),
     onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
   });
+}
+
+export function useCautions(statut: string, retard: boolean) {
+  return useQuery({ queryKey: CLES_FINANCE.cautions(statut, retard), queryFn: () => lireCautions(statut, retard) });
+}
+
+export function useJustificatifs(objetType: string, objetId: string | null) {
+  return useQuery({ queryKey: CLES_FINANCE.justificatifs(objetType, objetId ?? ""), queryFn: () => lireJustificatifs(objetType, objetId!), enabled: !!objetId });
 }
