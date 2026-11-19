@@ -22,3 +22,7 @@ class CautionRefusee(ValueError):
 class RapprochementRefuse(ValueError):
     """A reconciliation or a regularisation that cannot be done (unknown day, month locked, reason missing), in
     French."""
+
+
+class DepenseRefusee(ValueError):
+    """An expense the ledger cannot take (not a D nature, evidence or supplier missing, month locked…), in French."""

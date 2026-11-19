@@ -248,3 +248,58 @@ class Regularisation:
     tiers_id: str | None = None
     mouvement_id: int | None = None
     ecrite_le: datetime | None = None
+
+
+# --- Expenses of Kwa-Ba (GL-15, FIN-11.1) ---------------------------------------------------------------------------
+
+DEPENSE_EN_ATTENTE, DEPENSE_ECRITE, DEPENSE_REFUSEE, DEPENSE_ANNULEE = 'en_attente', 'ecrite', 'refusee', 'annulee'
+FAMILLE_DEPENSE = 'D'
+# Today every expense is advanced by an associate (decision of 2026-11-19): the charge enters the result and Kwa-Ba
+# owes the sum to the associate (F03, compte courant 462), through a money account of passage that stays at zero
+MODE_AVANCE_ASSOCIE = 'avance_associe'
+COMPTE_AVANCES_ASSOCIES = 'ASSOCIES'
+NATURE_AVANCE_ASSOCIE = 'F03'
+TYPE_COMPTE_AVANCES = 'avance_associe'
+
+
+@dataclass(frozen=True)
+class Fournisseur:
+    id: uuid.UUID
+    nom: str
+    nif: str = ''
+    contact: str = ''
+    actif: bool = True
+
+
+@dataclass(frozen=True)
+class Associe:
+    """A partner of Kwa-Ba (the company's associates), to whom Kwa-Ba owes what they advanced."""
+    id: uuid.UUID
+    nom: str
+    email: str = ''
+    compte_id: uuid.UUID | None = None
+    actif: bool = True
+
+
+@dataclass(frozen=True)
+class Depense:
+    """A charge of Kwa-Ba with its evidence (the supplier's invoice or receipt): numbered DEP-YYYY-NNNNN, written in
+    the ledger as its D nature and, since an associate paid it, as owed to that associate."""
+    id: uuid.UUID
+    numero: str
+    date_depense: date
+    nature: str
+    offre: str
+    montant: int
+    libelle: str
+    fournisseur_id: uuid.UUID
+    mode: str
+    associe_id: uuid.UUID | None
+    reference_facture: str
+    statut: str
+    demandee_par_id: uuid.UUID | None
+    demandee_le: datetime
+    mouvement_ids: tuple = ()
+    ecrite_le: datetime | None = None
+    annulee_le: datetime | None = None
+    motif_annulation: str = ''

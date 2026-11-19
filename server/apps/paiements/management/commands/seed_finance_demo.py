@@ -23,10 +23,13 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test.utils import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.documents import api as documents
 from apps.finance import api as finance
 from apps.hebergements import api as hebergements
 from apps.paiements import demo, fedapay, rapprochement, services
@@ -41,6 +44,15 @@ NOMS = ['Agbeko', 'Mensah', 'Lawson', 'Amouzou', 'Kpodar', 'Ahadji', 'Dossou', '
 # The reservation API allows 20 bookings an hour per traveller: the bookings go round the travellers
 VOYAGEURS = 15
 CREATIONS_PAR_VOYAGEUR = 19
+# Expenses of the demo (GL-15): suppliers, associates marked « démo », and a month of charges each with its evidence
+FOURNISSEURS_DEMO = ['OVH (démo)', 'Meta Ads (démo)', 'Twilio WhatsApp (démo)', 'Cabinet comptable (démo)',
+                     'Imprimerie du Golfe (démo)']
+ASSOCIES_DEMO = ['Associé démo A', 'Associé démo B', 'Associé démo C']
+# (nature, supplier, label, amount): every month; the 50 000 F and more wait for a second person
+DEPENSES_DU_MOIS = [('D10', 0, 'Hébergement du site et domaine', 18_500), ('D03', 1, 'Publicité en ligne', 45_000),
+                    ('D11', 2, 'Messages WhatsApp et SMS', 12_300), ('D15', 3, 'Tenue de la comptabilité', 60_000),
+                    ('D17', 4, 'Impressions et kit des hôtes', 22_000)]
+PDF_DEMO = b'%PDF-1.4\n% Justificatif de demonstration Kwa-Ba\n'
 
 
 class FauxFedaPay:
@@ -91,10 +103,18 @@ class Command(BaseCommand):
         parser.add_argument('--mois', type=int, default=4, help='Nombre de mois passés à remplir (4 par défaut).')
         parser.add_argument('--par-jour', type=int, default=2, help='Réservations tentées par jour (2 par défaut).')
         parser.add_argument('--graine', type=int, default=None, help='Graine du hasard, pour rejouer la même série.')
+        parser.add_argument('--depenses-seulement', action='store_true',
+                            help='Ajoute seulement les dépenses de démonstration des mois couverts (GL-15).')
 
-    def handle(self, *args, mois, par_jour, graine, **options):
+    def handle(self, *args, mois, par_jour, graine, depenses_seulement=False, **options):
         refuser_en_production()
         aleatoire = random.Random(graine)
+        if depenses_seulement:
+            aujourdhui = timezone.localdate()
+            rang = aujourdhui.year * 12 + aujourdhui.month - 1 - max(mois - 1, 0)
+            nombre = self._depenses(date(rang // 12, rang % 12 + 1, 1), aujourdhui, aleatoire)
+            self.stdout.write(self.style.SUCCESS(f'{nombre} dépenses de démonstration saisies.'))
+            return
         # Same password as the other demo accounts (seed_demo)
         mot_de_passe = os.getenv('DEMO_HOST_PASSWORD', 'Kwa-Ba2026!')
         # The published listings and the demo host of seed_demo (idempotent)
@@ -197,6 +217,7 @@ class Command(BaseCommand):
                 stats['jours_en_ecart'].append(f'{jour:%d/%m} ({refus})')
             jour += timedelta(days=1)
 
+        stats['depenses'] = self._depenses(premier, aujourdhui, aleatoire)
         stats['lignes_grand_livre'] = finance.mouvements(finance.FiltresMouvements(), 1, 1)['total'] - avant['lignes']
         stats['versements_envoyes'] = VersementModel.objects.filter(payout_id__startswith='demo-', statut='envoye').count()
         stats['remboursements_envoyes'] = RemboursementModel.objects.filter(payout_id__startswith='demo-',
@@ -206,9 +227,34 @@ class Command(BaseCommand):
             f"prises), {stats['payees']} payées, {stats['annulees']} annulées, {stats['versements_envoyes']} versements "
             f"et {stats['remboursements_envoyes']} remboursements envoyés au total, "
             f"{stats['lignes_grand_livre']} lignes ajoutées au grand livre, {stats['jours_rapproches']} journées "
-            f"rapprochées avec FedaPay."))
+            f"rapprochées avec FedaPay, {stats['depenses']} dépenses saisies."))
         if stats['jours_en_ecart']:
             self.stdout.write(self.style.WARNING('Journées en écart : ' + ' ; '.join(stats['jours_en_ecart'][:20])))
+
+    @staticmethod
+    def _depenses(premier: date, aujourdhui: date, aleatoire: random.Random) -> int:
+        """Charges of each month, advanced by a demo associate, with a PDF as evidence (GL-15)."""
+        def existant_ou_cree(liste, enregistrer, nom):
+            trouve = next((x for x in liste() if x['nom'] == nom), None)
+            return trouve or enregistrer(nom=nom)
+
+        fournisseurs = [existant_ou_cree(finance.fournisseurs, finance.enregistrer_fournisseur, n)
+                        for n in FOURNISSEURS_DEMO]
+        associes = [existant_ou_cree(finance.associes, finance.enregistrer_associe, n) for n in ASSOCIES_DEMO]
+        saisies, mois = 0, premier
+        while mois <= aujourdhui:
+            for nature, rang, libelle, montant in DEPENSES_DU_MOIS:
+                jour = min(mois + timedelta(days=aleatoire.randint(2, 25)), aujourdhui)
+                with transaction.atomic():
+                    d = finance.saisir_depense(
+                        date_depense=jour, nature=nature, montant=montant, libelle=f'{libelle} ({mois:%m/%Y})',
+                        fournisseur_id=fournisseurs[rang]['id'], associe_id=aleatoire.choice(associes)['id'],
+                        reference_facture=f'DEMO-{mois:%Y%m}-{rang + 1}')
+                    documents.ajouter_justificatifs('depense', d['id'], [SimpleUploadedFile(
+                        f'facture-{d["numero"]}.pdf', PDF_DEMO, content_type='application/pdf')])
+                saisies += 1
+            mois = (mois + timedelta(days=32)).replace(day=1)
+        return saisies
 
     @staticmethod
     def _moment(jour: date, heure: time) -> datetime:

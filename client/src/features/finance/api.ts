@@ -490,3 +490,110 @@ export async function regulariserRapprochement(jour: string, r: NouvelleRegulari
   return (await api.post<RegularisationFinance & { attente_validation: boolean }>(
     `${FINANCE}/rapprochement/${jour}/regulariser/`, corps)).data;
 }
+
+// --- Expenses, suppliers and associates (GL-15) --------------------------------------------------------------------
+
+export type StatutDepense = "en_attente" | "ecrite" | "refusee" | "annulee";
+
+export interface DepenseFinance {
+  id: string;
+  numero: string;
+  date_depense: string;
+  nature: string;
+  offre: string;
+  montant: number;
+  libelle: string;
+  fournisseur_id: string;
+  fournisseur: string;
+  associe_id: string | null;
+  associe: string;
+  reference_facture: string;
+  statut: StatutDepense;
+  demandee_par: string;
+  demandee_le: string;
+  ecrite_le: string | null;
+  annulee_le: string | null;
+  motif_annulation: string;
+}
+
+export interface ListeDepenses extends PageFinance<DepenseFinance> {
+  montant_ecrit: number;
+  seuil: number;
+  peut_saisir: boolean;
+}
+
+export interface FiltresDepenses {
+  debut?: string;
+  fin?: string;
+  nature?: string;
+  fournisseur?: string;
+  associe?: string;
+  statut?: string;
+}
+
+export interface NouvelleDepense {
+  date_depense: string;
+  nature: string;
+  offre: string;
+  montant: number;
+  libelle: string;
+  fournisseur: string;
+  associe: string;
+  reference_facture: string;
+  fichiers: File[];
+}
+
+export interface FournisseurFinance {
+  id: string;
+  nom: string;
+  nif: string;
+  contact: string;
+  actif: boolean;
+}
+
+export interface AssocieFinance {
+  id: string;
+  nom: string;
+  email: string;
+  compte_id: string | null;
+  actif: boolean;
+}
+
+export async function lireDepenses(filtres: FiltresDepenses, page: number, pageSize = 20) {
+  return (await api.get<ListeDepenses>(`${FINANCE}/depenses/${parametres({ ...filtres, page, page_size: pageSize })}`)).data;
+}
+
+/** An expense with its evidence (multipart): written at once, or waiting for a second person from the threshold. */
+export async function saisirDepense(d: NouvelleDepense) {
+  const corps = new FormData();
+  for (const cle of ["date_depense", "nature", "offre", "libelle", "fournisseur", "associe", "reference_facture"] as const) {
+    corps.append(cle, d[cle]);
+  }
+  corps.append("montant", String(d.montant));
+  for (const f of d.fichiers) corps.append("fichiers", f);
+  return (await api.post<DepenseFinance & { attente_validation: boolean }>(`${FINANCE}/depenses/`, corps)).data;
+}
+
+export async function annulerDepense(id: string, motif: string) {
+  return (await api.post<DepenseFinance>(`${FINANCE}/depenses/${id}/annuler/`, { motif })).data;
+}
+
+export async function lireFournisseurs() {
+  return (await api.get<FournisseurFinance[]>(`${FINANCE}/fournisseurs/`)).data;
+}
+
+export async function enregistrerFournisseur(f: Partial<FournisseurFinance> & { nom: string }) {
+  const { id, ...champs } = f;
+  return (id ? await api.patch<FournisseurFinance>(`${FINANCE}/fournisseurs/${id}/`, champs)
+    : await api.post<FournisseurFinance>(`${FINANCE}/fournisseurs/`, champs)).data;
+}
+
+export async function lireAssocies() {
+  return (await api.get<AssocieFinance[]>(`${FINANCE}/associes/`)).data;
+}
+
+export async function enregistrerAssocie(a: Partial<AssocieFinance> & { nom: string }) {
+  const { id, ...champs } = a;
+  return (id ? await api.patch<AssocieFinance>(`${FINANCE}/associes/${id}/`, champs)
+    : await api.post<AssocieFinance>(`${FINANCE}/associes/`, champs)).data;
+}

@@ -28,3 +28,12 @@ class AuditJournal(Journal):
         activity.record(f'regularisation_{action}', actor=par_id, objet=f'regularisation:{r.id}',
                         jour=r.jour.isoformat(), operation=r.reference, nature=r.nature, sens=r.sens,
                         montant=r.montant, motif=r.motif)
+
+    def depense(self, action: str, par_id, depense) -> None:
+        d = depense
+        activity.record(f'depense_{action}', actor=par_id, objet=f'depense:{d.id}', numero=d.numero,
+                        nature=d.nature, montant=d.montant, libelle=d.libelle,
+                        motif=d.motif_annulation if action == 'annulee' else '')
+
+    def annuaire(self, action: str, par_id, genre: str, nom: str) -> None:
+        activity.record(f'{action}_enregistre', actor=par_id, nom=nom)

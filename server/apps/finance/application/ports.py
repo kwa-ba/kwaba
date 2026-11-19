@@ -5,8 +5,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import ContextManager
 
-from apps.finance.domain.entities import (Caution, Ecriture, FiltresMouvements, Ligne, Mouvement, OperationExterne, Page,
-                                          Referentiels, Regularisation, Validation)
+from apps.finance.domain.entities import (Associe, Caution, Depense, Ecriture, FiltresMouvements, Fournisseur, Ligne,
+                                          Mouvement, OperationExterne, Page, Referentiels, Regularisation, Validation)
 
 
 class Clock(ABC):
@@ -110,6 +110,14 @@ class Journal(ABC):
     @abstractmethod
     def regularisation(self, action: str, par_id: uuid.UUID | None, regularisation: Regularisation) -> None:
         """A regularisation asked (waiting for a second person) or written."""
+
+    @abstractmethod
+    def depense(self, action: str, par_id: uuid.UUID | None, depense: Depense) -> None:
+        """An expense entered (waiting for a second person), written in the ledger, or cancelled."""
+
+    @abstractmethod
+    def annuaire(self, action: str, par_id: uuid.UUID | None, genre: str, nom: str) -> None:
+        """A supplier or an associate added or changed."""
 
 
 class Restitutions(ABC):
@@ -377,3 +385,60 @@ class Regularisations(ABC):
     @abstractmethod
     def du_jour(self, compte: str, jour: date) -> list[Regularisation]:
         pass
+
+
+class Depenses(ABC):
+    """Expenses of Kwa-Ba (GL-15)."""
+
+    @abstractmethod
+    def prochain_numero(self, annee: int) -> str:
+        """Next number of the series DEP-<year>, without gap, serialized until the end of the transaction."""
+
+    @abstractmethod
+    def nature_de_depense(self, code: str) -> bool:
+        """An active nature of the family D."""
+
+    @abstractmethod
+    def creer(self, depense: Depense) -> Depense:
+        pass
+
+    @abstractmethod
+    def lire(self, depense_id: uuid.UUID, verrou: bool = False) -> Depense | None:
+        pass
+
+    @abstractmethod
+    def enregistrer(self, depense: Depense) -> None:
+        pass
+
+    @abstractmethod
+    def liste(self, *, debut: date | None, fin: date | None, nature: str | None, fournisseur_id, associe_id,
+              statut: str | None, decalage: int, limite: int) -> tuple[list[Depense], int, int]:
+        """(expenses newest first, number, total amount of those written)."""
+
+
+class Annuaire(ABC):
+    """Suppliers and associates."""
+
+    @abstractmethod
+    def fournisseurs(self, actifs_seulement: bool) -> list[Fournisseur]:
+        pass
+
+    @abstractmethod
+    def fournisseur(self, fournisseur_id) -> Fournisseur | None:
+        pass
+
+    @abstractmethod
+    def enregistrer_fournisseur(self, fournisseur: Fournisseur, nouveau: bool) -> Fournisseur:
+        """Raises DepenseRefusee when the name is already taken."""
+
+    @abstractmethod
+    def associes(self, actifs_seulement: bool) -> list[Associe]:
+        pass
+
+    @abstractmethod
+    def associe(self, associe_id) -> Associe | None:
+        pass
+
+    @abstractmethod
+    def enregistrer_associe(self, associe: Associe, nouveau: bool) -> Associe:
+        """Raises DepenseRefusee when the name is already taken."""

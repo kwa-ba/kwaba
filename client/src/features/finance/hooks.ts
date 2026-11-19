@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cloturerMois, creerRapport, deciderValidation, importerRapprochement, lireCautions, lireRapprochementJour, lireRapprochements,
+  annulerDepense, cloturerMois, creerRapport, deciderValidation, enregistrerAssocie, enregistrerFournisseur,
+  importerRapprochement, lireAssocies, lireDepenses, lireFournisseurs, saisirDepense, type AssocieFinance,
+  type FiltresDepenses, type FournisseurFinance, type NouvelleDepense, lireCautions, lireRapprochementJour, lireRapprochements,
   regulariserRapprochement, type NouvelleRegularisation, lireJustificatifs, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
   lireGrandLivreCompte, lireLivreJournal, lireMoisComptables, lireMouvements, lirePilotage, lireRapports,
   lireReferentiels, lireResultatRapport, type DemandeRapport, type FiltresMouvements, type NouveauRapport,
@@ -30,6 +32,9 @@ export const CLES_FINANCE = {
   rapprochement: ["admin", "finance", "rapprochement"] as const,
   rapprochements: (mois: string) => ["admin", "finance", "rapprochement", "mois", mois] as const,
   rapprochementJour: (jour: string) => ["admin", "finance", "rapprochement", "jour", jour] as const,
+  depenses: (filtres: FiltresDepenses, page: number) => ["admin", "finance", "depenses", filtres, page] as const,
+  fournisseurs: ["admin", "finance", "fournisseurs"] as const,
+  associes: ["admin", "finance", "associes"] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -163,4 +168,43 @@ export function useRegulariser() {
       regulariserRapprochement(jour, regularisation),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }),
   });
+}
+
+/** The expenses of Kwa-Ba with their filters (GL-15). */
+export function useDepenses(filtres: FiltresDepenses, page: number) {
+  return useQuery({ queryKey: CLES_FINANCE.depenses(filtres, page), queryFn: () => lireDepenses(filtres, page),
+    placeholderData: keepPreviousData });
+}
+
+/** An expense written or cancelled changes the ledger: every finance read may change. */
+export function useSaisirDepense() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (d: NouvelleDepense) => saisirDepense(d),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useAnnulerDepense() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, motif }: { id: string; motif: string }) => annulerDepense(id, motif),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useFournisseurs() {
+  return useQuery({ queryKey: CLES_FINANCE.fournisseurs, queryFn: lireFournisseurs });
+}
+
+export function useAssocies() {
+  return useQuery({ queryKey: CLES_FINANCE.associes, queryFn: lireAssocies });
+}
+
+export function useEnregistrerFournisseur() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (f: Partial<FournisseurFinance> & { nom: string }) => enregistrerFournisseur(f),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.fournisseurs }) });
+}
+
+export function useEnregistrerAssocie() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (a: Partial<AssocieFinance> & { nom: string }) => enregistrerAssocie(a),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.associes }) });
 }

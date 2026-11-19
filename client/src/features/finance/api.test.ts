@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import * as finance from "./api";
 
-vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
+vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
 
 const F = "/v1/admin/finance";
 
@@ -116,5 +116,36 @@ describe("rapprochement FedaPay (GL-12)", () => {
     const form = corps as FormData;
     expect([form.get("reference"), form.get("nature"), form.get("sens"), form.get("montant")]).toEqual(["999", "D01", "sortie", "250"]);
     expect((form.getAll("fichiers")[0] as File).name).toBe("releve.pdf");
+  });
+});
+
+describe("dépenses (GL-15)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post, api.patch]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit les dépenses filtrées et en saisit une avec son justificatif", async () => {
+    await finance.lireDepenses({ nature: "D10", statut: "" }, 2);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/depenses/?nature=D10&page=2&page_size=20`);
+    const piece = new File(["%PDF"], "facture.pdf", { type: "application/pdf" });
+    await finance.saisirDepense({ date_depense: "2026-11-18", nature: "D10", offre: "STRUCTURE", montant: 30000,
+      libelle: "Hébergement", fournisseur: "f1", associe: "a1", reference_facture: "FR-1", fichiers: [piece] });
+    const [url, corps] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(url).toBe(`${F}/depenses/`);
+    const form = corps as FormData;
+    expect([form.get("nature"), form.get("montant"), form.get("fournisseur"), form.get("associe")]).toEqual(["D10", "30000", "f1", "a1"]);
+    expect((form.getAll("fichiers")[0] as File).name).toBe("facture.pdf");
+    await finance.annulerDepense("d1", "Saisie en double");
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/depenses/d1/annuler/`, { motif: "Saisie en double" });
+  });
+
+  it("crée ou modifie un fournisseur et un associé", async () => {
+    await finance.enregistrerFournisseur({ nom: "OVH", nif: "123" });
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/fournisseurs/`, { nom: "OVH", nif: "123" });
+    await finance.enregistrerFournisseur({ id: "f1", nom: "OVH", actif: false });
+    expect(api.patch).toHaveBeenLastCalledWith(`${F}/fournisseurs/f1/`, { nom: "OVH", actif: false });
+    await finance.enregistrerAssocie({ nom: "Ama" });
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/associes/`, { nom: "Ama" });
   });
 });
