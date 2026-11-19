@@ -16,6 +16,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   // User's language: Concierge answers and, eventually, API messages
   config.headers["Accept-Language"] = langue();
+  // A form with files (evidence, photos): with the default JSON type, axios would turn it into JSON and drop the files
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) config.headers["Content-Type"] = "multipart/form-data";
   // Never a path that leaves the route asked for (an id from the page's address that would hold "../")
   if (config.url && sortDuChemin(config.url)) throw new CheminRefuse(config.url);
   if (navigateur && config.url) config.url = sansSlashFinal(config.url);
