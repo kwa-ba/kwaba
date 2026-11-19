@@ -17,13 +17,14 @@ from collections.abc import Callable
 
 from apps.finance.application.registre import OPERATIONS, declarer
 from apps.finance.application.registre import declarer_operation as declarer_operation_registre
-from apps.finance.domain.entities import ENTREE, SORTIE, Caution, Ecrivain, FiltresMouvements, Ligne, Operation
-from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RestitutionRefusee,
-                                            ValidationRefusee)
+from apps.finance.domain.entities import (ENTREE, SORTIE, Caution, Ecrivain, FiltresMouvements, Ligne, Operation,
+                                          OperationExterne)
+from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, MouvementRefuse, RapprochementRefuse,
+                                            RestitutionRefusee, ValidationRefusee)
 from apps.finance.domain.rules import mois_de
 from apps.finance.infrastructure.container import (cloture_service, grand_livre_service, livres_service,
-                                                   rapport_service, restitution_service, validation_service,
-                                                   caution_service)
+                                                   rapport_service, rapprochement_service, restitution_service,
+                                                   validation_service, caution_service)
 
 __all__ = [
     'ENTREE', 'SORTIE', 'Ligne', 'MouvementRefuse', 'RestitutionRefusee',
@@ -47,6 +48,10 @@ __all__ = [
     'approuver_validation', 'refuser_validation', 'statut_validation', 'validations', 'libelle_operation',
     # Register of the deposits (GL-13)
     'CautionRefusee', 'enregistrer_caution', 'decider_retenue', 'solder_caution', 'caution', 'registre_cautions',
+    # Reconciliation with the payment provider (GL-12)
+    'OperationExterne', 'RapprochementRefuse', 'importer_rapprochement', 'echec_rapprochement',
+    'rapprochement_du_jour', 'rapprochements_du_mois', 'detail_rapprochement', 'regulariser',
+    'mois_verrouille',
 ]
 
 
@@ -337,3 +342,54 @@ def registre_cautions(statut: str | None = None, en_retard: bool = False) -> dic
     """{cautions, total_detenu, en_retard}: the register, newest first (by deadline for those held)."""
     r = caution_service().liste(statut, en_retard)
     return {**r, 'cautions': [_caution_simple(c) for c in r['cautions']]}
+
+
+# --- Reconciliation with the payment provider (GL-12) ---------------------------------------------------------------
+
+def _regularisation_simple(r) -> dict:
+    return {'id': str(r.id), 'jour': r.jour, 'reference': r.reference, 'nature': r.nature, 'offre': r.offre,
+            'sens': r.sens, 'montant': r.montant, 'motif': r.motif, 'tiers_type': r.tiers_type,
+            'tiers_id': r.tiers_id, 'statut': r.statut, 'demandee_par_id': r.demandee_par_id,
+            'demandee_le': r.demandee_le, 'mouvement_id': r.mouvement_id, 'ecrite_le': r.ecrite_le}
+
+
+def importer_rapprochement(compte: str, jour: date, operations: list[OperationExterne], *,
+                           par_id: uuid.UUID | None = None) -> dict:
+    """The operations of a finished day, from Kwa-Ba's records and the provider's statement (written by the module
+    that talks to the provider): the day is reconciled with the ledger. Raises RapprochementRefuse."""
+    return rapprochement_service().importer(compte, jour, operations, par_id=par_id)
+
+
+def echec_rapprochement(compte: str, jour: date, message: str) -> None:
+    """The provider could not be read for this day: it shows « en erreur », to import again."""
+    rapprochement_service().echec(compte, jour, message)
+
+
+def rapprochement_du_jour(compte: str, jour: date) -> dict | None:
+    """The reconciliation of a day (None: never imported): {etat, solde_livre, solde_externe, ecart, calcule_le…}."""
+    return rapprochement_service().etat_du_jour(compte, jour)
+
+
+def rapprochements_du_mois(compte: str, mois: date) -> list[dict]:
+    """Every finished day of the month, newest first, « non_fait » when never imported."""
+    return rapprochement_service().mois(compte, mois)
+
+
+def detail_rapprochement(compte: str, jour: date) -> dict:
+    """{jour, operations (three sides), regularisations} of a day."""
+    d = rapprochement_service().detail(compte, jour)
+    return {**d, 'regularisations': [_regularisation_simple(r) for r in d['regularisations']]}
+
+
+def regulariser(compte: str, jour: date, *, reference: str, nature: str, offre: str, sens: str, montant: int,
+                motif: str, par_id: uuid.UUID | None, tiers_type: str | None = None, tiers_id=None) -> dict:
+    """A ledger line that explains a gap, written now or, from the threshold, after a second person approves it:
+    {id, statut…}. Raises RapprochementRefuse, MouvementRefuse or ValidationRefusee."""
+    return _regularisation_simple(rapprochement_service().regulariser(
+        compte, jour, reference=reference, nature=nature, offre=offre, sens=sens, montant=montant, motif=motif,
+        par_id=par_id, tiers_type=tiers_type, tiers_id=tiers_id))
+
+
+def mois_verrouille(mois: date) -> bool:
+    """Is this accounting month locked (nothing is written in it any more)?"""
+    return any(p['mois'] == mois.replace(day=1) and p['etat'] == 'verrouillee' for p in mois_comptables())

@@ -13,6 +13,8 @@ from apps.finance.infrastructure.persistence.models import (
     PeriodeModel,
     RapportModel,
     RapprochementJourModel,
+    RapprochementLigneModel,
+    RegularisationModel,
     ReleveExterneModel,
     TiersTypeModel,
     ValidationModel,
@@ -20,4 +22,5 @@ from apps.finance.infrastructure.persistence.models import (
 
 __all__ = ['AxeModel', 'CautionModel', 'CompteArgentModel', 'CorrespondanceHistoModel', 'FamilleModel', 'MouvementModel',
            'MoyenPaiementModel', 'NatureModel', 'OffreModel', 'ParametreHistoModel', 'ParametreModel', 'PeriodeModel',
-           'RapportModel', 'RapprochementJourModel', 'ReleveExterneModel', 'TiersTypeModel', 'ValidationModel']
+           'RapportModel', 'RapprochementJourModel', 'RapprochementLigneModel', 'RegularisationModel',
+           'ReleveExterneModel', 'TiersTypeModel', 'ValidationModel']

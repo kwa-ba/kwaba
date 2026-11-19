@@ -29,7 +29,7 @@ from rest_framework.test import APIClient
 
 from apps.finance import api as finance
 from apps.hebergements import api as hebergements
-from apps.paiements import fedapay, services
+from apps.paiements import demo, fedapay, rapprochement, services
 from apps.paiements.models import PaiementModel, ProfilVersementModel, RemboursementModel, VersementModel
 from apps.users import api as users
 from config.demo import refuser_en_production
@@ -59,7 +59,8 @@ class FauxFedaPay:
         mode = self.modes.get(identifiant, 'moov_tg')
         moyen = {} if mode == 'visa' else {'payment_method': {'number': f'9{self.aleatoire.randrange(10**7):07d}',
                                                               'country': 'tg'}}
-        return {'id': identifiant, 'status': 'approved', 'mode': mode, **moyen}
+        # Amount, real fees and approval date, as the reconciliation reads them (GL-12)
+        return {**demo.transaction(identifiant, mode), **moyen}
 
     def creer_payout(self, **kwargs):
         return f'demo-payout-{uuid.uuid4().hex[:16]}'
@@ -68,7 +69,10 @@ class FauxFedaPay:
         pass
 
     def lire_versement(self, identifiant):
-        return {'id': identifiant, 'status': 'sent'}
+        return demo.payout(identifiant)
+
+    def chercher_transactions(self, page=1):
+        return []
 
 
 def _hote_api() -> str:
@@ -179,6 +183,20 @@ class Command(BaseCommand):
                     services.passe()
                 jour += timedelta(days=1)
 
+        # Reconciliation with FedaPay (GL-12) of every finished day since the first one, demo operations included
+        # (those of the earlier runs too): real fees D01 in the ledger, days green on the Rapprochement page
+        stats['jours_rapproches'], stats['jours_en_ecart'] = 0, []
+        jour = premier
+        while jour < aujourdhui:
+            try:
+                resultat = rapprochement.importer(jour, client=faux)
+                stats['jours_rapproches'] += 1
+                if resultat['etat'] != 'fait':
+                    stats['jours_en_ecart'].append(f"{jour:%d/%m} ({resultat['message']})")
+            except (finance.RapprochementRefuse, finance.MouvementRefuse) as refus:
+                stats['jours_en_ecart'].append(f'{jour:%d/%m} ({refus})')
+            jour += timedelta(days=1)
+
         stats['lignes_grand_livre'] = finance.mouvements(finance.FiltresMouvements(), 1, 1)['total'] - avant['lignes']
         stats['versements_envoyes'] = VersementModel.objects.filter(payout_id__startswith='demo-', statut='envoye').count()
         stats['remboursements_envoyes'] = RemboursementModel.objects.filter(payout_id__startswith='demo-',
@@ -187,7 +205,10 @@ class Command(BaseCommand):
             f"Depuis le {premier:%d/%m/%Y} : {stats['reservations']} réservations ({stats['refusees']} dates déjà "
             f"prises), {stats['payees']} payées, {stats['annulees']} annulées, {stats['versements_envoyes']} versements "
             f"et {stats['remboursements_envoyes']} remboursements envoyés au total, "
-            f"{stats['lignes_grand_livre']} lignes ajoutées au grand livre."))
+            f"{stats['lignes_grand_livre']} lignes ajoutées au grand livre, {stats['jours_rapproches']} journées "
+            f"rapprochées avec FedaPay."))
+        if stats['jours_en_ecart']:
+            self.stdout.write(self.style.WARNING('Journées en écart : ' + ' ; '.join(stats['jours_en_ecart'][:20])))
 
     @staticmethod
     def _moment(jour: date, heure: time) -> datetime:

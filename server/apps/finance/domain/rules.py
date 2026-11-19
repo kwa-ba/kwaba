@@ -4,8 +4,9 @@ from collections.abc import Iterable
 from dataclasses import replace
 from datetime import date, datetime, timezone
 
-from .entities import (CAUTION, CAUTION_RETENUE, ENTREE, FONDS_DE_TIERS, SENS, SORTIE, Ecriture, Ecrivain, Ligne,
-                       Mouvement, Referentiels)
+from .entities import (CAUTION, CAUTION_RETENUE, ENTREE, FONDS_DE_TIERS, LIGNE_CONCORDE, LIGNE_ECART,
+                       LIGNE_HORS_LIVRE, LIGNE_REGULARISEE, RAPPROCHEMENT_EN_ERREUR, RAPPROCHEMENT_FAIT, SENS, SORTIE,
+                       Ecriture, Ecrivain, Ligne, Mouvement, Referentiels)
 from .exceptions import MouvementRefuse, RestitutionRefusee
 
 # Codes of a line checked against their reference table: (field, table, optional, message if unknown, if inactive)
@@ -118,3 +119,81 @@ def ecarts_des_modules_ouverts(ecrivains: Iterable[Ecrivain], offres_actives: se
             manque = ', '.join([*(f'offre {o}' for o in offres), *(f'nature {n}' for n in natures)])
             ecarts.append(f'Le module {ecrivain.nom} est ouvert mais écrirait dans : {manque} (inactive ou inconnue).')
     return ecarts
+
+
+# --- Reconciliation with the payment provider (GL-12, FIN-02) -------------------------------------------------------
+
+def net_externe(op) -> int:
+    """What the operation did to the provider's balance: a collection brings its amount minus the fees, a payout
+    takes its amount plus the fees. 0 when the provider does not know it."""
+    if op.externe_montant is None:
+        return 0
+    frais = op.externe_frais or 0
+    return op.externe_montant - frais if op.sens == ENTREE else -(op.externe_montant + frais)
+
+
+def net_kwaba(op) -> int:
+    if op.kwaba_montant is None:
+        return 0
+    return op.kwaba_montant if op.sens == ENTREE else -op.kwaba_montant
+
+
+def _f(montant: int) -> str:
+    return f"{montant:,} F".replace(',', ' ')
+
+
+def juger_operation(op, livre: int, regularisee: bool = False) -> tuple[str, str]:
+    """(state, explanation) of one operation: the three sides must agree. `livre`: signed total of the ledger lines of
+    the money account for this operation (its regularisations included)."""
+    if op.hors_grand_livre:
+        return LIGNE_HORS_LIVRE, 'Produit pas encore au grand livre : montré à part, hors écart.'
+    problemes = []
+    if op.message:
+        problemes.append(op.message)
+    if op.kwaba_montant is None:
+        problemes.append('Inconnue de Kwa-Ba.')
+    if op.externe_montant is None:
+        problemes.append('Introuvable chez le prestataire.')
+    if op.kwaba_montant is not None and op.externe_montant is not None and op.kwaba_montant != op.externe_montant:
+        problemes.append(f'Montant Kwa-Ba {_f(op.kwaba_montant)}, prestataire {_f(op.externe_montant)}.')
+    attendu = net_externe(op)
+    if livre != attendu:
+        manque = livre - attendu
+        if op.externe_frais and manque == op.externe_frais:
+            problemes.append(f'Frais réels de {_f(op.externe_frais)} pas encore au grand livre (D01).')
+        else:
+            problemes.append(f'Grand livre {_f(livre)}, prestataire {_f(attendu)} : écart de {_f(manque)}.')
+    if regularisee and livre == attendu:
+        return LIGNE_REGULARISEE, ' '.join(['Régularisée.', *problemes]).strip()
+    if problemes:
+        return LIGNE_ECART, ' '.join(problemes)
+    return LIGNE_CONCORDE, ''
+
+
+def juger_jour(lignes: list[dict], internes: int) -> dict:
+    """Totals and state of a day from its judged operations ({op, livre, etat}) and the other lines of the money
+    account that day (`internes`: moves between natures, which must sum to zero). The day is « fait » only when every
+    operation agrees and the gap is zero."""
+    dans_livre = [x for x in lignes if x['etat'] != LIGNE_HORS_LIVRE]
+    solde_livre = sum(x['livre'] for x in dans_livre) + internes
+    solde_externe = sum(net_externe(x['op']) for x in dans_livre)
+    anomalies = sum(1 for x in lignes if x['etat'] == LIGNE_ECART)
+    messages = []
+    if anomalies:
+        messages.append(f'{anomalies} opération(s) en écart.')
+    if internes:
+        messages.append(f'Mouvements internes du compte non équilibrés : {_f(internes)}.')
+    if solde_livre != solde_externe and not anomalies and not internes:
+        messages.append(f'Écart de {_f(solde_livre - solde_externe)}.')
+    return {
+        'solde_kwaba': sum(net_kwaba(x['op']) for x in dans_livre),
+        'solde_livre': solde_livre,
+        'solde_externe': solde_externe,
+        'frais': sum(x['op'].externe_frais or 0 for x in dans_livre),
+        'hors_grand_livre': sum(net_externe(x['op']) for x in lignes if x['etat'] == LIGNE_HORS_LIVRE),
+        'internes': internes,
+        'nb_operations': len(lignes),
+        'nb_anomalies': anomalies,
+        'etat': RAPPROCHEMENT_FAIT if not messages else RAPPROCHEMENT_EN_ERREUR,
+        'message': ' '.join(messages),
+    }

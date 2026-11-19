@@ -91,3 +91,30 @@ describe("registre des cautions (GL-13, GL-14)", () => {
     expect(finance.urlDocumentCaution("RET-2026-00001")).toBe("/v1/admin/documents/cautions/RET-2026-00001/pdf/");
   });
 });
+
+describe("rapprochement FedaPay (GL-12)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit le mois et une journée, et importe une période", async () => {
+    await finance.lireRapprochements("2026-11-01");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/?mois=2026-11`);
+    await finance.lireRapprochementJour("2026-11-18");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/2026-11-18/`);
+    await finance.importerRapprochement("2026-11-01", "2026-11-18");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/rapprochement/importer/", { debut: "2026-11-01", fin: "2026-11-18" });
+  });
+
+  it("envoie une régularisation avec ses pièces en multipart", async () => {
+    const piece = new File(["%PDF"], "releve.pdf", { type: "application/pdf" });
+    await finance.regulariserRapprochement("2026-11-18", { reference: "999", nature: "D01", offre: "COURTE_DUREE", sens: "sortie",
+      montant: 250, motif: "Frais FedaPay non annoncés", fichiers: [piece] });
+    const [url, corps] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(url).toBe(`${F}/rapprochement/2026-11-18/regulariser/`);
+    const form = corps as FormData;
+    expect([form.get("reference"), form.get("nature"), form.get("sens"), form.get("montant")]).toEqual(["999", "D01", "sortie", "250"]);
+    expect((form.getAll("fichiers")[0] as File).name).toBe("releve.pdf");
+  });
+});

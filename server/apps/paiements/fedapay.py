@@ -93,6 +93,18 @@ class FedaPay:
     def lire_transaction(self, identifiant: str) -> dict:
         return _objet(self._appel('GET', f'/transactions/{identifiant}'), 'transaction')
 
+    def chercher_transactions(self, page: int = 1, par_page: int = 100) -> list[dict]:
+        """A page of the account's transactions (GET /transactions/search), newest first as far as FedaPay says:
+        its parameters are not documented, so the reconciliation only uses it to spot transactions unknown to
+        Kwa-Ba, filtering the day itself."""
+        corps = self._appel('GET', f'/transactions/search?page={int(page)}&per_page={int(par_page)}')
+        if isinstance(corps, list):
+            return [t for t in corps if isinstance(t, dict)]
+        for cle in ('v1/transactions', 'transactions', 'data'):
+            if isinstance(corps.get(cle), list):
+                return [t for t in corps[cle] if isinstance(t, dict)]
+        return []
+
     # --- Versements (payouts) -------------------------------------------------------
 
     def creer_payout(self, *, montant: int, mode: str, client: dict) -> str:
