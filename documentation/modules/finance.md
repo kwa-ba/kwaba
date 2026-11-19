@@ -3,6 +3,7 @@
 Chaque mouvement d'argent est écrit **une seule fois**, dans une table en ajout seul, avec un code de nature et ses axes d'analyse (offre, tiers, moyen de paiement, compte d'argent, période, pièce). Tous les documents financiers sont des tris de ces lignes : aucune restitution ne recalcule depuis les réservations.
 
 - Décision d'architecture : [ADR-024](../ADR/ADR-024-module-finance-grand-livre.md).
+- Rubrique Finance complète (GL-1 à GL-23), décisions des associés et plan de comptes : [ADR-026](../ADR/ADR-026-rubrique-finance-comptabilite-complete.md).
 - Référence métier : dossier DAF du référent financier (10 et 11 novembre 2026) : cahier des charges FIN-01 à FIN-17, schéma `07_Schema_base_de_donnees.sql`, référentiel des paramètres, plan de test d'audit (séries FA à FJ).
 - Code : `server/apps/finance/`. Seule interface pour les autres modules : `apps/finance/api.py` (ADR-019).
 
