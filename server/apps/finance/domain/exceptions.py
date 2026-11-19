@@ -31,3 +31,8 @@ class DepenseRefusee(ValueError):
 class FondsGarantieRefuse(ValueError):
     """An operation of the guarantee fund that cannot be done (month not finished or locked, loss above the fund,
     decision missing), in French."""
+
+
+class ParametreRefuse(ValueError):
+    """A change of a steered parameter that cannot be made (unknown key, value out of bounds, reason missing, rate set
+    from the Tarifs page), in French."""

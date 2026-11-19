@@ -129,6 +129,10 @@ class Journal(ABC):
         """A supplier or an associate added or changed."""
 
     @abstractmethod
+    def parametre(self, par_id: uuid.UUID | None, cle: str, avant, apres, motif: str) -> None:
+        """A steered parameter changed (FIN-13.3: every change of a rate is logged)."""
+
+    @abstractmethod
     def fonds_garantie(self, action: str, par_id: uuid.UUID | None, details: dict) -> None:
         """An allocation of a month written, a loss covered by the fund, or its cancellation."""
 
@@ -515,3 +519,23 @@ class FondsGarantie(ABC):
     @abstractmethod
     def sinistres(self, limite: int) -> list[Sinistre]:
         """Newest first."""
+
+
+class ParametresPilotes(ABC):
+    """The referential of the steered parameters and their dated history (GL-20)."""
+
+    @abstractmethod
+    def tous(self) -> list[dict]:
+        """Every parameter: {cle, valeur, unite, categorie, offre, libelle, source, actif, maj_le, maj_par_id}."""
+
+    @abstractmethod
+    def lire_pour_modifier(self, cle: str) -> dict | None:
+        """The parameter, locked until the end of the transaction."""
+
+    @abstractmethod
+    def historique(self, cle: str | None = None, limite: int = 200) -> list[dict]:
+        """Its changes, newest first: {cle, valeur_avant, valeur_apres, date_effet, cree_le, cree_par_id, motif}."""
+
+    @abstractmethod
+    def modifier(self, cle: str, valeur, *, par_id, motif: str, quand) -> None:
+        """Writes the new value and its row of history (same transaction)."""

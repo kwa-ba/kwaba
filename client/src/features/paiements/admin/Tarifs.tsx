@@ -17,6 +17,9 @@ const TAUX: { cle: keyof TarifsAdmin["taux"]; libelle: string; aide: string }[] 
   { cle: "commission_transfert", libelle: "Commission transferts aéroport", aide: "Part du prix gardée par Kwa-Ba, le reste va au chauffeur." },
 ];
 
+const UNITES: Record<string, string> = { pourcentage: "%", fcfa: "F CFA", heures: "h", jours: "jours", nuits: "nuits", mois: "mois", code: "" };
+const nombre = (v: string | number) => Number(v).toLocaleString("fr-FR");
+
 /**
  * Kwa-Ba's rates and the cleaning fee scale, changed without a deployment (AN-B1). The site, the terms of sale and the
  * contracts read them: a change shows everywhere at once, for the bookings made afterwards.
@@ -95,6 +98,33 @@ export default function Tarifs() {
           ))}
         </div>
       </section>
+      {!!data.historique?.length && (
+        <section className="bg-background rounded-2xl border border-gray-100 p-5" aria-label="Historique des taux">
+          <h2 className="font-heading font-bold text-dark mb-3">Historique des changements</h2>
+          <ul className="text-sm divide-y divide-gray-100">
+            {data.historique.map((h) => (
+              <li key={`${h.cle}-${h.date_effet}`} className="flex flex-wrap justify-between gap-2 py-2">
+                <span><strong>{h.cle}</strong> <span className="text-muted">· {formatDate(h.date_effet)}{h.motif ? ` · ${h.motif}` : ""}</span></span>
+                <span className="tabular-nums">{h.valeur_avant === null ? "—" : nombre(h.valeur_avant)} → {nombre(h.valeur_apres)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {!!data.autres_taux?.length && (
+        <section className="bg-background rounded-2xl border border-gray-100 p-5" aria-label="Autres taux">
+          <h2 className="font-heading font-bold text-dark mb-1">Autres taux et délais</h2>
+          <p className="text-xs text-muted mb-3">Véhicules, chauffeurs, réseau, versements… Ils se modifient dans Finance → Paramètres, avec leur historique.</p>
+          <ul className="text-sm divide-y divide-gray-100">
+            {data.autres_taux.map((p) => (
+              <li key={p.cle} className="flex justify-between gap-3 py-2">
+                <span className="min-w-0">{p.libelle}<span className="block text-xs text-muted">{p.cle}{p.offre ? ` · ${p.offre}` : ""}</span></span>
+                <span className="tabular-nums whitespace-nowrap">{nombre(p.valeur)} {UNITES[p.unite] ?? p.unite}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-muted">{data.mis_a_jour_le ? `Modifiés le ${formatDate(data.mis_a_jour_le)}` : "Grille d'origine (18 octobre 2026)"}</p>
         <button onClick={enregistrer} disabled={envoi} className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-600 disabled:opacity-50">

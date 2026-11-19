@@ -9,7 +9,7 @@ Kwa-Ba encaisse tout le paiement, le conserve jusqu'au séjour, puis reverse sa 
 
 ```
 Voyageur ──paie 64 800 FCFA──▶ Kwa-Ba (FedaPay ou PayPal)
-                                   │  conservé jusqu'à l'arrivée + 24 h
+                                   │  conservé jusqu'à l'arrivée + 48 h
                                    ├──▶ Hôte : 55 200 FCFA (Mobile Money, via FedaPay)
                                    └──▶ Kwa-Ba : 8 400 FCFA (avant frais des prestataires)
 ```
@@ -53,7 +53,7 @@ Pays ouverts aux versements : Togo, Bénin, Burkina Faso, Niger, Mali (`operateu
    - la page de retour interroge `GET .../statut/` toutes les 3 s ;
    - le webhook FedaPay `POST /api/v1/paiements/webhooks/fedapay/` ;
    - le worker, à chaque passe (il rattrape les webhooks perdus, et leur absence en local).
-   Paiement réussi → réservation `confirmed` + versement `planifie` à l'arrivée + 24 h (arrivée = 14 h le jour du check-in).
+   Paiement réussi → réservation `confirmed` + versement `planifie` à l'arrivée + 48 h (arrivée = 14 h le jour du check-in). Le délai est le paramètre `versement_hote_heures` du module finance, lu à la date de la réservation : 24 h pour les réservations faites avant le 19 novembre 2026 (CGV 2.4), 48 h depuis (CGV 2.5).
 4. **Relances** (`relances.py`, même principe pour les transferts et les locations) : dès la réservation, email « Payez avant HH:MM » avec le lien de paiement ; à mi-délai (15 min), rappel s'il n'a pas payé ; après l'annulation, email « Réservation annulée : paiement non reçu ». L'étape atteinte est gardée dans `relance_paiement`.
 5. **Sans paiement à temps** : le worker annule la réservation (`annule_par = expiration`) et libère les dates. Un paiement qui arrive après coup confirme la réservation si les dates sont encore libres, sinon il est remboursé intégralement.
 6. **Versement** : à l'échéance, le worker envoie la part de l'hôte sur son compte Mobile Money (profil saisi dans Espace hôte → Revenus). Sans profil, le versement attend, et l'hôte voit le message.

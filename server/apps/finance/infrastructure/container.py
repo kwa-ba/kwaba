@@ -1,13 +1,15 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
 from apps.finance.application.service import (CautionService, ClotureService, ComptesCourantsService, DepenseService,
-                                              FondsGarantieService, GrandLivreService, LivresService, RapportService,
+                                              FondsGarantieService, GrandLivreService, LivresService,
+                                              ParametreService, RapportService,
                                               RapprochementService, RestitutionService, ValidationService)
 from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
 from apps.finance.infrastructure.persistence.repositories import (DjangoAnnuaire, DjangoCautions, DjangoComptesCourants,
                                                                   DjangoDepenses, DjangoFondsGarantie,
-                                                                  DjangoGrandLivre, DjangoParametres, DjangoPeriodes,
+                                                                  DjangoGrandLivre, DjangoParametres,
+                                                                  DjangoParametresPilotes, DjangoPeriodes,
                                                                   DjangoRapports, DjangoRapprochements,
                                                                   DjangoRegularisations, DjangoTransactionManager,
                                                                   DjangoValidations)
@@ -69,3 +71,8 @@ def fonds_garantie_service() -> FondsGarantieService:
                                 grand_livre=grand_livre_service(), parametres=DjangoParametres(),
                                 alertes=EmailAlertes(), journal=AuditJournal(), tx=DjangoTransactionManager(),
                                 clock=DjangoClock())
+
+
+def parametre_service() -> ParametreService:
+    return ParametreService(parametres=DjangoParametresPilotes(), journal=AuditJournal(), tx=DjangoTransactionManager(),
+                            clock=DjangoClock())

@@ -36,8 +36,8 @@ def _categorie_json(request, c: CategorieVehiculeModel | None) -> dict | None:
 
 
 def _tarifs_chauffeur() -> dict:
-    return {'prix_jour': services.CHAUFFEUR_JOUR, 'prime_hors_lome': services.PRIME_HORS_LOME,
-            'prime_hors_pays': services.PRIME_HORS_PAYS, 'heure_sup': 1000}
+    return {'prix_jour': services.chauffeur_jour(), 'prime_hors_lome': services.prime_hors_lome(),
+            'prime_hors_pays': services.prime_hors_pays(), 'heure_sup': 1000}
 
 
 def _lieu_json(lieu: LieuRemiseModel) -> dict:

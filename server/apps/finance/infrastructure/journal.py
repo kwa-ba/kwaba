@@ -40,3 +40,6 @@ class AuditJournal(Journal):
 
     def fonds_garantie(self, action: str, par_id, details: dict) -> None:
         activity.record(f'fonds_garantie_{action}', actor=par_id, **details)
+
+    def parametre(self, par_id, cle: str, avant, apres, motif: str) -> None:
+        activity.record('parametre_modifie', actor=par_id, cle=cle, avant=str(avant), apres=str(apres), motif=motif)

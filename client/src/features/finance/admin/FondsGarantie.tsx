@@ -134,7 +134,8 @@ export default function FondsGarantie() {
 
       <p className="text-xs text-muted">
         Le fonds est une provision pour garanties données aux clients : dotation au compte 6911, fonds au 192, reprise au 7911 quand il couvre
-        un sinistre. Ces comptes sont une proposition, à confirmer par l&apos;expert-comptable.
+        un sinistre (choix arrêtés le 19 novembre 2026). À la clôture annuelle, la provision est ajustée au risque probable, et la
+        dotation forfaitaire est réintégrée au résultat fiscal.
       </p>
     </div>
   );

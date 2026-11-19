@@ -18,6 +18,13 @@ from .models import FraisMenageModel, ReglagesTarifsModel
 # Highest rate the team can set, in %: a typing mistake (60 instead of 6) cannot go through
 TAUX_MAX = Decimal('30')
 MENAGE_MAX = 100_000
+# Rate of the Tarifs page -> its steered parameter (finance module, GL-20), in %
+PARAMETRES_TAUX = {'frais_voyageur': 'frais_service_voyageur', 'frais_reduits': 'frais_service_reduit',
+                   'commission_particulier': 'commission_hote', 'commission_hotel': 'commission_hotel',
+                   'commission_fondateur': 'commission_hote_fondateur', 'commission_transfert': 'commission_transfert'}
+# Cleaning fee of a listing type -> its parameter, when the referential has one
+PARAMETRES_MENAGE = {'chambre_privee': 'menage_chambre_privee', 'studio': 'menage_studio',
+                     'appartement': 'menage_appartement_t2', 'villa': 'menage_villa'}
 
 
 def _pourcent(valeur: Decimal) -> float:
@@ -34,12 +41,36 @@ def _tarifs_json() -> dict:
     }
 
 
+def _referentiel() -> dict:
+    """The other rates and delays of the referential (vehicles, drivers, network, payouts), shown read only with the
+    page, and the dated history of the rates of the page (GL-20)."""
+    from apps.finance import api as finance  # local import: finance is read at the call only
+
+    cles = set(PARAMETRES_TAUX.values()) | set(PARAMETRES_MENAGE.values())
+    autres = [p for p in finance.parametres() if p['actif'] and p['cle'] not in cles
+              and p['categorie'] in ('tarif', 'forfait', 'delai')]
+    historique = [h for h in finance.historique_parametres(limite=500) if h['cle'] in cles][:50]
+    return {'autres_taux': autres, 'historique': historique}
+
+
+def _synchroniser_referentiel(avant: dict, apres: dict, par_id) -> None:
+    """Each rate changed here is written in the referential of the finance module, with its history."""
+    from apps.finance import api as finance  # local import: finance is read at the call only
+
+    changements = [(PARAMETRES_TAUX[c], v) for c, v in apres['taux'].items()
+                   if c in PARAMETRES_TAUX and v != avant['taux'].get(c)]
+    changements += [(PARAMETRES_MENAGE[c], v) for c, v in apres['frais_menage'].items()
+                    if c in PARAMETRES_MENAGE and v != avant['frais_menage'].get(c)]
+    for cle, valeur in changements:
+        finance.enregistrer_taux_de_la_page_tarifs(cle, valeur, par_id=par_id)
+
+
 class TarifsView(VueAdmin):
     """GET: the rates in force. PUT {taux: {frais_voyageur: 6, …}, frais_menage: {studio: 5000, …}}: changes them,
     for the bookings made afterwards (the amounts of a booking are frozen). Every change goes to the audit log."""
 
     def get(self, request):
-        return Response(_tarifs_json())
+        return Response({**_tarifs_json(), **_referentiel()})
 
     def put(self, request):
         avant = _tarifs_json()
@@ -79,11 +110,12 @@ class TarifsView(VueAdmin):
             taux.save()
             for code, montant in menage.items():
                 FraisMenageModel.objects.update_or_create(type_logement=code, defaults={'montant': montant})
-        apres = _tarifs_json()
+            apres = _tarifs_json()
+            _synchroniser_referentiel(avant, apres, request.user.pk)
         activity.record('tarifs_modifies', request, actor=request.user,
                         avant={**avant['taux'], **{f'menage_{k}': v for k, v in avant['frais_menage'].items()}},
                         apres={**apres['taux'], **{f'menage_{k}': v for k, v in apres['frais_menage'].items()}})
-        return Response(apres)
+        return Response({**apres, **_referentiel()})
 
 
 # Longest period of a report: a year, enough for the accounts, never a query on the whole history by mistake

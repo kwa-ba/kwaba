@@ -240,7 +240,7 @@
         "texte": "A team on the ground that answers you by email."
       },
       "versement": {
-        "titre": "Your host is paid 24 h after you arrive",
+        "titre": "Your host is paid 48 h after you arrive",
         "texte": "You have time to report a problem before the host is paid."
       }
     },
@@ -1438,7 +1438,7 @@
       },
       "recevoir": {
         "titre": "Get bookings",
-        "texte": "Travellers pay online; your share is sent to your Mobile Money account 24 hours after their arrival."
+        "texte": "Travellers pay online; your share is sent to your Mobile Money account 48 hours after their arrival."
       }
     },
     "active": "You're all set! Prepare your listing.",
@@ -1714,7 +1714,7 @@
     },
     "totaux": {
       "aVenir": "Upcoming",
-      "aVenirAide": "Paid 24 h after the guest arrives",
+      "aVenirAide": "Paid 48 h after the guest arrives",
       "enCours": "Being sent",
       "enCoursAide": "On your Mobile Money shortly",
       "verse": "Already paid",
@@ -1731,7 +1731,7 @@
     "modifier": "Edit",
     "ouRecevoir": "Where to receive my money",
     "manquant": "Enter your Mobile Money account: without it, we can't pay you your earnings.",
-    "envoyeSur": "Your share is sent to this Mobile Money account 24 hours after the guest arrives.",
+    "envoyeSur": "Your share is sent to this Mobile Money account 48 hours after the guest arrives.",
     "titulaire": "Account holder name",
     "titulaireAide": "As registered with the operator",
     "annuler": "Cancel",
@@ -2081,7 +2081,7 @@
     "commissionTotale": "Total commission",
     "revenuEstime": "Your estimated earnings",
     "voyageur": "The guest pays {total}, including {frais} of Kwa-Ba service fee ({taux}): this fee is added to your price and does not reduce your earnings.",
-    "note": "Indicative estimate. The final amount is calculated by Kwa-Ba at booking and paid by Mobile Money 24 hours after the guest arrives."
+    "note": "Indicative estimate. The final amount is calculated by Kwa-Ba at booking and paid by Mobile Money 48 hours after the guest arrives."
   },
   "typesHote": {
     "titre": "Rooms and unit types",
@@ -2255,7 +2255,7 @@
     },
     "versement": {
       "titre": "Where should we send your earnings?",
-      "texte": "Your share is paid by Mobile Money, 24 hours after travellers arrive."
+      "texte": "Your share is paid by Mobile Money, 48 hours after travellers arrive."
     },
     "contrat": {
       "titre": "The terms to accept",

@@ -47,6 +47,7 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
     { href: "/backoffice/finances/validations", label: "Validations" },
     { href: "/backoffice/finances/cautions", label: "Cautions" },
     { href: "/backoffice/finances/rapports", label: "Rapports" },
+    { href: "/backoffice/finances/parametres", label: "Paramètres" },
     { href: "/backoffice/finances/cloture", label: "Clôture mensuelle" },
     { href: "/backoffice/finances/export", label: "Export comptable" },
   ] },

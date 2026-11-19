@@ -16,7 +16,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Terms of sale"
-      miseAJour="4 November 2026"
+      miseAJour="19 November 2026"
       intro={
         <>
           <VersionFrancaiseFaitFoi />
@@ -173,7 +173,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
           titre: "Payment to the provider",
           contenu: (
             <>
-              <N n="8.1">Accommodation: the price is held until <strong>24 hours after the customer’s arrival</strong>, then paid to the host.</N>
+              <N n="8.1">Accommodation: the price is held until <strong>48 hours after the customer’s arrival</strong>, then paid to the host.</N>
               <N n="8.2">Mobility: the price is paid to the provider after the mission or rental has started; for a rental with a security deposit, after the damage reporting period (article 14.3).</N>
               <N n="8.3">These periods allow the customer to report a problem before the provider is paid.</N>
             </>
