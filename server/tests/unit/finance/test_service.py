@@ -115,6 +115,9 @@ class FauxJournal(Journal):
     def annuaire(self, action, par_id, genre, nom):
         self.validations.append((f'{action}_enregistre', par_id, nom))
 
+    def parametre(self, par_id, cle, avant, apres, motif):
+        self.validations.append(('parametre_modifie', par_id, cle))
+
     def fonds_garantie(self, action, par_id, details):
         self.validations.append((f'fonds_garantie_{action}', par_id, details))
 

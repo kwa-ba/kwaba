@@ -8,7 +8,8 @@ from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.db.models import Sum
 
 from apps.finance.application.ports import (Annuaire, Cautions, ComptesCourants, Depenses, FondsGarantie, GrandLivre,
-                                            Parametres, Periodes, Rapports, Rapprochements, Regularisations,
+                                            Parametres, ParametresPilotes, Periodes, Rapports, Rapprochements,
+                                            Regularisations,
                                             TransactionManager, Validations)
 from apps.finance.domain.entities import (COMPTE_FONDS_GARANTIE, FAMILLE_DEPENSE, NATURE_DOTATION_GARANTIE,
                                           NATURES_COMPTE_COURANT, PREFIXE_DOTATION, PREFIXE_REGULARISATION,
@@ -19,7 +20,8 @@ from apps.finance.domain.exceptions import ClotureRefusee, DepenseRefusee, Mouve
 from apps.finance.infrastructure.persistence.models import (CLE_IDEMPOTENCE, CORRECTION_UNIQUE, AssocieModel, AxeModel,
                                                             CautionModel, CompteArgentModel, DepenseModel,
                                                             FournisseurModel, MouvementModel, MoyenPaiementModel,
-                                                            NatureModel, OffreModel, ParametreModel, PeriodeModel,
+                                                            NatureModel, OffreModel, ParametreHistoModel,
+                                                            ParametreModel, PeriodeModel,
                                                             RapportModel, RapprochementJourModel,
                                                             RapprochementLigneModel, RegularisationModel,
                                                             ReleveExterneModel, SinistreModel, TiersTypeModel,
@@ -637,3 +639,35 @@ class DjangoFondsGarantie(FondsGarantie):
 
     def sinistres(self, limite: int) -> list[Sinistre]:
         return [_sinistre(m) for m in SinistreModel.objects.order_by('-impute_le')[:limite]]
+
+
+# --- Steered parameters (GL-20) --------------------------------------------------------------------------------------
+
+CHAMPS_PARAMETRE = ('cle', 'valeur', 'unite', 'categorie', 'offre_id', 'libelle', 'source', 'actif', 'maj_le',
+                    'maj_par_id')
+
+
+def _parametre(p: dict) -> dict:
+    return {**{k: v for k, v in p.items() if k != 'offre_id'}, 'offre': p['offre_id']}
+
+
+class DjangoParametresPilotes(ParametresPilotes):
+    def tous(self) -> list[dict]:
+        return [_parametre(p) for p in ParametreModel.objects.order_by('categorie', 'cle').values(*CHAMPS_PARAMETRE)]
+
+    def lire_pour_modifier(self, cle) -> dict | None:
+        p = ParametreModel.objects.select_for_update().filter(cle=cle).values(*CHAMPS_PARAMETRE).first()
+        return _parametre(p) if p else None
+
+    def historique(self, cle=None, limite=200) -> list[dict]:
+        qs = ParametreHistoModel.objects.order_by('-date_effet', '-id')
+        if cle:
+            qs = qs.filter(cle=cle)
+        return list(qs.values('cle', 'valeur_avant', 'valeur_apres', 'date_effet', 'cree_le', 'cree_par_id',
+                              'motif')[:limite])
+
+    def modifier(self, cle, valeur, *, par_id, motif, quand) -> None:
+        avant = ParametreModel.objects.filter(cle=cle).values_list('valeur', flat=True).first()
+        ParametreModel.objects.filter(cle=cle).update(valeur=valeur, maj_le=quand, maj_par_id=par_id)
+        ParametreHistoModel.objects.create(cle=cle, valeur_avant=avant, valeur_apres=valeur, date_effet=quand,
+                                           cree_par_id=par_id, motif=motif)

@@ -16,7 +16,7 @@ export default function ContenuFr() {
             l’annexe 1 des <Link href="/cgv">conditions générales de vente</Link>, qui font foi.
           </p>
           <p>
-            Votre paiement est conservé par Kwa-Ba : l’hôte n’est payé que 24 heures après votre arrivée, le propriétaire du véhicule
+            Votre paiement est conservé par Kwa-Ba : l’hôte n’est payé que 48 heures après votre arrivée, le propriétaire du véhicule
             après le début de la location. C’est ce qui nous permet de vous rembourser rapidement en cas d’annulation ou de problème.
           </p>
         </>

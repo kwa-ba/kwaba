@@ -56,6 +56,10 @@ export interface TarifsAdmin {
   /** FCFA per stay, by listing type */
   frais_menage: Record<string, number>;
   mis_a_jour_le: string | null;
+  /** Other rates and delays of the referential (finance module), read only here (GL-20) */
+  autres_taux?: { cle: string; libelle: string; valeur: string | number; unite: string; offre: string | null }[];
+  /** Dated changes of the rates of this page */
+  historique?: { cle: string; valeur_avant: string | number | null; valeur_apres: string | number; date_effet: string; motif: string | null }[];
 }
 
 export async function lireTarifsAdmin() {

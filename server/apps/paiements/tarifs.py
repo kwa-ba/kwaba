@@ -57,7 +57,10 @@ GRILLE_MENAGE = {
 
 # Reference arrival time for the deadlines (cancellation scale, payout to the host)
 HEURE_ARRIVEE = time(14, 0)
+# Payout to the host after the arrival: parameter versement_hote_heures of the finance module (48 h since the decision
+# of 19 November 2026, CGV art. 8.1), read at the booking's date. This value only if the parameter cannot be read
 DELAI_VERSEMENT = timedelta(hours=24)
+PARAMETRE_DELAI_VERSEMENT = 'versement_hote_heures'
 
 # Cancellation policies chosen by the host (terms of sale, appendix 1)
 POLITIQUES = [('souple', 'Souple'), ('moderee', 'Modérée'), ('ferme', 'Ferme')]
@@ -196,8 +199,20 @@ def arrivee(reservation) -> datetime:
     return timezone.make_aware(datetime.combine(reservation.check_in, HEURE_ARRIVEE))
 
 
+def delai_versement(reservation) -> timedelta:
+    """Delay of the host's payout after the arrival, as in force when the booking was made: a booking keeps the
+    terms its traveller and its host accepted (24 h before 19 November 2026, 48 h since)."""
+    from apps.finance import api as finance  # local import: finance is read at the call only
+
+    moment = getattr(reservation, 'created_at', None) or timezone.now()
+    try:
+        return timedelta(hours=float(finance.parametre_au(PARAMETRE_DELAI_VERSEMENT, moment)))
+    except ValueError:
+        return DELAI_VERSEMENT
+
+
 def date_versement(reservation) -> datetime:
-    return arrivee(reservation) + DELAI_VERSEMENT
+    return arrivee(reservation) + delai_versement(reservation)
 
 
 # --- Cancellation by the traveller ------------------------------------------------------------------

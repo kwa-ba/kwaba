@@ -3,7 +3,8 @@ from django.urls import path
 from .admin_views import (AssociesView, AuxiliairesView, BalanceView, CautionsView, ClotureMoisView, ClotureView,
                           ComptesCourantsView, ComptesView, DepenseAnnulationView, DepensesView, DotationView,
                           ExportComptableView, FondsGarantieView, FournisseursView, GrandLivreCompteView,
-                          GrandLivreView, LivreJournalView, MouvementsView, PilotageView, RapportExportView,
+                          GrandLivreView, LivreJournalView, MouvementsView, ParametresView, ParametreView,
+                          PilotageView, RapportExportView,
                           RapportResultatView, RapportsView, RapprochementJourView, RapprochementsView,
                           ReferentielsView, RegularisationView, ReleveCompteCourantView, SinistreAnnulationView,
                           SinistresView, ValidationDecisionView, ValidationsView)
@@ -42,6 +43,8 @@ urlpatterns = [
     path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
     path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),
          name='admin-finance-regularisation'),
+    path('parametres/', ParametresView.as_view(), name='admin-finance-parametres'),
+    path('parametres/<str:cle>/', ParametreView.as_view(), name='admin-finance-parametre'),
     path('validations/', ValidationsView.as_view(), name='admin-finance-validations'),
     path('validations/<uuid:pk>/<str:decision>/', ValidationDecisionView.as_view(), name='admin-finance-validation'),
 ]

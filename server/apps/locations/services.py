@@ -49,7 +49,9 @@ logger = logging.getLogger('apps.locations')
 
 DELAI_VERSEMENT = timedelta(hours=24)
 
-# Driver (mobility offer, terms of sale art. 6.5, driver contract art. 3)
+# Driver (mobility offer, terms of sale art. 6.5, driver contract art. 3) and owner's commission: read from the
+# steered parameters of the finance module (GL-20, « no business value in the code »); these values only if a parameter
+# cannot be read
 CHAUFFEUR_JOUR = 7000
 PART_KWABA_JOUR = 1000
 PART_KWABA_JOUR_REDUITE = 500  # Excellence driver or "My driver": the driver gets 6,500
@@ -64,6 +66,36 @@ LOCATIONS_CLIENT_FIDELE = 3
 # Cancellation (terms of sale, appendix 1) and cooling-off period (art. 10.3)
 DEMI_REMBOURSEMENT = timedelta(hours=24)
 REFLEXION, REFLEXION_AVANT = timedelta(hours=48), timedelta(days=7)
+
+
+def _parametre(cle: str, defaut):
+    from apps.finance import api as finance  # local import: finance is read at the call only
+
+    try:
+        return type(defaut)(finance.parametre(cle))
+    except ValueError:
+        return defaut
+
+
+def chauffeur_jour() -> int:
+    """Price of the driver per day, paid by the customer."""
+    return _parametre('chauffeur_prix_jour', CHAUFFEUR_JOUR)
+
+
+def part_kwaba_jour(reduite: bool = False) -> int:
+    """Kwa-Ba's share of the driver's day: the price less the driver's part (Excellence or « My driver »: larger
+    part)."""
+    if reduite:
+        return chauffeur_jour() - _parametre('chauffeur_part_excellence', CHAUFFEUR_JOUR - PART_KWABA_JOUR_REDUITE)
+    return chauffeur_jour() - _parametre('chauffeur_part_jour', CHAUFFEUR_JOUR - PART_KWABA_JOUR)
+
+
+def prime_hors_lome() -> int:
+    return _parametre('chauffeur_prime_pays', PRIME_HORS_LOME)
+
+
+def prime_hors_pays() -> int:
+    return _parametre('chauffeur_prime_hors_pays', PRIME_HORS_PAYS)
 
 
 class LocationErreur(Exception):
@@ -109,9 +141,9 @@ def taux_commission(params: ParametresLocationModel, partenaire: PartenaireLocat
         return taux
     jour = jour or timezone.localdate()
     if partenaire.fondateur_debut and partenaire.fondateur_fin and partenaire.fondateur_debut <= jour <= partenaire.fondateur_fin:
-        taux = min(taux, COMMISSION_FONDATEUR)
+        taux = min(taux, _parametre('commission_vehicule_fondateur', COMMISSION_FONDATEUR))
     if partenaire.locations.filter(statut='terminee', caution_retenue=0).count() >= LOCATIONS_FIDELE:
-        taux = min(taux, COMMISSION_FIDELE)
+        taux = min(taux, _parametre('commission_vehicule_fidele', COMMISSION_FIDELE))
     return taux
 
 
@@ -172,12 +204,12 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
         jours_hors_lome = jours_hors_pays = 0
     if jours_hors_lome < 0 or jours_hors_pays < 0 or jours_hors_lome + jours_hors_pays > jours:
         raise LocationErreur(f"Les jours hors de Lomé ne peuvent pas dépasser la durée de la location ({jours} jours).")
-    prix_chauffeur = CHAUFFEUR_JOUR * jours if avec_chauffeur else 0
-    primes = PRIME_HORS_LOME * jours_hors_lome + PRIME_HORS_PAYS * jours_hors_pays
+    prix_chauffeur = chauffeur_jour() * jours if avec_chauffeur else 0
+    primes = prime_hors_lome() * jours_hors_lome + prime_hors_pays() * jours_hors_pays
     return Devis(
         jours=jours, prix_jour=prix_jour, frais_lieux=frais, prix_chauffeur=prix_chauffeur, primes=primes,
         prix=prix_jour * jours + frais + prix_chauffeur + primes, commission=commission,
-        part_kwaba_chauffeur=PART_KWABA_JOUR * jours if avec_chauffeur else 0, caution=caution,
+        part_kwaba_chauffeur=part_kwaba_jour() * jours if avec_chauffeur else 0, caution=caution,
     )
 
 
@@ -361,7 +393,7 @@ def attribuer(location: LocationModel, *, partenaire: PartenaireLocationModel | 
         if chauffeur:
             location.chauffeur_nom, location.chauffeur_telephone = f"{chauffeur['prenom']} {chauffeur['nom']}", chauffeur['telephone']
             reduite = chauffeur['excellence'] or chauffeur['id'] == location.chauffeur_demande_id
-            location.part_kwaba_chauffeur = (PART_KWABA_JOUR_REDUITE if reduite else PART_KWABA_JOUR) * location.jours
+            location.part_kwaba_chauffeur = part_kwaba_jour(reduite) * location.jours
         else:
             location.chauffeur_nom = location.chauffeur_telephone = ''
         if changement:

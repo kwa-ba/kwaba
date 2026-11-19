@@ -346,3 +346,13 @@ class Sinistre:
     mouvement_id: int | None = None
     annule_le: datetime | None = None
     motif_annulation: str = ''
+
+
+# --- Steered parameters (GL-20, FIN-10, FIN-16) --------------------------------------------------------------------
+
+# Rates the site uses at every booking: set on the Tarifs page (module paiements), which writes them here with their
+# history; the parameters page shows them but does not change them
+PARAMETRES_DE_LA_PAGE_TARIFS = frozenset({
+    'frais_service_voyageur', 'frais_service_reduit', 'commission_hote', 'commission_hotel',
+    'commission_hote_fondateur', 'commission_transfert', 'menage_chambre_privee', 'menage_studio',
+    'menage_appartement_t2', 'menage_villa'})

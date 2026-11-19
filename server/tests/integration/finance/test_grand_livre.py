@@ -58,9 +58,9 @@ def test_reference_data_of_the_schema_is_loaded():
     assert NatureModel.objects.filter(actif=True).count() == 40
     # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
     # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
-    # alert (0014)
-    assert ParametreModel.objects.count() == 99
-    assert ParametreModel.objects.filter(actif=True).count() == 57
+    # alert (0014), the rate of the transfers of the Tarifs page (0015)
+    assert ParametreModel.objects.count() == 100
+    assert ParametreModel.objects.filter(actif=True).count() == 58
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15) and the guarantee fund (GL-17)

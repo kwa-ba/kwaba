@@ -179,3 +179,19 @@ describe("comptes des associés et fonds de garantie (GL-16, GL-17)", () => {
     expect(api.post).toHaveBeenLastCalledWith(`${F}/fonds-garantie/sinistres/s1/annuler/`, { motif: "Mauvaise dépense" });
   });
 });
+
+describe("paramètres (GL-20)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post, api.patch]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit le référentiel et l'historique d'un paramètre, et le modifie avec son motif", async () => {
+    await finance.lireParametres();
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/parametres/`);
+    await finance.lireHistoriqueParametre("fonds_garantie_cible");
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/parametres/fonds_garantie_cible/`);
+    await finance.modifierParametre("fonds_garantie_cible", "500000", "Décision des associés");
+    expect(api.patch).toHaveBeenLastCalledWith(`${F}/parametres/fonds_garantie_cible/`, { valeur: "500000", motif: "Décision des associés" });
+  });
+});

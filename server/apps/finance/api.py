@@ -21,12 +21,13 @@ from apps.finance.domain.entities import (ENTREE, SORTIE, Caution, Ecrivain, Fil
                                           OperationExterne)
 from apps.finance.application.service import VIDE
 from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, FondsGarantieRefuse,
-                                            MouvementRefuse, RapprochementRefuse, RestitutionRefusee,
-                                            ValidationRefusee)
+                                            MouvementRefuse, ParametreRefuse, RapprochementRefuse,
+                                            RestitutionRefusee, ValidationRefusee)
 from apps.finance.domain.rules import mois_de
 from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service,
                                                    depense_service, fonds_garantie_service, grand_livre_service,
-                                                   livres_service, rapport_service, rapprochement_service,
+                                                   livres_service, parametre_service, rapport_service,
+                                                   rapprochement_service,
                                                    restitution_service, validation_service)
 
 __all__ = [
@@ -63,6 +64,9 @@ __all__ = [
     # Guarantee fund (GL-17)
     'FondsGarantieRefuse', 'fonds_garantie', 'dotations_fonds_garantie', 'doter_fonds_garantie',
     'doter_fonds_garantie_si_du', 'imputer_sinistre', 'annuler_sinistre', 'sinistres',
+    # Steered parameters and their history (GL-20)
+    'ParametreRefuse', 'parametres', 'historique_parametres', 'modifier_parametre', 'parametre_au',
+    'enregistrer_taux_de_la_page_tarifs',
 ]
 
 
@@ -545,3 +549,30 @@ def annuler_sinistre(sinistre_id, *, motif: str, par_id: uuid.UUID | None) -> di
 
 def sinistres() -> list[dict]:
     return [_sinistre_simple(s) for s in fonds_garantie_service().sinistres()]
+
+
+# --- Steered parameters (GL-20) --------------------------------------------------------------------------------------
+
+def parametres() -> list[dict]:
+    """The referential: every parameter, with whether it is set from the Tarifs page."""
+    return parametre_service().liste()
+
+
+def historique_parametres(cle: str | None = None, limite: int = 200) -> list[dict]:
+    return parametre_service().historique(cle, limite)
+
+
+def modifier_parametre(cle: str, valeur, *, motif: str, par_id: uuid.UUID | None) -> dict:
+    """Changes a steered parameter at once, with its reason (history and audit log). Raises ParametreRefuse."""
+    return parametre_service().modifier(cle, valeur, motif=motif, par_id=par_id)
+
+
+def enregistrer_taux_de_la_page_tarifs(cle: str, valeur, *, par_id: uuid.UUID | None) -> None:
+    """The Tarifs page (module paiements) changed a rate the site uses: it is written here with its history."""
+    parametre_service().modifier(cle, valeur, motif='Modifié depuis la page Tarifs', par_id=par_id,
+                                 depuis_page_tarifs=True)
+
+
+def parametre_au(cle: str, moment) -> Decimal:
+    """The value in force at `moment` (a booking keeps the delay of its time). Raises ParametreRefuse if unknown."""
+    return parametre_service().valeur_au(cle, moment)

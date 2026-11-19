@@ -10,13 +10,13 @@ function N({ n, children }: { n: string; children: React.ReactNode }) {
   return <p><strong>{n}.</strong> {children}</p>;
 }
 
-/** French version (authoritative). Terms of sale version 2.4 of 18 October 2026, adapted to the open services. */
+/** French version (authoritative). Terms of sale version 2.5 of 19 November 2026 (payout to the host 48 h after the arrival), adapted to the open services. */
 /** `taux`: the traveller's fee rates set in the back-office ("6 %", "3 %"). */
 export default function ContenuFr({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Conditions générales de vente"
-      miseAJour="4 novembre 2026"
+      miseAJour="19 novembre 2026"
       intro={
         <>
           <p>
@@ -172,7 +172,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
           titre: "Versement au prestataire",
           contenu: (
             <>
-              <N n="8.1">Hébergement : le prix est conservé jusqu’à <strong>24 heures après l’arrivée</strong> du client, puis versé à l’hôte.</N>
+              <N n="8.1">Hébergement : le prix est conservé jusqu’à <strong>48 heures après l’arrivée</strong> du client, puis versé à l’hôte.</N>
               <N n="8.2">Mobilité : le prix est versé au prestataire après le début de la mission ou de la location ; pour une location avec dépôt de garantie, après le délai de signalement des dommages (article 14.3).</N>
               <N n="8.3">Ces délais permettent au client de signaler un problème avant que le prestataire ne soit payé.</N>
             </>

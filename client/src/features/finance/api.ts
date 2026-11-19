@@ -713,3 +713,41 @@ export async function imputerSinistre(s: NouveauSinistre) {
 export async function annulerSinistre(id: string, motif: string) {
   return (await api.post<SinistreFonds>(`${FINANCE}/fonds-garantie/sinistres/${id}/annuler/`, { motif })).data;
 }
+
+// --- Steered parameters and their history (GL-20)
+
+export interface ParametreFinance {
+  cle: string;
+  valeur: string | number;
+  unite: string;
+  categorie: string;
+  offre: string | null;
+  libelle: string;
+  source: string | null;
+  actif: boolean;
+  maj_le: string | null;
+  /** Set from the Tarifs page (the site reads it at every booking) */
+  page_tarifs: boolean;
+}
+
+export interface ChangementParametre {
+  cle: string;
+  valeur_avant: string | number | null;
+  valeur_apres: string | number;
+  date_effet: string;
+  motif: string | null;
+  par: string;
+}
+
+export async function lireParametres() {
+  return (await api.get<{ parametres: ParametreFinance[]; historique: ChangementParametre[]; peut_modifier: boolean }>(
+    `${FINANCE}/parametres/`)).data;
+}
+
+export async function lireHistoriqueParametre(cle: string) {
+  return (await api.get<{ historique: ChangementParametre[] }>(`${FINANCE}/parametres/${cle}/`)).data;
+}
+
+export async function modifierParametre(cle: string, valeur: string, motif: string) {
+  return (await api.patch<ParametreFinance>(`${FINANCE}/parametres/${cle}/`, { valeur, motif })).data;
+}

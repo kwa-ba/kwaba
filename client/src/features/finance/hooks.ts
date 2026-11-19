@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  lireHistoriqueParametre, lireParametres, modifierParametre,
   annulerSinistre, doterFondsGarantie, imputerSinistre, lireComptesCourants, lireFondsGarantie, lireReleveAssocie,
   type NouveauSinistre,
   annulerDepense, cloturerMois, creerRapport, deciderValidation, enregistrerAssocie, enregistrerFournisseur,
@@ -40,6 +41,8 @@ export const CLES_FINANCE = {
   comptesCourants: ["admin", "finance", "associes", "comptes"] as const,
   releveAssocie: (id: string) => ["admin", "finance", "associes", "releve", id] as const,
   fondsGarantie: ["admin", "finance", "fonds-garantie"] as const,
+  parametres: ["admin", "finance", "parametres"] as const,
+  historiqueParametre: (cle: string) => ["admin", "finance", "parametres", cle] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -246,4 +249,21 @@ export function useAnnulerSinistre() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: ({ id, motif }: { id: string; motif: string }) => annulerSinistre(id, motif),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+/** The referential of the steered parameters and their history (GL-20). */
+export function useParametres() {
+  return useQuery({ queryKey: CLES_FINANCE.parametres, queryFn: lireParametres });
+}
+
+export function useHistoriqueParametre(cle: string | null) {
+  return useQuery({ queryKey: CLES_FINANCE.historiqueParametre(cle ?? ""), queryFn: () => lireHistoriqueParametre(cle as string),
+    enabled: !!cle });
+}
+
+/** A value changed may move any finance figure (thresholds, rates): every finance read is refreshed. */
+export function useModifierParametre() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ cle, valeur, motif }: { cle: string; valeur: string; motif: string }) =>
+    modifierParametre(cle, valeur, motif), onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
 }
