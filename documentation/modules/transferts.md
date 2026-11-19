@@ -64,6 +64,8 @@ Le voyageur saisit l'heure de son billet (heure locale de l'aéroport). Elle est
 
 ## Photo, niveaux et avis des chauffeurs (décisions du 19 novembre 2026)
 
+Décision : [ADR-027](../ADR/ADR-027-chauffeurs-photo-avis-niveaux.md).
+
 - **Photo de profil obligatoire** : l'équipe l'ajoute dans le back-office (Transferts → Chauffeurs, fiche du chauffeur ; JPEG, PNG ou WebP, 400 px au moins, réencodée sans métadonnées), puis la **valide** (un visage net, celui du chauffeur). Sans photo validée, un chauffeur ne reçoit **aucune course ni mission** : il n'est pas proposé à l'attribution (transferts et locations avec chauffeur), et l'attribution est refusée. Une nouvelle photo attend une nouvelle validation.
 - **Ce que voit le voyageur** : une fois le chauffeur attribué, sa photo et son niveau sur la page du transfert (et de la location avec chauffeur, sans son nom ni son numéro, qui restent dans l'email), et son niveau dans l'email d'attribution.
 - **Avis du voyageur** : après la course (transfert effectué, location avec chauffeur terminée), un email lui demande une fois une note de 1 à 5, la ponctualité, la conduite, l'amabilité et un commentaire facultatif (`POST /api/v1/transferts/<id>/avis-chauffeur/`, `POST /api/v1/locations/<id>/avis-chauffeur/`). Un seul avis par course, vu par l'équipe seulement (`transferts_avis_chauffeur`).
