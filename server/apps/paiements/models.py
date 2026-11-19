@@ -224,6 +224,8 @@ class VersementModel(models.Model):
     montant_brut = models.PositiveIntegerField(help_text='Prix des nuits revenant à l\'hôte, avant commission')
     commission = models.PositiveIntegerField()
     montant = models.PositiveIntegerField(help_text='Montant versé à l\'hôte')
+    # Withheld on this payout to recover a payout of a stay cancelled after it was paid (GL-23); montant is net of it
+    retenue = models.PositiveIntegerField(default=0)
     devise = models.CharField(max_length=3, default='XOF')
     date_prevue = models.DateTimeField()
     statut = models.CharField(max_length=20, choices=STATUTS, default='planifie')
@@ -296,3 +298,54 @@ class RemboursementModel(ObjetPayeMixin, models.Model):
     @property
     def payeur(self):
         return self.paiement.payeur
+
+
+class RecuperationModel(models.Model):
+    """Money paid to a host for a stay cancelled and refunded afterwards (GL-23, case FF-04): Kwa-Ba recovers it on the
+    host's next payouts, and while nothing is due to them, a repayment request is traced and sent again. Never a
+    negative balance nobody sees."""
+    STATUTS = [('en_cours', 'À récupérer'), ('soldee', 'Récupérée'), ('annulee', 'Sans objet')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    hote_id = models.UUIDField(db_index=True)
+    reservation_id = models.UUIDField()
+    # The payout already made (or on its way) for the cancelled stay
+    versement = models.ForeignKey(VersementModel, on_delete=models.PROTECT, related_name='recuperations')
+    montant = models.PositiveIntegerField(help_text='À récupérer auprès de l\'hôte')
+    recupere = models.PositiveIntegerField(default=0)
+    statut = models.CharField(max_length=10, choices=STATUTS, default='en_cours')
+    motif = models.CharField(max_length=200)
+    relances = models.PositiveSmallIntegerField(default=0)
+    derniere_relance_le = models.DateTimeField(null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    mis_a_jour_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'paiements'
+        db_table = 'paiements_recuperation'
+        ordering = ['cree_le']
+        verbose_name = 'Récupération auprès d\'un hôte'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(montant__gt=0), name='paiements_recuperation_montant_positif'),
+            models.CheckConstraint(condition=models.Q(recupere__lte=models.F('montant')),
+                                   name='paiements_recuperation_bornee'),
+        ]
+
+    @property
+    def reste(self) -> int:
+        return self.montant - self.recupere
+
+
+class RetenueVersementModel(models.Model):
+    """The part of a host's payout withheld for a recovery."""
+    id = models.BigAutoField(primary_key=True)
+    recuperation = models.ForeignKey(RecuperationModel, on_delete=models.PROTECT, related_name='retenues')
+    versement = models.ForeignKey(VersementModel, on_delete=models.PROTECT, related_name='retenues')
+    montant = models.PositiveIntegerField()
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'paiements'
+        db_table = 'paiements_retenue_versement'
+        ordering = ['cree_le']
+        verbose_name = 'Retenue sur un versement'

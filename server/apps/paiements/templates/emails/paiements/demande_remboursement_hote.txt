@@ -1,0 +1,12 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+Le séjour {{ reference }} a été annulé et remboursé au voyageur après que nous vous avons versé votre part.
+Il reste {{ montant }} à rendre à Kwa-Ba.
+
+Si un autre séjour vous est versé prochainement, nous retiendrons cette somme sur ce versement : vous n'avez rien à faire.
+Sinon, répondez à cet email pour convenir avec nous du remboursement.
+
+Le détail de vos versements est dans votre espace hôte : {{ url_revenus }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}

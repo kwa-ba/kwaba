@@ -152,3 +152,64 @@ export async function rembourserSejour(reservationId: string, bareme: BaremeRemb
 export async function agirSurRemboursement(id: string, action: ActionRemboursement, corps: Record<string, string> = {}) {
   return (await api.post<RemboursementAdmin>(`${REMBOURSEMENTS}${id}/${action}/`, corps)).data;
 }
+
+// --- Payouts to the partners (GL-11) and recoveries after a cancellation (GL-23)
+
+export type StatutVersementPartenaire = "planifie" | "en_cours" | "envoye" | "echoue" | "annule";
+
+export interface VersementPartenaire {
+  /** hote, or the paid product (transfert, location) */
+  type: string;
+  id: string;
+  categorie: string;
+  beneficiaire: string;
+  objet: string;
+  montant: number;
+  /** Withheld for a recovery: `montant` is net of it */
+  retenue: number;
+  commission: number;
+  statut: StatutVersementPartenaire;
+  date_prevue: string;
+  envoye_le: string | null;
+  tentatives: number;
+  derniere_erreur: string;
+  en_retard: boolean;
+  relancable: boolean;
+}
+
+export interface RecuperationHote {
+  id: string;
+  hote: string;
+  objet: string;
+  montant: number;
+  recupere: number;
+  reste: number;
+  statut: "en_cours" | "soldee" | "annulee";
+  motif: string;
+  relances: number;
+  derniere_relance_le: string | null;
+  cree_le: string;
+  versement_a_venir: boolean;
+}
+
+export interface VersementsPartenaires {
+  versements: VersementPartenaire[];
+  recuperations: RecuperationHote[];
+  totaux: { du: number; en_retard: number; echoues: number; a_recuperer: number };
+  retard_heures: number;
+  peut_operer: boolean;
+}
+
+const VERSEMENTS = "/v1/admin/paiements/finances/versements/";
+
+export async function lireVersementsPartenaires(statut: string) {
+  return (await api.get<VersementsPartenaires>(VERSEMENTS, { params: statut ? { statut } : {} })).data;
+}
+
+export async function relancerVersement(type: string, id: string) {
+  return (await api.post<{ detail: string }>(`${VERSEMENTS}${type}/${id}/relancer/`, {})).data;
+}
+
+export async function relancerRecuperation(id: string) {
+  return (await api.post<{ detail: string; relances: number }>(`/v1/admin/paiements/finances/recuperations/${id}/relancer/`, {})).data;
+}

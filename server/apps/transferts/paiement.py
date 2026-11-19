@@ -6,7 +6,7 @@ from django.utils import formats
 
 from django.db.models import Q
 
-from apps.paiements.api import ProduitPaye, Relance
+from apps.paiements.api import ProduitPaye, Relance, VersementErreur, ligne_a_verser, remettre_en_route
 
 from . import services
 from .models import TransfertModel, VersementChauffeurModel
@@ -41,8 +41,28 @@ def _versements_periode(debut, fin) -> list[dict]:
     } for v in _a_regarder(VersementChauffeurModel.objects.select_related('chauffeur', 'transfert'), debut, fin)]
 
 
+A_VERSER = ('planifie', 'en_cours', 'echoue')
+
+
+def _a_verser(statut=None) -> list[dict]:
+    """Drivers' payouts still to send, or of the state given (GL-11)."""
+    qs = VersementChauffeurModel.objects.select_related('chauffeur', 'transfert')
+    qs = qs.filter(statut=statut) if statut else qs.filter(statut__in=A_VERSER)
+    return [ligne_a_verser(v, categorie='Chauffeur (transfert)', beneficiaire=str(v.chauffeur),
+                           objet=v.transfert.reference) for v in qs[:500]]
+
+
+def _relancer(versement_id) -> None:
+    v = VersementChauffeurModel.objects.select_for_update().filter(pk=versement_id).first()
+    if v is None:
+        raise VersementErreur('Versement introuvable.')
+    remettre_en_route(v)
+
+
 PRODUIT_PAYE = ProduitPaye(
     type='transfert',
+    a_verser=_a_verser,
+    relancer=_relancer,
     revenu=lambda ids: dict(TransfertModel.objects.filter(pk__in=list(ids)).values_list('pk', 'commission')),
     versements_periode=_versements_periode,
     decrire=_decrire_paiement,

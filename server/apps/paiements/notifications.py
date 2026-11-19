@@ -202,3 +202,22 @@ def envoyer_notifications() -> int:
         lambda rb: alerte_admin('Remboursement', rb, rb.payeur.email, reference=rb.reference, libelle=rb.libelle),
     )
     return total
+
+
+def demande_remboursement_hote(recuperation, hote):
+    """GL-23: the host was paid for a stay cancelled afterwards and no payout is coming to withhold it from."""
+    r = _reservation(recuperation.reservation_id)
+    _envoyer('demande_remboursement_hote', f"Séjour {r.reference if r else ''} annulé après votre versement".strip(),
+             [hote.email], {'prenom': hote.first_name, 'reference': r.reference if r else '',
+                            'montant': _fcfa(recuperation.reste), 'motif': recuperation.motif,
+                            'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus"})
+
+
+def versements_en_retard(en_retard: int, echoues: int, url: str):
+    """GL-11: once a day, how many partner payouts are late or failed (no amount, no name)."""
+    destinataires = users.emails_admins_section('finances') or _admins()
+    if not destinataires:
+        logger.error('Versements en retard (%s) ou en échec (%s), aucun administrateur à prévenir', en_retard, echoues)
+        return
+    _envoyer('versements_en_retard', '[Kwa-Ba Finance] Versements aux partenaires à traiter', destinataires,
+             {'en_retard': en_retard, 'echoues': echoues, 'url': url})

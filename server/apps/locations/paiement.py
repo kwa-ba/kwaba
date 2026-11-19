@@ -6,7 +6,7 @@ from django.utils import formats
 
 from django.db.models import Q
 
-from apps.paiements.api import ProduitPaye, Relance
+from apps.paiements.api import ProduitPaye, Relance, VersementErreur, ligne_a_verser, remettre_en_route
 
 from . import services
 from .models import LocationModel, VersementChauffeurLocationModel, VersementPartenaireModel
@@ -48,8 +48,36 @@ def _versements_periode(debut, fin) -> list[dict]:
     return lignes
 
 
+A_VERSER = ('planifie', 'en_cours', 'echoue')
+
+
+def _a_verser(statut=None) -> list[dict]:
+    """Payouts of the vehicle owners and of the rental drivers still to send, or of the state given (GL-11)."""
+    def filtre(qs):
+        return qs.filter(statut=statut) if statut else qs.filter(statut__in=A_VERSER)
+
+    lignes = [ligne_a_verser(v, categorie='Propriétaire de véhicule', beneficiaire=str(v.partenaire),
+                             objet=v.location.reference)
+              for v in filtre(VersementPartenaireModel.objects.select_related('partenaire', 'location'))[:500]]
+    lignes += [ligne_a_verser(v, categorie='Chauffeur (location)', beneficiaire=f'Chauffeur {v.chauffeur_id}',
+                              objet=v.location.reference)
+               for v in filtre(VersementChauffeurLocationModel.objects.select_related('location'))[:500]]
+    return lignes
+
+
+def _relancer(versement_id) -> None:
+    for modele in (VersementPartenaireModel, VersementChauffeurLocationModel):
+        v = modele.objects.select_for_update().filter(pk=versement_id).first()
+        if v is not None:
+            remettre_en_route(v)
+            return
+    raise VersementErreur('Versement introuvable.')
+
+
 PRODUIT_PAYE = ProduitPaye(
     type='location',
+    a_verser=_a_verser,
+    relancer=_relancer,
     # The owner's commission and Kwa-Ba's share of the driver's days
     revenu=lambda ids: {pk: commission + part for pk, commission, part in LocationModel.objects.filter(pk__in=list(ids))
                         .values_list('pk', 'commission', 'part_kwaba_chauffeur')},

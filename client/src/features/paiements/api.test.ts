@@ -74,3 +74,18 @@ describe("remboursements au back-office (GL-9)", () => {
     expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/x/manuel/", { reference: "FP-1" });
   });
 });
+
+describe("versements aux partenaires (GL-11)", () => {
+  it("lit les versements filtrés, relance un versement et demande un remboursement", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    await paiements.lireVersementsPartenaires("echoue");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/", { params: { statut: "echoue" } });
+    await paiements.lireVersementsPartenaires("");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/", { params: {} });
+    await paiements.relancerVersement("hote", "v1");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/hote/v1/relancer/", {});
+    await paiements.relancerRecuperation("r1");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/recuperations/r1/relancer/", {});
+  });
+});
