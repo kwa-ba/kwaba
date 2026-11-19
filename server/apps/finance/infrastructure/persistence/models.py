@@ -756,3 +756,17 @@ class ReleveImportModel(models.Model):
         db_table = 'finance_releve_import'
         ordering = ['-importe_le']
         verbose_name = 'Relevé bancaire importé'
+
+
+class RapportAssociesModel(models.Model):
+    """The comment of the referent on the monthly report to the associates (GL-21, pact art. 2.4): the figures come
+    from the ledger, only the comment is kept here."""
+    mois = models.DateField(primary_key=True)
+    commentaire = models.TextField(blank=True, default='')
+    maj_par_id = models.UUIDField(null=True, blank=True)
+    maj_le = models.DateTimeField()
+
+    class Meta:
+        db_table = 'finance_rapport_associes'
+        ordering = ['-mois']
+        verbose_name = 'Rapport mensuel aux associés'

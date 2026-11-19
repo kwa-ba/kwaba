@@ -90,3 +90,12 @@ def tresorerie_service() -> TresorerieService:
     return TresorerieService(comptes=DjangoComptesArgent(), virements=DjangoVirements(), releves=DjangoReleves(),
                              rapprochement=rapprochement_service(), periodes=DjangoPeriodes(), journal=AuditJournal(),
                              tx=DjangoTransactionManager(), clock=DjangoClock())
+
+
+def pilotage_service():
+    from apps.finance.application.pilotage import PilotageService
+    from apps.finance.infrastructure.persistence.pilotage import SqlPilotage
+
+    return PilotageService(pilotage=SqlPilotage(), parametres=DjangoParametres(), grand_livre=grand_livre_service(),
+                           periodes=DjangoPeriodes(), journal=AuditJournal(), tx=DjangoTransactionManager(),
+                           clock=DjangoClock())

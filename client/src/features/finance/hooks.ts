@@ -1,5 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  commenterRapportAssocies, ecrireInventaire, lireLivreInventaire, lirePartenairesAvecArgent, lireRapportAssocies,
+  lireReleveCompte, lireTableauDeBord,
   activerCompteArgent, annulerVirement, importerReleve, lireVirements, saisirVirement, type ColonnesReleve,
   type NouveauVirement,
   lireHistoriqueParametre, lireParametres, modifierParametre,
@@ -44,6 +46,11 @@ export const CLES_FINANCE = {
   releveAssocie: (id: string) => ["admin", "finance", "associes", "releve", id] as const,
   fondsGarantie: ["admin", "finance", "fonds-garantie"] as const,
   parametres: ["admin", "finance", "parametres"] as const,
+  tableauDeBord: (mois: string) => ["admin", "finance", "tableau-de-bord", mois] as const,
+  partenaires: ["admin", "finance", "releves-partenaires"] as const,
+  releveCompte: (type: string, id: string, mois: string) => ["admin", "finance", "releves-partenaires", type, id, mois] as const,
+  rapportAssocies: (mois: string) => ["admin", "finance", "rapport-associes", mois] as const,
+  inventaire: (annee: number) => ["admin", "finance", "inventaire", annee] as const,
   virements: (page: number, statut: string) => ["admin", "finance", "virements", page, statut] as const,
   historiqueParametre: (cle: string) => ["admin", "finance", "parametres", cle] as const,
 };
@@ -300,4 +307,37 @@ export function useImporterReleve() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: ({ compte, fichier, colonnes }: { compte: string; fichier: File; colonnes: ColonnesReleve }) =>
     importerReleve(compte, fichier, colonnes), onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+/** The finance officer's dashboard of a month (GL-18). */
+export function useTableauDeBord(mois: string) {
+  return useQuery({ queryKey: CLES_FINANCE.tableauDeBord(mois), queryFn: () => lireTableauDeBord(mois), placeholderData: keepPreviousData });
+}
+
+export function usePartenairesAvecArgent() {
+  return useQuery({ queryKey: CLES_FINANCE.partenaires, queryFn: lirePartenairesAvecArgent });
+}
+
+export function useReleveCompte(tiersType: string, tiersId: string, mois: string) {
+  return useQuery({ queryKey: CLES_FINANCE.releveCompte(tiersType, tiersId, mois), queryFn: () => lireReleveCompte(tiersType, tiersId, mois),
+    enabled: !!tiersType && !!tiersId });
+}
+
+export function useRapportAssocies(mois: string) {
+  return useQuery({ queryKey: CLES_FINANCE.rapportAssocies(mois), queryFn: () => lireRapportAssocies(mois), placeholderData: keepPreviousData });
+}
+
+export function useCommenterRapport() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ mois, commentaire }: { mois: string; commentaire: string }) => commenterRapportAssocies(mois, commentaire),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "finance", "rapport-associes"] }) });
+}
+
+export function useLivreInventaire(annee: number) {
+  return useQuery({ queryKey: CLES_FINANCE.inventaire(annee), queryFn: () => lireLivreInventaire(annee), placeholderData: keepPreviousData });
+}
+
+export function useEcrireInventaire() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (annee: number) => ecrireInventaire(annee), onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
 }
