@@ -43,3 +43,12 @@ class AuditJournal(Journal):
 
     def parametre(self, par_id, cle: str, avant, apres, motif: str) -> None:
         activity.record('parametre_modifie', actor=par_id, cle=cle, avant=str(avant), apres=str(apres), motif=motif)
+
+    def virement(self, action: str, par_id, virement) -> None:
+        v = virement
+        activity.record(f'virement_{action}', actor=par_id, objet=f'virement:{v.id}', numero=v.numero,
+                        source=v.source, destination=v.destination, montant=v.montant,
+                        motif=v.motif_annulation if action == 'annule' else v.motif)
+
+    def tresorerie(self, action: str, par_id, details: dict) -> None:
+        activity.record(f'tresorerie_{action}', actor=par_id, **details)

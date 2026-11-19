@@ -206,7 +206,7 @@ def test_the_closing_screen_lists_the_months_and_who_may_lock(admin, super_admin
     assert super_admin.get(f'{API}cloture/').json()['peut_verrouiller'] is True
 
     controles = admin.get(f'{API}cloture/{mois_precedent():%Y-%m}/').json()['controles']
-    assert len(controles) == 9
+    assert len(controles) == 10
 
 
 def test_only_a_super_admin_locks_a_month(admin):
@@ -242,7 +242,7 @@ def test_a_sound_month_is_locked_for_good(super_admin, hote):
     r = super_admin.post(f'{API}cloture/{mois_precedent():%Y-%m}/', {'confirmation': f'{mois_precedent():%m/%Y}'},
                          format='json')
 
-    assert r.status_code == 200 and [c['verdict'] for c in r.json()['controles']] == ['OK'] * 9
+    assert r.status_code == 200 and [c['verdict'] for c in r.json()['controles']] == ['OK'] * 10
     # The closing wrote the allocation of the month to the guarantee fund first (GL-17)
     assert MouvementModel.objects.filter(nature_id='G01', compte_argent_id='GARANTIE',
                                          periode_id=mois_precedent()).exists()

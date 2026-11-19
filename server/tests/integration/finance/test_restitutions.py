@@ -182,7 +182,7 @@ def test_reference_booking_balances_in_double_entry():
     assert [e['ecart'] for e in finance.controle_equilibre()] == [0]
     assert finance.du_aux_partenaires() == []
     assert {i['invariant']: i['anomalies'] for i in finance.controle_invariants()} == dict.fromkeys(
-        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16'], 0)
+        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16', 'I17'], 0)
 
 
 def test_internal_transfer_balances_account_585():
@@ -254,7 +254,7 @@ def _mois_rapproche(mois: date) -> None:
 
 
 def test_a_sound_month_can_be_closed():
-    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the nine checks are OK."""
+    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the ten checks are OK."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     sejour(CAS[0], moment=timezone.now().replace(day=1) - timedelta(days=15))
     _mois_rapproche(mois)
@@ -263,7 +263,7 @@ def test_a_sound_month_can_be_closed():
 
     finance.doter_fonds_garantie(mois)
 
-    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 9
+    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 10
 
 
 def test_a_month_without_reconciliation_cannot_be_closed():

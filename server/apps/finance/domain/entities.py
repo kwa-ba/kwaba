@@ -356,3 +356,50 @@ PARAMETRES_DE_LA_PAGE_TARIFS = frozenset({
     'frais_service_voyageur', 'frais_service_reduit', 'commission_hote', 'commission_hotel',
     'commission_hote_fondateur', 'commission_transfert', 'menage_chambre_privee', 'menage_studio',
     'menage_appartement_t2', 'menage_villa'})
+
+
+# --- Internal transfers and bank statement (GL-22, FIN-02.6) -------------------------------------------------------
+
+# A transfer between two money accounts of Kwa-Ba (FedaPay to the bank, for instance): two V01 lines of the same
+# amount, a « sortie » of one and an « entree » of the other; the transit account 585 always comes back to zero
+NATURE_VIREMENT = 'V01'
+VIREMENT_EN_ATTENTE, VIREMENT_ECRIT, VIREMENT_ANNULE, VIREMENT_REFUSE = 'en_attente', 'ecrit', 'annule', 'refuse'
+TYPES_COMPTE_BANQUE = ('banque', 'banque_fonds_tiers')
+TYPE_PRESTATAIRE = 'prestataire_paiement'
+# A bank line and a transfer agree when their amounts are equal and their dates at most this many days apart
+TOLERANCE_JOURS_VIREMENT = 3
+
+
+@dataclass(frozen=True)
+class Virement:
+    id: uuid.UUID
+    numero: str
+    date_virement: date
+    source: str
+    destination: str
+    montant: int
+    motif: str
+    # Reference of the operation at the provider or the bank (FedaPay withdrawal, bank transfer number)
+    reference_externe: str
+    statut: str
+    demandee_par_id: uuid.UUID | None
+    demandee_le: datetime
+    mouvement_ids: tuple = ()
+    ecrit_le: datetime | None = None
+    annule_le: datetime | None = None
+    motif_annulation: str = ''
+
+    @property
+    def cle_grand_livre(self) -> str:
+        """External reference of its two lines: the one of the provider or the bank when known."""
+        return self.reference_externe or f'virement:{self.id}'
+
+
+@dataclass(frozen=True)
+class LigneReleve:
+    """One line of a bank statement: an amount that came in (credit) or went out (debit) on a day."""
+    jour: date
+    libelle: str
+    montant: int
+    sens: str
+    reference: str

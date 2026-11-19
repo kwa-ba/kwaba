@@ -1,5 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  activerCompteArgent, annulerVirement, importerReleve, lireVirements, saisirVirement, type ColonnesReleve,
+  type NouveauVirement,
   lireHistoriqueParametre, lireParametres, modifierParametre,
   annulerSinistre, doterFondsGarantie, imputerSinistre, lireComptesCourants, lireFondsGarantie, lireReleveAssocie,
   type NouveauSinistre,
@@ -33,8 +35,8 @@ export const CLES_FINANCE = {
   cautions: (statut: string, retard: boolean) => ["admin", "finance", "cautions", statut, retard] as const,
   justificatifs: (objetType: string, objetId: string) => ["admin", "finance", "justificatifs", objetType, objetId] as const,
   rapprochement: ["admin", "finance", "rapprochement"] as const,
-  rapprochements: (mois: string) => ["admin", "finance", "rapprochement", "mois", mois] as const,
-  rapprochementJour: (jour: string) => ["admin", "finance", "rapprochement", "jour", jour] as const,
+  rapprochements: (mois: string, compte = "FEDAPAY") => ["admin", "finance", "rapprochement", "mois", mois, compte] as const,
+  rapprochementJour: (jour: string, compte = "FEDAPAY") => ["admin", "finance", "rapprochement", "jour", jour, compte] as const,
   depenses: (filtres: FiltresDepenses, page: number) => ["admin", "finance", "depenses", filtres, page] as const,
   fournisseurs: ["admin", "finance", "fournisseurs"] as const,
   associes: ["admin", "finance", "associes"] as const,
@@ -42,6 +44,7 @@ export const CLES_FINANCE = {
   releveAssocie: (id: string) => ["admin", "finance", "associes", "releve", id] as const,
   fondsGarantie: ["admin", "finance", "fonds-garantie"] as const,
   parametres: ["admin", "finance", "parametres"] as const,
+  virements: (page: number, statut: string) => ["admin", "finance", "virements", page, statut] as const,
   historiqueParametre: (cle: string) => ["admin", "finance", "parametres", cle] as const,
 };
 
@@ -150,13 +153,13 @@ export function useJustificatifs(objetType: string, objetId: string | null) {
 }
 
 /** Every finished day of the month reconciled with FedaPay (GL-12): green, red or never imported. */
-export function useRapprochements(mois: string) {
-  return useQuery({ queryKey: CLES_FINANCE.rapprochements(mois), queryFn: () => lireRapprochements(mois),
+export function useRapprochements(mois: string, compte = "FEDAPAY") {
+  return useQuery({ queryKey: CLES_FINANCE.rapprochements(mois, compte), queryFn: () => lireRapprochements(mois, compte),
     placeholderData: keepPreviousData });
 }
 
-export function useRapprochementJour(jour: string | null) {
-  return useQuery({ queryKey: CLES_FINANCE.rapprochementJour(jour ?? ""), queryFn: () => lireRapprochementJour(jour!),
+export function useRapprochementJour(jour: string | null, compte = "FEDAPAY") {
+  return useQuery({ queryKey: CLES_FINANCE.rapprochementJour(jour ?? "", compte), queryFn: () => lireRapprochementJour(jour!, compte),
     enabled: !!jour });
 }
 
@@ -172,8 +175,8 @@ export function useImporterRapprochement() {
 export function useRegulariser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ jour, regularisation }: { jour: string; regularisation: NouvelleRegularisation }) =>
-      regulariserRapprochement(jour, regularisation),
+    mutationFn: ({ jour, regularisation, compte }: { jour: string; regularisation: NouvelleRegularisation; compte?: string }) =>
+      regulariserRapprochement(jour, regularisation, compte),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }),
   });
 }
@@ -266,4 +269,35 @@ export function useModifierParametre() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: ({ cle, valeur, motif }: { cle: string; valeur: string; motif: string }) =>
     modifierParametre(cle, valeur, motif), onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+/** Internal transfers, money accounts and statements (GL-22). */
+export function useVirements(page: number, statut = "") {
+  return useQuery({ queryKey: CLES_FINANCE.virements(page, statut), queryFn: () => lireVirements(page, statut),
+    placeholderData: keepPreviousData });
+}
+
+/** A transfer, an account opened or a statement imported moves the ledger or the reconciliation. */
+export function useSaisirVirement() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: NouveauVirement) => saisirVirement(v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useAnnulerVirement() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, motif }: { id: string; motif: string }) => annulerVirement(id, motif),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useActiverCompteArgent() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ code, actif }: { code: string; actif: boolean }) => activerCompteArgent(code, actif),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
+}
+
+export function useImporterReleve() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ compte, fichier, colonnes }: { compte: string; fichier: File; colonnes: ColonnesReleve }) =>
+    importerReleve(compte, fichier, colonnes), onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }) });
 }

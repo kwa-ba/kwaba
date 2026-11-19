@@ -18,13 +18,15 @@ from apps.finance.infrastructure.persistence.models import (
     RapprochementJourModel,
     RapprochementLigneModel,
     RegularisationModel,
+    ReleveImportModel,
     ReleveExterneModel,
     SinistreModel,
     TiersTypeModel,
     ValidationModel,
+    VirementModel,
 )
 
 __all__ = ['AssocieModel', 'DepenseModel', 'FournisseurModel', 'AxeModel', 'CautionModel', 'CompteArgentModel', 'CorrespondanceHistoModel', 'FamilleModel', 'MouvementModel',
            'MoyenPaiementModel', 'NatureModel', 'OffreModel', 'ParametreHistoModel', 'ParametreModel', 'PeriodeModel',
-           'RapportModel', 'RapprochementJourModel', 'RapprochementLigneModel', 'RegularisationModel',
-           'ReleveExterneModel', 'SinistreModel', 'TiersTypeModel', 'ValidationModel']
+           'RapportModel', 'RapprochementJourModel', 'RapprochementLigneModel', 'RegularisationModel', 'ReleveImportModel',
+           'ReleveExterneModel', 'SinistreModel', 'TiersTypeModel', 'ValidationModel', 'VirementModel']

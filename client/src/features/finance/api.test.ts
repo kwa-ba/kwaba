@@ -100,9 +100,9 @@ describe("rapprochement FedaPay (GL-12)", () => {
 
   it("lit le mois et une journée, et importe une période", async () => {
     await finance.lireRapprochements("2026-11-01");
-    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/?mois=2026-11`);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/?mois=2026-11&compte=FEDAPAY`);
     await finance.lireRapprochementJour("2026-11-18");
-    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/2026-11-18/`);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/rapprochement/2026-11-18/?compte=FEDAPAY`);
     await finance.importerRapprochement("2026-11-01", "2026-11-18");
     expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/rapprochement/importer/", { debut: "2026-11-01", fin: "2026-11-18" });
   });
@@ -112,7 +112,7 @@ describe("rapprochement FedaPay (GL-12)", () => {
     await finance.regulariserRapprochement("2026-11-18", { reference: "999", nature: "D01", offre: "COURTE_DUREE", sens: "sortie",
       montant: 250, motif: "Frais FedaPay non annoncés", fichiers: [piece] });
     const [url, corps] = vi.mocked(api.post).mock.calls.at(-1)!;
-    expect(url).toBe(`${F}/rapprochement/2026-11-18/regulariser/`);
+    expect(url).toBe(`${F}/rapprochement/2026-11-18/regulariser/?compte=FEDAPAY`);
     const form = corps as FormData;
     expect([form.get("reference"), form.get("nature"), form.get("sens"), form.get("montant")]).toEqual(["999", "D01", "sortie", "250"]);
     expect((form.getAll("fichiers")[0] as File).name).toBe("releve.pdf");
@@ -193,5 +193,30 @@ describe("paramètres (GL-20)", () => {
     expect(api.get).toHaveBeenLastCalledWith(`${F}/parametres/fonds_garantie_cible/`);
     await finance.modifierParametre("fonds_garantie_cible", "500000", "Décision des associés");
     expect(api.patch).toHaveBeenLastCalledWith(`${F}/parametres/fonds_garantie_cible/`, { valeur: "500000", motif: "Décision des associés" });
+  });
+});
+
+describe("virements et relevés bancaires (GL-22)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const m of [api.get, api.post, api.patch]) vi.mocked(m).mockResolvedValue({ data: {} });
+  });
+
+  it("lit les virements, en saisit un avec sa preuve, ouvre un compte et importe un relevé", async () => {
+    await finance.lireVirements(2);
+    expect(api.get).toHaveBeenLastCalledWith(`${F}/virements/?page=2`);
+    const preuve = new File(["%PDF"], "avis.pdf", { type: "application/pdf" });
+    await finance.saisirVirement({ date_virement: "2026-12-03", source: "FEDAPAY", destination: "BANQUE_EXP", montant: 200000,
+      motif: "Retrait du mois", reference_externe: "FP-1", fichiers: [preuve] });
+    const [url, corps] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(url).toBe(`${F}/virements/`);
+    expect([(corps as FormData).get("source"), (corps as FormData).get("montant")]).toEqual(["FEDAPAY", "200000"]);
+    await finance.activerCompteArgent("BANQUE_EXP", true);
+    expect(api.post).toHaveBeenLastCalledWith(`${F}/comptes-argent/BANQUE_EXP/activation/`, { actif: true });
+    const csv = new File(["Date;Libellé;Débit;Crédit"], "releve.csv", { type: "text/csv" });
+    await finance.importerReleve("BANQUE_EXP", csv, { date: "Date", libelle: "Libellé", debit: "Débit", credit: "Crédit", montant: "", reference: "" });
+    const [urlReleve, corpsReleve] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(urlReleve).toBe(`${F}/releves-bancaires/`);
+    expect([(corpsReleve as FormData).get("compte"), (corpsReleve as FormData).get("col_debit")]).toEqual(["BANQUE_EXP", "Débit"]);
   });
 });

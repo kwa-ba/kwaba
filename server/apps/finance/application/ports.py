@@ -7,7 +7,7 @@ from typing import ContextManager
 
 from apps.finance.domain.entities import (Associe, Caution, Depense, Ecriture, FiltresMouvements, Fournisseur, Ligne,
                                           Mouvement, OperationExterne, Page, Referentiels, Regularisation, Sinistre,
-                                          Validation)
+                                          Validation, Virement)
 
 
 class Clock(ABC):
@@ -127,6 +127,14 @@ class Journal(ABC):
     @abstractmethod
     def annuaire(self, action: str, par_id: uuid.UUID | None, genre: str, nom: str) -> None:
         """A supplier or an associate added or changed."""
+
+    @abstractmethod
+    def virement(self, action: str, par_id: uuid.UUID | None, virement: Virement) -> None:
+        """An internal transfer asked (waiting for a second person), written, or cancelled."""
+
+    @abstractmethod
+    def tresorerie(self, action: str, par_id: uuid.UUID | None, details: dict) -> None:
+        """A bank statement imported, a money account activated or switched off."""
 
     @abstractmethod
     def parametre(self, par_id: uuid.UUID | None, cle: str, avant, apres, motif: str) -> None:
@@ -539,3 +547,58 @@ class ParametresPilotes(ABC):
     @abstractmethod
     def modifier(self, cle: str, valeur, *, par_id, motif: str, quand) -> None:
         """Writes the new value and its row of history (same transaction)."""
+
+
+class Virements(ABC):
+    """Internal transfers between money accounts (GL-22)."""
+
+    @abstractmethod
+    def prochain_numero(self, annee: int) -> str:
+        """Next number of the series VIR-<year>, without gap, serialized until the end of the transaction."""
+
+    @abstractmethod
+    def creer(self, virement: Virement) -> Virement:
+        pass
+
+    @abstractmethod
+    def lire(self, virement_id: uuid.UUID, verrou: bool = False) -> Virement | None:
+        pass
+
+    @abstractmethod
+    def enregistrer(self, virement: Virement) -> None:
+        pass
+
+    @abstractmethod
+    def liste(self, *, compte: str | None, statut: str | None, decalage: int, limite: int) -> tuple[list[Virement], int]:
+        pass
+
+    @abstractmethod
+    def ecrits_du_compte(self, compte: str, debut: date, fin: date) -> list[Virement]:
+        """Written transfers from or to the account dated in [debut, fin]."""
+
+
+class ComptesArgent(ABC):
+    """The money accounts of Kwa-Ba (GL-22)."""
+
+    @abstractmethod
+    def liste(self) -> list[dict]:
+        """{code, libelle, type, compte_syscohada, actif, actif_depuis, solde, nb_lignes}."""
+
+    @abstractmethod
+    def lire(self, code: str) -> dict | None:
+        pass
+
+    @abstractmethod
+    def activer(self, code: str, actif: bool, depuis: date | None) -> None:
+        pass
+
+
+class Releves(ABC):
+    @abstractmethod
+    def enregistrer(self, *, compte: str, debut: date, fin: date, nb_lignes: int, nom_fichier: str, contenu: str,
+                    par_id, quand) -> str:
+        """Keeps the statement as received; returns its id."""
+
+    @abstractmethod
+    def liste(self, compte: str | None, limite: int) -> list[dict]:
+        pass

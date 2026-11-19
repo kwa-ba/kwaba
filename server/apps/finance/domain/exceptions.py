@@ -36,3 +36,8 @@ class FondsGarantieRefuse(ValueError):
 class ParametreRefuse(ValueError):
     """A change of a steered parameter that cannot be made (unknown key, value out of bounds, reason missing, rate set
     from the Tarifs page), in French."""
+
+
+class VirementRefuse(ValueError):
+    """An internal transfer or a bank statement import that cannot be done (same account twice, account inactive,
+    reference missing, file unreadable…), in French."""
