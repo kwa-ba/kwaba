@@ -115,3 +115,7 @@ export async function retenirCaution(locationId: string, retenue: { montant: num
 export async function annulerLocationAdmin(locationId: string, motif: string) {
   await api.post(`${ADMIN}/locations/${locationId}/annuler/`, { motif });
 }
+
+export async function noterChauffeurLocation(id: string, avis: unknown) {
+  return (await api.post(`${LOCATIONS}/${id}/avis-chauffeur/`, avis)).data;
+}

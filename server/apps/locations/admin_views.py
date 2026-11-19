@@ -303,6 +303,8 @@ class AttributionSerializer(serializers.Serializer):
         chauffeur = transferts.fiche_chauffeur(valeur)
         if not chauffeur or not chauffeur['actif']:
             raise serializers.ValidationError('Chauffeur introuvable.')
+        if not chauffeur['photo_validee']:
+            raise serializers.ValidationError("Ce chauffeur n'a pas de photo validée : il ne peut pas recevoir de mission.")
         return chauffeur
 
 

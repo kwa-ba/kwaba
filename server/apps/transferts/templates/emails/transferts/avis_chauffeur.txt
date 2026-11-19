@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+Votre transfert depuis l'aéroport {{ aeroport }} est terminé. Comment s'est passé le trajet avec {{ chauffeur }} ?
+
+Donnez votre note en une minute (ponctualité, conduite, amabilité) : {{ url }}
+
+Votre avis reste entre vous et l'équipe Kwa-Ba : il nous aide à garder les meilleurs chauffeurs et à aider les autres à progresser.
+
+Merci,
+L'équipe Kwa-Ba
+{% endautoescape %}

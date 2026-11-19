@@ -1,8 +1,8 @@
 from django.urls import path
 
 from .views import (
-    CatalogueView, CompteRemboursementLocationView, DevisView, LocationsView, LocationView, MesChauffeursView,
-    PayerLocationView,
+    AvisChauffeurLocationView, CatalogueView, CompteRemboursementLocationView, DevisView, LocationsView, LocationView,
+    MesChauffeursView, PayerLocationView,
 )
 
 urlpatterns = [
@@ -12,5 +12,6 @@ urlpatterns = [
     path('', LocationsView.as_view(), name='locations'),
     path('<uuid:pk>/', LocationView.as_view(), name='location'),
     path('<uuid:pk>/payer/', PayerLocationView.as_view(), name='location-payer'),
+    path('<uuid:pk>/avis-chauffeur/', AvisChauffeurLocationView.as_view(), name='location-avis-chauffeur'),
     path('<uuid:pk>/compte-remboursement/', CompteRemboursementLocationView.as_view(), name='location-compte-remboursement'),
 ]

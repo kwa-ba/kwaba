@@ -2,12 +2,13 @@
 from django.db import transaction
 from django.db.models import Q
 from rest_framework import serializers, status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.paiements.api import operateurs_du_pays
 from apps.activity import api as activity
-from apps.securite.backoffice import FicheAdmin, ListeAdmin
+from apps.securite.backoffice import ChampPhoto, FicheAdmin, ListeAdmin
 from apps.securite.permissions import EstAdministrateur
 from apps.users import api as users
 
@@ -81,11 +82,19 @@ class TarifsView(APIView):
 class ChauffeurSerializer(serializers.ModelSerializer):
     aeroports = serializers.PrimaryKeyRelatedField(many=True, queryset=AeroportModel.objects.all())
     nb_transferts = serializers.IntegerField(source='transferts.count', read_only=True)
+    niveau_libelle = serializers.CharField(source='get_niveau_display', read_only=True)
+    photo = serializers.SerializerMethodField()
 
     class Meta:
         model = ChauffeurModel
         fields = ['id', 'prenom', 'nom', 'telephone', 'email', 'aeroports', 'categorie', 'vehicule', 'immatriculation',
-                  'actif', 'excellence', 'pays_versement', 'operateur_versement', 'numero_versement', 'nb_transferts']
+                  'actif', 'excellence', 'niveau', 'niveau_libelle', 'niveau_depuis', 'photo', 'photo_validee',
+                  'pays_versement', 'operateur_versement', 'numero_versement', 'nb_transferts']
+        # The level (and the Excellence pay that follows it) changes through the quarterly review only
+        read_only_fields = ['excellence', 'niveau', 'niveau_depuis', 'photo_validee']
+
+    def get_photo(self, obj):
+        return obj.photo.url if obj.photo else None
 
     def validate(self, data):
         pays = data.get('pays_versement', getattr(self.instance, 'pays_versement', ''))
@@ -193,3 +202,88 @@ class TransfertAnnulerView(APIView):
                         libelle=t.reference, operation="annulation", rembourse=rembourse, motif=motif)
         return Response(_transfert(_transferts().get(pk=pk)))
 
+
+# --- Photo, levels, incidents and ratings of the drivers (decisions of 19 November 2026) ---------------------------
+
+class PhotoChauffeurSerializer(serializers.Serializer):
+    image = ChampPhoto()
+
+
+class ChauffeurPhotoView(APIView):
+    """POST {image} (multipart): the driver's profile photo, to validate before any new ride. POST .../valider/:
+    the team checked it (a clear face, the driver's own)."""
+    permission_classes = [EstAdministrateur]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request, pk, action=None):
+        from . import niveaux
+
+        chauffeur = ChauffeurModel.objects.filter(pk=pk).first()
+        if not chauffeur:
+            return Response({'detail': 'Chauffeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            if action == 'valider':
+                niveaux.valider_photo(chauffeur, par_id=request.user.pk)
+            else:
+                donnees = PhotoChauffeurSerializer(data=request.data)
+                donnees.is_valid(raise_exception=True)
+                niveaux.changer_photo(chauffeur, donnees.validated_data['image'])
+        except niveaux.NiveauErreur as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        activity.record("backoffice_modification", request, actor=request.user, objet="chauffeur", id=str(chauffeur.pk),
+                        libelle=f"{chauffeur.prenom} {chauffeur.nom}",
+                        operation='photo_validee' if action == 'valider' else 'photo_changee')
+        return Response(ChauffeurSerializer(chauffeur).data)
+
+
+class NiveauxChauffeursView(APIView):
+    """GET: the quarterly review, every active driver with the figures of the period, the level in force and the one
+    proposed. POST {chauffeur, niveau, motif}: the team keeps a level (a reason when it differs from the proposal)."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request):
+        from . import niveaux
+
+        r = niveaux.revue()
+        return Response({**r, 'seuils': {k: float(v) for k, v in r['seuils'].items()}, 'libelles': niveaux.LIBELLES})
+
+    def post(self, request):
+        from . import niveaux
+
+        try:
+            c = niveaux.valider(request.data.get('chauffeur'), (request.data.get('niveau') or '').strip(),
+                                motif=request.data.get('motif') or '', par_id=request.user.pk)
+        except (niveaux.NiveauErreur, TypeError, ValueError) as exc:
+            return Response({'detail': str(exc) or 'Chauffeur introuvable.'}, status=status.HTTP_400_BAD_REQUEST)
+        activity.record("backoffice_modification", request, actor=request.user, objet="chauffeur", id=str(c.pk),
+                        libelle=f"{c.prenom} {c.nom}", operation='niveau', niveau=c.niveau,
+                        motif=request.data.get('motif') or '')
+        return Response(ChauffeurSerializer(c).data)
+
+
+class SuiviChauffeurView(APIView):
+    """GET: the ratings, incidents and level history of a driver. POST {type, date, description, reference}: an
+    incident (serious, lateness, no-show, other), read by the next review."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request, pk):
+        from . import niveaux
+
+        return Response({'avis': niveaux.avis_de(pk), 'incidents': niveaux.incidents_de(pk),
+                         'niveaux': niveaux.historique(pk)})
+
+    def post(self, request, pk):
+        from django.utils.dateparse import parse_date
+
+        from . import niveaux
+
+        try:
+            i = niveaux.signaler(pk, type_incident=(request.data.get('type') or '').strip(),
+                                 date=parse_date(str(request.data.get('date') or '')),
+                                 description=request.data.get('description') or '',
+                                 reference=(request.data.get('reference') or '').strip(), par_id=request.user.pk)
+        except niveaux.NiveauErreur as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        activity.record("backoffice_modification", request, actor=request.user, objet="chauffeur", id=str(pk),
+                        libelle=i.get_type_display(), operation='incident')
+        return Response(niveaux.incidents_de(pk), status=status.HTTP_201_CREATED)

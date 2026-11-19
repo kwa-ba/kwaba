@@ -334,8 +334,9 @@ def partenaires_disponibles(location: LocationModel):
 
 
 def chauffeurs_disponibles(location: LocationModel) -> list[dict]:
-    """Active partner drivers, the driver asked for again ("My driver") and the Excellence ones first."""
-    return sorted(transferts.chauffeurs_actifs(),
+    """Active partner drivers with a validated photo (no ride without it), the driver asked for again ("My driver")
+    and the Excellence ones first."""
+    return sorted([c for c in transferts.chauffeurs_actifs() if c['photo_validee']],
                   key=lambda c: (c['id'] != location.chauffeur_demande_id, not c['excellence'], c['prenom']))
 
 

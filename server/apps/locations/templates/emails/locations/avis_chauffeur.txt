@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+Votre location {{ reference }} est terminée. Comment s'est passé le trajet avec {{ prenom_chauffeur }} ?
+
+Donnez votre note en une minute (ponctualité, conduite, amabilité) : {{ url }}
+
+Votre avis reste entre vous et l'équipe Kwa-Ba : il nous aide à garder les meilleurs chauffeurs.
+
+Merci,
+L'équipe Kwa-Ba
+{% endautoescape %}
