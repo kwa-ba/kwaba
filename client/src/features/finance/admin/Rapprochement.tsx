@@ -46,7 +46,11 @@ function Montant({ valeur, signe }: { valeur: number | null | undefined; signe?:
 export default function Rapprochement() {
   const [mois, setMois] = useState(() => isoDate(new Date()).slice(0, 7));
   const [jour, setJour] = useState<string | null>(null);
-  const { data, isLoading, isError, error } = useRapprochements(`${mois}-01`);
+  const [compte, setCompte] = useState("FEDAPAY");
+  const { data, isLoading, isError, error } = useRapprochements(`${mois}-01`, compte);
+  // FedaPay is read through its API; a bank account through its imported statement (Finance → Virements)
+  const peutImporter = !!data?.peut_importer && compte === "FEDAPAY";
+  const releve = compte === "FEDAPAY" ? "FedaPay" : "Relevé";
   const importer = useImporterRapprochement();
 
   const importerPeriode = (debut: string, fin: string) => {
@@ -71,7 +75,7 @@ export default function Rapprochement() {
     } },
     { titre: "Kwa-Ba", cellule: (j) => <Montant valeur={j.etat === "non_fait" ? null : j.solde_kwaba} signe />, className: "text-right" },
     { titre: "Grand livre", cellule: (j) => <Montant valeur={j.etat === "non_fait" ? null : j.solde_livre} signe />, className: "text-right" },
-    { titre: "FedaPay (net)", cellule: (j) => <Montant valeur={j.etat === "non_fait" ? null : j.solde_externe} signe />, className: "text-right" },
+    { titre: `${releve} (net)`, cellule: (j) => <Montant valeur={j.etat === "non_fait" ? null : j.solde_externe} signe />, className: "text-right" },
     { titre: "Frais réels", cellule: (j) => <Montant valeur={j.etat === "non_fait" ? null : j.frais} />, className: "text-right" },
     { titre: "Écart", cellule: (j) => j.etat === "non_fait" ? <span className="text-muted">—</span>
       : <strong className={cn("tabular-nums", j.ecart ? "text-red-700" : "text-green-700")}>{formatPrice(j.ecart ?? 0)}</strong>, className: "text-right" },
@@ -83,7 +87,13 @@ export default function Rapprochement() {
         <label className="text-sm"><span className="block text-xs font-semibold text-muted mb-1">Mois</span>
           <input type="month" className={CHAMP} value={mois} max={isoDate(new Date()).slice(0, 7)}
             onChange={(e) => { if (e.target.value) { setMois(e.target.value); setJour(null); } }} /></label>
-        {data?.peut_importer && jours.length > 0 && (
+        {(data?.comptes?.length ?? 0) > 1 && (
+          <label className="text-sm"><span className="block text-xs font-semibold text-muted mb-1">Compte</span>
+            <select className={CHAMP} value={compte} onChange={(e) => { setCompte(e.target.value); setJour(null); }}>
+              {data?.comptes?.map((c) => <option key={c.code} value={c.code}>{c.libelle}</option>)}
+            </select></label>
+        )}
+        {peutImporter && jours.length > 0 && (
           <button onClick={() => importerPeriode(jours[jours.length - 1].jour, jours[0].jour)} disabled={importer.isPending}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-60">
             <Download size={16} aria-hidden /> {importer.isPending ? "Lecture de FedaPay…" : `Importer ${libelleMois(`${mois}-01`)}`}
@@ -109,7 +119,7 @@ export default function Rapprochement() {
         actions={(j) => (
           <>
             {j.etat !== "non_fait" && <ActionButton onClick={() => setJour(j.jour)}>Détail</ActionButton>}
-            {data?.peut_importer && (
+            {peutImporter && (
               <ActionButton onClick={() => importerPeriode(j.jour, j.jour)} disabled={importer.isPending}>
                 <RefreshCw size={12} className="inline" aria-hidden /> {j.etat === "non_fait" ? "Importer" : "Réimporter"}
               </ActionButton>
@@ -117,7 +127,7 @@ export default function Rapprochement() {
           </>
         )} />
 
-      {jour && <DetailJour jour={jour} peutRegulariser={!!data?.peut_regulariser} seuil={data?.seuil_double_validation ?? 0}
+      {jour && <DetailJour jour={jour} compte={compte} peutRegulariser={!!data?.peut_regulariser} seuil={data?.seuil_double_validation ?? 0}
         onFermer={() => setJour(null)} />}
 
       <p className="text-xs text-muted">
@@ -128,10 +138,10 @@ export default function Rapprochement() {
   );
 }
 
-function DetailJour({ jour, peutRegulariser, seuil, onFermer }: {
-  jour: string; peutRegulariser: boolean; seuil: number; onFermer: () => void;
+function DetailJour({ jour, compte, peutRegulariser, seuil, onFermer }: {
+  jour: string; compte: string; peutRegulariser: boolean; seuil: number; onFermer: () => void;
 }) {
-  const { data, isLoading, isError, error } = useRapprochementJour(jour);
+  const { data, isLoading, isError, error } = useRapprochementJour(jour, compte);
   const [cible, setCible] = useState<{ reference: string; montant: number; sens: "entree" | "sortie" } | null>(null);
 
   const colonnes: Colonne<OperationRapprochee>[] = [
@@ -181,14 +191,14 @@ function DetailJour({ jour, peutRegulariser, seuil, onFermer }: {
         <button onClick={() => setCible({ reference: "", montant: Math.abs(data.jour.ecart ?? 0), sens: (data.jour.ecart ?? 0) > 0 ? "sortie" : "entree" })}
           className="text-sm font-semibold text-brand">Régulariser la journée elle-même (mouvements internes)</button>
       )}
-      {cible && <FormRegularisation jour={jour} cible={cible} seuil={seuil} onFermer={() => setCible(null)} />}
+      {cible && <FormRegularisation jour={jour} compte={compte} cible={cible} seuil={seuil} onFermer={() => setCible(null)} />}
       {!!data?.regularisations.length && <Regularisations lignes={data.regularisations} />}
     </section>
   );
 }
 
-function FormRegularisation({ jour, cible, seuil, onFermer }: {
-  jour: string; cible: { reference: string; montant: number; sens: "entree" | "sortie" }; seuil: number; onFermer: () => void;
+function FormRegularisation({ jour, compte, cible, seuil, onFermer }: {
+  jour: string; compte: string; cible: { reference: string; montant: number; sens: "entree" | "sortie" }; seuil: number; onFermer: () => void;
 }) {
   const { data: ref } = useReferentielsFinance();
   const regulariser = useRegulariser();
@@ -201,7 +211,7 @@ function FormRegularisation({ jour, cible, seuil, onFermer }: {
 
   const envoyer = (e: React.FormEvent) => {
     e.preventDefault();
-    regulariser.mutate({ jour, regularisation: { reference: cible.reference, nature, offre, sens, montant: Number(montant), motif, fichiers } }, {
+    regulariser.mutate({ jour, compte, regularisation: { reference: cible.reference, nature, offre, sens, montant: Number(montant), motif, fichiers } }, {
       onSuccess: (r) => {
         toast.success(r.attente_validation ? "Demande enregistrée : une seconde personne doit la valider (Finance → Validations)."
           : "Régularisation écrite au grand livre.");

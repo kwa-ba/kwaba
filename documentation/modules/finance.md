@@ -55,16 +55,17 @@ Une seule rubrique **Finance** dans le menu (GL-1, section de droits « finances
 | Encaissements et versements | (AN-B2) | page Finances d'origine (module `paiements`) : période, rapprochement jour par jour, versements, exports CSV et PDF | `paiements/finances/` |
 | Remboursements | GL-9 | rembourser un séjour payé depuis ses montants figés (conditions du voyageur, ou intégral par Kwa-Ba) ; suivre chaque remboursement, saisir le compte Mobile Money, relancer, enregistrer un remboursement fait à la main (carte) | `paiements/finances/remboursements/` (module `paiements`) |
 | Validations | GL-10 | les opérations à partir du seuil qui attendent une deuxième personne ; approuver ou refuser (motif) | `validations/`, `validations/<id>/approuver|refuser/` |
+| Virements et banque | GL-22 | comptes d'argent (ouverture du compte bancaire par un super administrateur, rapproché à partir de ce jour), virements internes avec leur preuve, double validation, annulation ; import du relevé bancaire CSV, rapproché jour par jour | `virements/`, `virements/<id>/annuler/`, `comptes-argent/<code>/activation/`, `releves-bancaires/` |
 | Paramètres | GL-20 | le référentiel des paramètres (taux, forfaits, plafonds, délais, seuils) avec leur source, recherche et filtres, l'historique daté de chacun (qui, quand, avant, après, pourquoi) ; modification par un super administrateur avec son motif | `parametres/`, `parametres/<cle>/` |
 | Rapports | GL-19 | les rapports enregistrés, un rapport libre sur un ou deux axes, l'enregistrement d'un nouveau rapport (une ligne de `finance_rapport`) ; export CSV | `rapports/`, `rapports/resultat/`, `rapports/export/` |
-| Clôture mensuelle | GL-7 | les neuf contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
+| Clôture mensuelle | GL-7 | les dix contrôles d'un mois, et son verrouillage | `cloture/`, `cloture/<AAAA-MM>/` |
 | Export comptable | GL-6 | le fichier des écritures (CSV `;`, UTF-8 avec BOM) pour le cabinet | `export/ecritures/` |
 
 Règles :
 
 - **Périodes** : `?debut=&fin=` (AAAA-MM-JJ, bornes comprises), ce mois-ci par défaut, un an au plus. **Listes** : `page`, `page_size` (20 par défaut, 100 au plus), réponse `{results, count, page, page_size}` comme le reste du back-office.
 - **Comptes de résultat** (classes 6, 7, 8) : leur solde repart de zéro au 1er janvier (exercice civil) ; les comptes de bilan (1 à 5) reprennent leur solde depuis la première écriture. En attendant les écritures d'à-nouveaux (GL-23), c'est la balance et le grand-livre par compte qui l'appliquent.
-- **Clôture** : un mois se clôture une fois terminé, dans l'ordre (le plus ancien mois ouvert d'abord), quand les neuf contrôles de `finance_peut_on_cloturer` sont verts (la clôture écrit d'abord la dotation du mois au fonds de garantie, GL-17), par un **super administrateur** (décision du 18 novembre 2026), qui saisit le mois (« 10/2026 ») pour confirmer. Les clôtures simultanées s'attendent (verrou consultatif). Un mois verrouillé ne reçoit plus aucune écriture et **ne se rouvre jamais** : la base refuse toute modification ou suppression d'un mois verrouillé (trigger de la migration `0007`). Journal : `periode_cloturee`.
+- **Clôture** : un mois se clôture une fois terminé, dans l'ordre (le plus ancien mois ouvert d'abord), quand les dix contrôles de `finance_peut_on_cloturer` sont verts (la clôture écrit d'abord la dotation du mois au fonds de garantie, GL-17), par un **super administrateur** (décision du 18 novembre 2026), qui saisit le mois (« 10/2026 ») pour confirmer. Les clôtures simultanées s'attendent (verrou consultatif). Un mois verrouillé ne reçoit plus aucune écriture et **ne se rouvre jamais** : la base refuse toute modification ou suppression d'un mois verrouillé (trigger de la migration `0007`). Journal : `periode_cloturee`.
 - **Exports** : écritures et rapports en CSV, cellules protégées contre l'injection de formules ; chaque export va au journal (`finances_exportees`, format `ecritures` ou `rapport`).
 - **Rapports** : code de 3 à 40 caractères (minuscules, chiffres, `_`), titre de 3 à 120, axes de `finance_axe`, filtres de familles et d'offres en codes ; un axe inconnu est refusé par la base. Journal : `rapport_cree`.
 - **Rapprochement** : le contrôle 4 de la clôture exige chaque journée du mois rapprochée (état `fait`, écart nul). Une journée jamais importée reste « non importée », jamais un écart nul (FIN-02.7). Voir la section suivante.
@@ -215,7 +216,7 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 | Fonction | Contenu |
 | --- | --- |
 | `controle_invariants()` | I5, I8 à I13, I15 (comptes courants jamais débiteurs), I16 (fonds de garantie jamais négatif) et I14 (modules ouverts : offres et natures actives) : nombre d'anomalies, 0 = respecté |
-| `peut_on_cloturer(mois)` | les neuf contrôles, OK ou REFUSE, et quoi faire |
+| `peut_on_cloturer(mois)` | les dix contrôles, OK ou REFUSE, et quoi faire |
 | `comptes_courants()`, `releve_compte_courant(id)` | ce que Kwa-Ba doit à chaque associé, et son relevé (GL-16) |
 | `fonds_garantie()`, `dotations_fonds_garantie()`, `doter_fonds_garantie(mois)`, `imputer_sinistre(…)`, `annuler_sinistre(…)` | le fonds de garantie (GL-17) |
 | `synthese(debut, fin, axe1, axe2, familles, offres)`, `rapport(code, debut, fin)` | le moteur unique des rapports ; un rapport de plus est une ligne de `finance_rapport` |
@@ -234,7 +235,7 @@ Concurrence : pas de verrou de ligne sur le grand livre (le rôle de l'applicati
 | FIN-01.5 entiers, arrondi chez Kwa-Ba | Entiers : fait. L'arrondi appartient au calcul de la ventilation (FIN-03) : il arrondit au franc le plus proche, comme les neuf cas de référence |
 | FIN-01.6 même transaction | Fait pour les séjours (testé : une action qui échoue ne laisse aucune ligne) |
 | FIN-01.7 idempotence | Fait |
-| FIN-02 rapprochement à trois voies | Fait (GL-12) : import FedaPay chaque nuit et à la demande, frais réels D01, trois colonnes par opération et par journée, régularisation motivée avec pièce et double validation. Transactions inconnues : recherche FedaPay au mieux. Banque (relevé importé) : GL-22 |
+| FIN-02 rapprochement à trois voies | Fait (GL-12) : import FedaPay chaque nuit et à la demande, frais réels D01, trois colonnes par opération et par journée, régularisation motivée avec pièce et double validation. Transactions inconnues : recherche FedaPay au mieux. Banque : fait (GL-22), relevé CSV importé et rapproché des virements, compte ouvert à la demande |
 | FIN-03 ventilation figée au paiement | Séjours : fait (FIN-03.1, 03.3, 03.5 ; les montants figés à la réservation tiennent lieu d'instantané, FA-11). Écran du détail d'une réservation (FIN-03.4) : à venir |
 | FIN-04 sommes dues aux partenaires | Fait (GL-11) : page des versements, échéances et retards, relance des échecs, alerte quotidienne ; récupération sur les versements suivants après une annulation (GL-23). Gel des versements par partenaire : à faire |
 | FIN-05 registre des cautions | Fait pour la location : registre `finance_caution`, écran, alertes de retard, reçus REC et avis RET avec pièces (GL-13, GL-14). Séjours : projet séparé. Lignes C du grand livre : avec FIN-03 des locations |
@@ -301,6 +302,16 @@ Le fichier a été traduit dans notre architecture : modèles Django et migratio
 - Comptes courants (GL-16) : pas de plafond sur les dépenses (au-delà de 50 000 F, la double validation suffit) ; remboursements des avances pas encore ouverts (avec le compte bancaire) ; capital affiché avec la part de chaque associé, écriture d'ouverture avec l'expert-comptable.
 - Fonds de garantie (GL-17) : 10 % du revenu net de chaque mois terminé.
 - Rapprochement : API FedaPay chaque nuit et bouton « Réimporter » ; argent hors grand livre montré à part, hors écart ; écart inexpliqué fermé par une écriture de régularisation (motif, pièce, double validation à partir de 250 000 F, journal).
+
+## Virements internes et relevé bancaire (GL-22)
+
+Décision du 19 novembre 2026 : tout est prêt, mais le **compte bancaire reste fermé** tant qu'il n'existe pas.
+
+- **Ouvrir le compte bancaire** (Finance → Virements et banque, super administrateur, journal `tresorerie_compte_active`) : `finance_compte_argent.actif_depuis` reçoit la date du jour. Le compte est rapproché à partir de ce jour seulement (I5 et contrôle 4 ne demandent pas ses journées d'avant). Un compte sans ligne se désactive.
+- **Virement** (`VirementService`, permission « Opérations financières ») : date (pas à venir, pas avant l'ouverture du compte), compte de départ et d'arrivée, ouverts et réels (ni le compte de passage des associés, ni le fonds de garantie), montant, motif, **preuve obligatoire** (justificatif `virement`), et la **référence du prestataire** obligatoire quand FedaPay est d'un côté (le rapprochement de FedaPay retrouve le retrait par elle). Numéro `VIR-AAAA-NNNNN`. Deux lignes **V01** de même montant, sortie du compte de départ et entrée du compte d'arrivée, de même référence : le compte **585** se solde (invariant **I17**, contrôle **10** de la clôture). À partir du seuil des versements (250 000 F), une deuxième personne valide (opération `virement_interne`). Annulation par lignes inverses. Journal `virement_demande`, `virement_ecrit`, `virement_annule`.
+- **Relevé bancaire** (`TresorerieService.importer_releve`) : un fichier CSV exporté par la banque, jusqu'à hier ; la personne indique le nom des colonnes (date, libellé, débit et crédit, ou un montant signé, référence si la banque en donne). Montants en francs entiers (« 1 234 567 », « 1.234.567 », « 1234567,00 »). Chaque ligne est rapprochée du virement qu'elle est : par sa référence, sinon par son montant dans le même sens à 3 jours près, le plus proche d'abord, chaque virement une fois. Puis chaque journée couverte est rapprochée comme celles de FedaPay (`RapprochementService.importer`). Une ligne que rien n'explique (frais bancaires, versement inconnu) laisse sa journée en écart : elle se **régularise** dans Finance → Rapprochement, compte bancaire (frais bancaires en D13). Le fichier est gardé tel quel (`finance_releve_import`) ; journal `tresorerie_releve_importe`. Refusé : un relevé qui touche aujourd'hui, une date d'avant l'ouverture du compte, un mois clôturé.
+- **Rapprochement** : l'écran choisit le compte (`?compte=`), FedaPay ou le compte bancaire ouvert. FedaPay se lit par son API, la banque par son relevé importé.
+- **Limites** : pas encore de dépense payée par la banque (GL-15 : avancées par un associé) ; le compte bancaire des fonds de tiers (`BANQUE_FT`) s'ouvre de la même façon quand il existera.
 
 ## Paramètres pilotés et historique (GL-20)
 

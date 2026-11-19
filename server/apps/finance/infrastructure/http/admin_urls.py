@@ -7,7 +7,8 @@ from .admin_views import (AssociesView, AuxiliairesView, BalanceView, CautionsVi
                           PilotageView, RapportExportView,
                           RapportResultatView, RapportsView, RapprochementJourView, RapprochementsView,
                           ReferentielsView, RegularisationView, ReleveCompteCourantView, SinistreAnnulationView,
-                          SinistresView, ValidationDecisionView, ValidationsView)
+                          SinistresView, ValidationDecisionView, ValidationsView, VirementsView,
+                          VirementAnnulationView, CompteArgentActivationView, ReleveBancaireView)
 
 urlpatterns = [
     path('grand-livre/', GrandLivreView.as_view(), name='admin-finance-grand-livre'),
@@ -43,6 +44,11 @@ urlpatterns = [
     path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
     path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),
          name='admin-finance-regularisation'),
+    path('virements/', VirementsView.as_view(), name='admin-finance-virements'),
+    path('virements/<uuid:pk>/annuler/', VirementAnnulationView.as_view(), name='admin-finance-virement-annuler'),
+    path('comptes-argent/<str:code>/activation/', CompteArgentActivationView.as_view(),
+         name='admin-finance-compte-argent-activation'),
+    path('releves-bancaires/', ReleveBancaireView.as_view(), name='admin-finance-releves-bancaires'),
     path('parametres/', ParametresView.as_view(), name='admin-finance-parametres'),
     path('parametres/<str:cle>/', ParametreView.as_view(), name='admin-finance-parametre'),
     path('validations/', ValidationsView.as_view(), name='admin-finance-validations'),

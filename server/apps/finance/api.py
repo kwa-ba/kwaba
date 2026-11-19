@@ -22,11 +22,12 @@ from apps.finance.domain.entities import (ENTREE, SORTIE, Caution, Ecrivain, Fil
 from apps.finance.application.service import VIDE
 from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, FondsGarantieRefuse,
                                             MouvementRefuse, ParametreRefuse, RapprochementRefuse,
-                                            RestitutionRefusee, ValidationRefusee)
+                                            RestitutionRefusee, ValidationRefusee, VirementRefuse)
 from apps.finance.domain.rules import mois_de
 from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service,
                                                    depense_service, fonds_garantie_service, grand_livre_service,
                                                    livres_service, parametre_service, rapport_service,
+                                                   tresorerie_service, virement_service,
                                                    rapprochement_service,
                                                    restitution_service, validation_service)
 
@@ -67,6 +68,9 @@ __all__ = [
     # Steered parameters and their history (GL-20)
     'ParametreRefuse', 'parametres', 'historique_parametres', 'modifier_parametre', 'parametre_au',
     'enregistrer_taux_de_la_page_tarifs',
+    # Internal transfers, money accounts and bank statements (GL-22)
+    'VirementRefuse', 'demander_virement', 'annuler_virement', 'virements', 'comptes_argent', 'activer_compte_argent',
+    'importer_releve_bancaire', 'releves_bancaires',
 ]
 
 
@@ -576,3 +580,52 @@ def enregistrer_taux_de_la_page_tarifs(cle: str, valeur, *, par_id: uuid.UUID | 
 def parametre_au(cle: str, moment) -> Decimal:
     """The value in force at `moment` (a booking keeps the delay of its time). Raises ParametreRefuse if unknown."""
     return parametre_service().valeur_au(cle, moment)
+
+
+# --- Internal transfers, money accounts and bank statements (GL-22) -------------------------------------------------
+
+def _virement_simple(v) -> dict:
+    return {'id': str(v.id), 'numero': v.numero, 'date_virement': v.date_virement, 'source': v.source,
+            'destination': v.destination, 'montant': v.montant, 'motif': v.motif,
+            'reference_externe': v.reference_externe, 'statut': v.statut, 'demandee_par_id': v.demandee_par_id,
+            'demandee_le': v.demandee_le, 'mouvement_ids': list(v.mouvement_ids), 'ecrit_le': v.ecrit_le,
+            'annule_le': v.annule_le, 'motif_annulation': v.motif_annulation}
+
+
+def demander_virement(*, date_virement: date, source: str, destination: str, montant: int, motif: str,
+                      reference_externe: str = '', par_id: uuid.UUID | None) -> dict:
+    """A transfer between two open money accounts; the caller attaches its proof in the same transaction. Raises
+    VirementRefuse, MouvementRefuse or ValidationRefusee."""
+    return _virement_simple(virement_service().demander(
+        date_virement=date_virement, source=source, destination=destination, montant=montant, motif=motif,
+        reference_externe=reference_externe, par_id=par_id))
+
+
+def annuler_virement(virement_id, *, motif: str, par_id: uuid.UUID | None) -> dict:
+    return _virement_simple(virement_service().annuler(virement_id, motif=motif, par_id=par_id))
+
+
+def virements(*, compte=None, statut=None, page: int = 1, taille: int = 20) -> dict:
+    r = virement_service().liste(compte=compte, statut=statut, page=page, taille=taille)
+    return {**r, 'lignes': [_virement_simple(v) for v in r['lignes']]}
+
+
+def comptes_argent() -> list[dict]:
+    """Every money account: {code, libelle, type, compte_syscohada, actif, actif_depuis, solde, nb_lignes, banque,
+    sans_releve}."""
+    return tresorerie_service().comptes_argent()
+
+
+def activer_compte_argent(code: str, *, actif: bool, par_id: uuid.UUID | None) -> dict:
+    """Opens a bank account (reconciled from today) or switches it off while empty. Raises VirementRefuse."""
+    return tresorerie_service().activer(code, actif=actif, par_id=par_id)
+
+
+def importer_releve_bancaire(compte: str, texte: str, colonnes: dict, *, nom_fichier: str = '',
+                             par_id: uuid.UUID | None) -> dict:
+    """Reads a CSV bank statement and reconciles every day it covers. Raises VirementRefuse or RapprochementRefuse."""
+    return tresorerie_service().importer_releve(compte, texte, colonnes, nom_fichier=nom_fichier, par_id=par_id)
+
+
+def releves_bancaires(compte: str | None = None) -> list[dict]:
+    return tresorerie_service().liste_releves(compte)

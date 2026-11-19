@@ -8,7 +8,8 @@ from datetime import timezone as dt_timezone
 from decimal import Decimal
 from typing import Iterable
 
-from apps.finance.application.ports import (Alertes, Annuaire, Cautions, Clock, ComptesCourants, Depenses,
+from apps.finance.application.ports import (Alertes, Annuaire, Cautions, Clock, ComptesArgent, ComptesCourants,
+                                            Depenses, Releves, Virements,
                                             FondsGarantie, GrandLivre, Journal, Parametres, ParametresPilotes,
                                             Periodes, Rapports,
                                             Rapprochements, Regularisations, Restitutions, TransactionManager,
@@ -18,8 +19,10 @@ from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, COMPTE_FONDS_
                                           NATURE_AVANCE_ASSOCIE, NATURE_DOTATION_GARANTIE, NATURE_SINISTRE,
                                           NATURE_UTILISATION_GARANTIE, NATURES_COMPTE_COURANT,
                                           PARAMETRES_DE_LA_PAGE_TARIFS, PREFIXE_DOTATION,
-                                          SINISTRE_ANNULE, SINISTRE_IMPUTE, TIERS_ASSOCIE, Associe, Depense,
-                                          Fournisseur, Sinistre,
+                                          SINISTRE_ANNULE, SINISTRE_IMPUTE, TIERS_ASSOCIE, TOLERANCE_JOURS_VIREMENT,
+                                          TYPE_PRESTATAIRE, TYPES_COMPTE_BANQUE, TYPES_SANS_RELEVE, NATURE_VIREMENT,
+                                          VIREMENT_ANNULE, VIREMENT_ECRIT, VIREMENT_EN_ATTENTE, VIREMENT_REFUSE,
+                                          Associe, Depense, Fournisseur, Sinistre, Virement,
                                           ENTREE, ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE,
                                           PERIODE_OUVERTE, PERIODE_VERROUILLEE, PREFIXE_REGULARISATION,
                                           RAPPROCHEMENT_NON_FAIT, REGULARISATION_ECRITE, REGULARISATION_EN_ATTENTE,
@@ -29,7 +32,7 @@ from apps.finance.domain.entities import (COMPTE_AVANCES_ASSOCIES, COMPTE_FONDS_
                                           Regularisation, Validation)
 from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, DepenseRefusee, FondsGarantieRefuse,
                                             MouvementRefuse, ParametreRefuse, RapprochementRefuse,
-                                            RestitutionRefusee, ValidationRefusee)
+                                            RestitutionRefusee, ValidationRefusee, VirementRefuse)
 from apps.finance.domain.rules import (debut_exercice, dotation_due, ecarts_des_modules_ouverts,
                                       est_compte_de_resultat, inverse, juger_jour, juger_operation, preparer,
                                       premier_du_mois)
@@ -1229,3 +1232,225 @@ class ParametreService:
             self.parametres.modifier(cle, valeur, par_id=par_id, motif=motif, quand=self.clock.now())
             self.journal.parametre(par_id, cle, p['valeur'], valeur, motif)
         return {**p, 'valeur': valeur}
+
+
+# --- Internal transfers and bank statements (GL-22, FIN-02.6) ---------------------------------------------------------
+
+OPERATION_VIREMENT = 'virement_interne'
+
+
+class VirementService:
+    """Money moved between Kwa-Ba's own accounts (FedaPay to the bank, the bank to FedaPay): numbered VIR-YYYY-NNNNN,
+    with its proof, written as two V01 lines of the same amount (585 back to zero, I17). From the threshold of the
+    payouts a second person approves it first. Cancelled by inverse lines."""
+
+    def __init__(self, *, virements: Virements, comptes: ComptesArgent, grand_livre: GrandLivreService,
+                 validations: ValidationService, journal: Journal, tx: TransactionManager, clock: Clock):
+        self.virements = virements
+        self.comptes = comptes
+        self.grand_livre = grand_livre
+        self.validations = validations
+        self.journal = journal
+        self.tx = tx
+        self.clock = clock
+
+    def _compte(self, code: str, quand: date) -> dict:
+        c = self.comptes.lire(code)
+        if c is None or not c['actif'] or c['type'] in TYPES_SANS_RELEVE:
+            raise VirementRefuse(f"« {code} » n'est pas un compte d'argent ouvert : un virement va d'un compte réel à "
+                                 "un autre.")
+        if c['actif_depuis'] and quand < c['actif_depuis']:
+            raise VirementRefuse(f"Le compte {c['libelle']} n'est ouvert que depuis le {c['actif_depuis']:%d/%m/%Y}.")
+        return c
+
+    def demander(self, *, date_virement: date, source: str, destination: str, montant: int, motif: str,
+                 reference_externe: str = '', par_id: uuid.UUID | None) -> Virement:
+        """A transfer between two open accounts, written at once or after a second person from the threshold. The
+        caller attaches its proof (bank slip, provider's receipt) in the same transaction."""
+        motif, reference_externe = _texte(motif, 300), _texte(reference_externe, 60)
+        if type(montant) is not int or montant <= 0:
+            raise VirementRefuse('Le montant doit être un nombre entier positif de francs CFA.')
+        if date_virement > self.clock.now().date():
+            raise VirementRefuse('Un virement se saisit une fois fait : pas à une date à venir.')
+        if source == destination:
+            raise VirementRefuse('Un virement va d\'un compte à un autre : choisissez deux comptes différents.')
+        if len(motif) < 5:
+            raise VirementRefuse('Indiquez le motif du virement (5 caractères au moins).')
+        comptes = [self._compte(source, date_virement), self._compte(destination, date_virement)]
+        if any(c['type'] == TYPE_PRESTATAIRE for c in comptes) and not reference_externe:
+            raise VirementRefuse('Indiquez la référence du retrait ou du dépôt chez le prestataire de paiement : '
+                                 'le rapprochement du jour la retrouve par elle.')
+        with self.tx.atomic():
+            v = self.virements.creer(Virement(
+                id=uuid.uuid4(), numero=self.virements.prochain_numero(date_virement.year), date_virement=date_virement,
+                source=source, destination=destination, montant=montant, motif=motif,
+                reference_externe=reference_externe, statut=VIREMENT_EN_ATTENTE, demandee_par_id=par_id,
+                demandee_le=self.clock.now()))
+            if self.validations.requise(montant):
+                self.validations.demander(OPERATION_VIREMENT, objet_type='virement', objet_id=v.id, montant=montant,
+                                          motif=f'{v.numero} · {motif}', donnees={'id': str(v.id)}, par_id=par_id)
+                self.journal.virement('demande', par_id, v)
+                return v
+            return self._ecrire(v)
+
+    def executer(self, donnees: dict) -> str:
+        v = self.virements.lire(uuid.UUID(str(donnees.get('id'))), verrou=True)
+        if v is None or v.statut != VIREMENT_EN_ATTENTE:
+            raise VirementRefuse('Virement introuvable ou déjà traité.')
+        v = self._ecrire(v)
+        return f'Virement {v.numero} écrit au grand livre.'
+
+    def _ecrire(self, v: Virement) -> Virement:
+        commun = {'nature': NATURE_VIREMENT, 'offre': OFFRE_PAR_DEFAUT, 'montant': v.montant,
+                  'piece_reference': v.numero, 'externe_reference': v.cle_grand_livre, 'motif': v.motif,
+                  'date_evenement': datetime.combine(v.date_virement, time(12), tzinfo=dt_timezone.utc),
+                  'moyen_paiement': 'INTERNE', 'tiers_type': 'interne'}
+        lignes = [Ligne(sens=SORTIE, compte_argent=v.source, **commun),
+                  Ligne(sens=ENTREE, compte_argent=v.destination, **commun)]
+        with self.tx.atomic():
+            ids = self.grand_livre.enregistrer(lignes, origine='virement', par_id=v.demandee_par_id)
+            if len(ids) != 2:
+                raise VirementRefuse(f'Le virement {v.numero} (ou un autre de même référence) est déjà au grand livre.')
+            v = replace(v, statut=VIREMENT_ECRIT, mouvement_ids=tuple(ids), ecrit_le=self.clock.now())
+            self.virements.enregistrer(v)
+            self.journal.virement('ecrit', v.demandee_par_id, v)
+        return v
+
+    def annuler(self, virement_id, *, motif: str, par_id: uuid.UUID | None) -> Virement:
+        motif = _texte(motif, 500)
+        if len(motif) < 5:
+            raise VirementRefuse("Indiquez le motif de l'annulation (5 caractères au moins).")
+        with self.tx.atomic():
+            v = self.virements.lire(virement_id, verrou=True)
+            if v is None or v.statut != VIREMENT_ECRIT:
+                raise VirementRefuse("Seul un virement écrit au grand livre s'annule ; une demande en attente se refuse "
+                                     "dans Validations.")
+            for mouvement_id in v.mouvement_ids:
+                self.grand_livre.contre_passer(mouvement_id, motif=f'Annulation de {v.numero} : {motif}',
+                                               origine='virement', par_id=par_id)
+            v = replace(v, statut=VIREMENT_ANNULE, annule_le=self.clock.now(), motif_annulation=motif)
+            self.virements.enregistrer(v)
+            self.journal.virement('annule', par_id, v)
+        return v
+
+    def liste(self, *, compte=None, statut=None, page=1, taille=TAILLE_PAGE) -> dict:
+        decalage, limite = _page(page, taille)
+        lignes, total = self.virements.liste(compte=compte or None, statut=statut or None, decalage=decalage,
+                                             limite=limite)
+        return {'lignes': [self._avec_statut(v) for v in lignes], 'total': total}
+
+    def _avec_statut(self, v: Virement) -> Virement:
+        if v.statut == VIREMENT_EN_ATTENTE and self.validations.statut_de(
+                OPERATION_VIREMENT, 'virement', v.id) == VALIDATION_REFUSEE:
+            return replace(v, statut=VIREMENT_REFUSE)
+        return v
+
+
+class TresorerieService:
+    """The money accounts (which are open, since when) and the bank statements: a statement imported in CSV is read,
+    each line matched with the transfer it is (by its reference, or by its amount within a few days), and every day
+    it covers reconciled on three sides like FedaPay's. A line nobody explains (bank fees, an unknown payment) is
+    regularised from the reconciliation screen."""
+
+    def __init__(self, *, comptes: ComptesArgent, virements: Virements, releves: Releves,
+                 rapprochement: RapprochementService, periodes: Periodes, journal: Journal, tx: TransactionManager,
+                 clock: Clock):
+        self.comptes = comptes
+        self.virements = virements
+        self.releves = releves
+        self.rapprochement = rapprochement
+        self.periodes = periodes
+        self.journal = journal
+        self.tx = tx
+        self.clock = clock
+
+    def comptes_argent(self) -> list[dict]:
+        return [{**c, 'banque': c['type'] in TYPES_COMPTE_BANQUE, 'sans_releve': c['type'] in TYPES_SANS_RELEVE}
+                for c in self.comptes.liste()]
+
+    def activer(self, code: str, *, actif: bool, par_id: uuid.UUID | None) -> dict:
+        """Opens a bank account (reconciled from today) or switches it off while nothing was written on it."""
+        c = self.comptes.lire(code)
+        if c is None or c['type'] not in TYPES_COMPTE_BANQUE:
+            raise VirementRefuse('Seul un compte bancaire s\'active ou se désactive ici.')
+        if c['actif'] == actif:
+            return c
+        if not actif and c['nb_lignes']:
+            raise VirementRefuse('Ce compte a des lignes au grand livre : il reste ouvert (sa clôture se fait avec '
+                                 "l'expert-comptable).")
+        with self.tx.atomic():
+            self.comptes.activer(code, actif, self.clock.now().date() if actif else None)
+            self.journal.tresorerie('compte_active' if actif else 'compte_desactive', par_id, {'compte': code})
+        return self.comptes.lire(code)
+
+    def importer_releve(self, compte: str, texte: str, colonnes: dict, *, nom_fichier: str = '',
+                        par_id: uuid.UUID | None) -> dict:
+        from apps.finance.domain import releve
+
+        c = self.comptes.lire(compte)
+        if c is None or not c['actif'] or c['type'] not in TYPES_COMPTE_BANQUE:
+            raise VirementRefuse("Choisissez un compte bancaire ouvert : il s'active dans Finance → Virements.")
+        lignes = releve.lire(texte, colonnes)
+        debut, fin = min(x.jour for x in lignes), max(x.jour for x in lignes)
+        if fin >= self.clock.now().date():
+            raise VirementRefuse("Le relevé contient des opérations d'aujourd'hui ou à venir : exportez-le jusqu'à hier, "
+                                 'une journée se rapproche une fois terminée.')
+        if c['actif_depuis'] and debut < c['actif_depuis']:
+            raise VirementRefuse(f"Le relevé commence avant l'ouverture du compte dans l'appli "
+                                 f"({c['actif_depuis']:%d/%m/%Y}) : exportez-le à partir de cette date.")
+        verrouilles = {p['mois'] for p in self.periodes.toutes() if p['etat'] == PERIODE_VERROUILLEE}
+        if any(x.jour.replace(day=1) in verrouilles for x in lignes):
+            raise VirementRefuse('Le relevé couvre un mois clôturé : ses journées ne se réimportent plus.')
+        operations = self._rapprocher(compte, lignes, debut, fin)
+        with self.tx.atomic():
+            jours, jour = [], debut
+            while jour <= fin:
+                jours.append(self.rapprochement.importer(compte, jour, [o for o in operations if o.jour == jour],
+                                                         par_id=par_id))
+                jour += timedelta(days=1)
+            self.releves.enregistrer(compte=compte, debut=debut, fin=fin, nb_lignes=len(lignes),
+                                     nom_fichier=(nom_fichier or 'releve.csv')[:150], contenu=texte, par_id=par_id,
+                                     quand=self.clock.now())
+            self.journal.tresorerie('releve_importe', par_id, {'compte': compte, 'debut': debut.isoformat(),
+                                                               'fin': fin.isoformat(), 'lignes': len(lignes)})
+        rapprochees = sum(1 for o in operations if o.kwaba_montant is not None)
+        return {'debut': debut, 'fin': fin, 'lignes': len(lignes), 'rapprochees': rapprochees,
+                'inconnues': len(lignes) - rapprochees,
+                'jours': [{'jour': j['jour'], 'etat': j['etat'], 'ecart': j.get('ecart'), 'message': j['message']}
+                          for j in jours]}
+
+    def _rapprocher(self, compte: str, lignes, debut: date, fin: date) -> list[OperationExterne]:
+        """Each statement line with the transfer it is: its reference first, else the same amount in the same
+        direction within the tolerance, the closest date first; each transfer once."""
+        marge = timedelta(days=TOLERANCE_JOURS_VIREMENT)
+        libres = list(self.virements.ecrits_du_compte(compte, debut - marge, fin + marge))
+        operations = []
+        for ligne in sorted(lignes, key=lambda x: x.jour):
+            sens_virement = 'entrant' if ligne.sens == ENTREE else 'sortant'
+
+            def convient(v: Virement) -> bool:
+                return (v.montant == ligne.montant and abs((v.date_virement - ligne.jour).days) <= marge.days
+                        and (v.destination if sens_virement == 'entrant' else v.source) == compte)
+
+            trouve = next((v for v in libres if v.reference_externe and v.reference_externe == ligne.reference
+                           and convient(v)), None) or min(
+                (v for v in libres if convient(v)), key=lambda v: abs((v.date_virement - ligne.jour).days),
+                default=None)
+            if trouve:
+                libres.remove(trouve)
+                operations.append(OperationExterne(
+                    reference=trouve.cle_grand_livre, type='versement' if ligne.sens == SORTIE else 'encaissement',
+                    sens=ligne.sens, jour=ligne.jour, kwaba_reference=trouve.numero, kwaba_montant=trouve.montant,
+                    kwaba_statut='ecrit', externe_montant=ligne.montant, externe_frais=0, externe_statut='comptabilise',
+                    moyen_paiement='VIREMENT'))
+            else:
+                operations.append(OperationExterne(
+                    reference=ligne.reference, type='inconnu', sens=ligne.sens, jour=ligne.jour,
+                    externe_montant=ligne.montant, externe_frais=0, externe_statut='comptabilise',
+                    moyen_paiement='VIREMENT',
+                    message=f'{ligne.libelle} : sans opération Kwa-Ba, à expliquer (frais bancaires, versement '
+                            'inconnu) par une régularisation'.strip(' :')))
+        return operations
+
+    def liste_releves(self, compte: str | None = None, limite: int = 50) -> list[dict]:
+        return self.releves.liste(compte, max(1, min(limite, 200)))

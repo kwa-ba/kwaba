@@ -9,10 +9,11 @@ class FinanceConfig(AppConfig):
 
     def ready(self):
         from apps.finance.application.registre import declarer_operation
-        from apps.finance.application.service import OPERATION_DEPENSE, OPERATION_REGULARISATION
+        from apps.finance.application.service import (OPERATION_DEPENSE, OPERATION_REGULARISATION,
+                                                      OPERATION_VIREMENT)
         from apps.finance.domain.entities import Operation
         from apps.finance.infrastructure import checks  # noqa: F401 (registers the system check)
-        from apps.finance.infrastructure.container import depense_service, rapprochement_service
+        from apps.finance.infrastructure.container import depense_service, rapprochement_service, virement_service
         from apps.finance.infrastructure.persistence import sql_restitutions
 
         # Reporting views and functions: dropped before every migrate, created again after (ADR-024)
@@ -24,3 +25,6 @@ class FinanceConfig(AppConfig):
         # An expense from its threshold waits for a second person (GL-15)
         declarer_operation(Operation(code=OPERATION_DEPENSE, libelle='Dépense de Kwa-Ba',
                                      executer=lambda donnees: depense_service().executer(donnees)))
+        # An internal transfer from the threshold of the payouts waits for a second person (GL-22)
+        declarer_operation(Operation(code=OPERATION_VIREMENT, libelle='Virement interne',
+                                     executer=lambda donnees: virement_service().executer(donnees)))

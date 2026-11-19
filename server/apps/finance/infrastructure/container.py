@@ -1,12 +1,14 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (CautionService, ClotureService, ComptesCourantsService, DepenseService,
+from apps.finance.application.service import (TresorerieService, VirementService,
+                                              CautionService, ClotureService, ComptesCourantsService, DepenseService,
                                               FondsGarantieService, GrandLivreService, LivresService,
                                               ParametreService, RapportService,
                                               RapprochementService, RestitutionService, ValidationService)
 from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
-from apps.finance.infrastructure.persistence.repositories import (DjangoAnnuaire, DjangoCautions, DjangoComptesCourants,
+from apps.finance.infrastructure.persistence.repositories import (DjangoComptesArgent, DjangoReleves, DjangoVirements,
+                                                                  DjangoAnnuaire, DjangoCautions, DjangoComptesCourants,
                                                                   DjangoDepenses, DjangoFondsGarantie,
                                                                   DjangoGrandLivre, DjangoParametres,
                                                                   DjangoParametresPilotes, DjangoPeriodes,
@@ -76,3 +78,15 @@ def fonds_garantie_service() -> FondsGarantieService:
 def parametre_service() -> ParametreService:
     return ParametreService(parametres=DjangoParametresPilotes(), journal=AuditJournal(), tx=DjangoTransactionManager(),
                             clock=DjangoClock())
+
+
+def virement_service() -> VirementService:
+    return VirementService(virements=DjangoVirements(), comptes=DjangoComptesArgent(), grand_livre=grand_livre_service(),
+                           validations=validation_service(), journal=AuditJournal(), tx=DjangoTransactionManager(),
+                           clock=DjangoClock())
+
+
+def tresorerie_service() -> TresorerieService:
+    return TresorerieService(comptes=DjangoComptesArgent(), virements=DjangoVirements(), releves=DjangoReleves(),
+                             rapprochement=rapprochement_service(), periodes=DjangoPeriodes(), journal=AuditJournal(),
+                             tx=DjangoTransactionManager(), clock=DjangoClock())

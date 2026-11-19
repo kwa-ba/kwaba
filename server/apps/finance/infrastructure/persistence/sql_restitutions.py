@@ -19,7 +19,8 @@ Changes from the file, found by running its cases over two months:
   guarantee fund never below zero), and closing checks 7 to 9 (the allocation of the month to the guarantee fund
   written, the same two rules at the end of the month) come with GL-16 and GL-17;
 - money accounts without a provider's statement (the associates' advances, the guarantee fund) are never reconciled
-  (I5, closing check 4);
+  (I5, closing check 4); an account opened later (the bank, GL-22) from its first day only (actif_depuis);
+- invariant I17 and closing check 10: every internal transfer brings the transit account 585 back to zero (GL-22);
 - finance_sequence_piece and finance_prochain_numero are not created here: invoice numbers already come from the
   documents module (SequenceFactureModel, one lock per issue), which lot F3 extends to the other series.
 """
@@ -251,6 +252,7 @@ VUES = [
         CROSS JOIN generate_series((SELECT min(date_evenement)::date FROM finance_mouvement)::timestamp,
                                    (current_date - 1)::timestamp, interval '1 day') AS j(jour)
         WHERE c.actif AND c.type NOT IN ('avance_associe', 'provision')
+          AND j.jour::date >= COALESCE(c.actif_depuis, '-infinity'::date)
           AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                           WHERE r.jour = j.jour::date AND r.compte_argent_code = c.code
                             AND r.etat = 'fait' AND r.ecart = 0)
@@ -292,6 +294,14 @@ VUES = [
             SELECT 1 FROM finance_mouvement_signe WHERE compte_argent_code = 'GARANTIE'
             HAVING SUM(montant_signe) > 0
         ) x
+    ), i17 AS (
+        -- Every internal transfer: its exit and its entry of the same amount, 585 back to zero
+        SELECT count(*) AS n FROM (
+            SELECT COALESCE(a.externe_reference, m.externe_reference) FROM finance_mouvement m
+            LEFT JOIN finance_mouvement a ON a.id = m.annule_mouvement_id
+            WHERE m.nature_code = 'V01'
+            GROUP BY 1 HAVING SUM(CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END) <> 0
+        ) x
     )
     SELECT 'I5' AS invariant, 'Rapprochement fait et écart nul, chaque jour' AS libelle, (SELECT n FROM i5) AS anomalies
     UNION ALL SELECT 'I8', 'Cautions détenues jamais négatives',              (SELECT n FROM i8)
@@ -302,6 +312,7 @@ VUES = [
     UNION ALL SELECT 'I13', 'Monnaie électronique jamais créditrice (55x)',   (SELECT n FROM i13)
     UNION ALL SELECT 'I15', 'Comptes courants d''associés jamais débiteurs',  (SELECT n FROM i15)
     UNION ALL SELECT 'I16', 'Fonds de garantie jamais négatif',               (SELECT n FROM i16)
+    UNION ALL SELECT 'I17', 'Virements internes soldés (585 à zéro)',         (SELECT n FROM i17)
     """,
     # 9.1 The single view every report reads
     """
@@ -363,6 +374,7 @@ FONCTIONS = [
                                      interval '1 day') AS j(jour)
                 CROSS JOIN finance_compte_argent ca
                 WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'provision')
+                  AND j.jour::date >= COALESCE(ca.actif_depuis, '-infinity'::date)
                   AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                                   WHERE r.jour = j.jour::date AND r.compte_argent_code = ca.code
                                     AND r.etat = 'fait' AND r.ecart = 0)),
@@ -392,6 +404,13 @@ FONCTIONS = [
                     WHERE compte_argent_code = 'GARANTIE' AND mois_comptable <= p_mois
                     HAVING SUM(montant_signe) > 0) x),
                'Un sinistre impute au-dela du solde du fonds : annuler l''imputation et la reprendre'
+        UNION ALL SELECT 10, 'Virements internes soldes (585 a zero)',
+               (SELECT count(*) FROM (
+                    SELECT COALESCE(a.externe_reference, m.externe_reference) FROM finance_mouvement m
+                    LEFT JOIN finance_mouvement a ON a.id = m.annule_mouvement_id
+                    WHERE m.nature_code = 'V01' AND m.mois_comptable <= p_mois
+                    GROUP BY 1 HAVING SUM(CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END) <> 0) x),
+               'Un virement sans sa ligne d''arrivee ou de depart : le reprendre dans Finance, Virements'
     )
     SELECT controle,
            CASE WHEN rang = 1 THEN 'ecart de ' || valeur::text || ' F'

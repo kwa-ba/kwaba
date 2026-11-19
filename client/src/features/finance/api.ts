@@ -412,6 +412,8 @@ export interface MoisRapprochement {
   peut_importer: boolean;
   peut_regulariser: boolean;
   seuil_double_validation: number;
+  /** Accounts reconciled: FedaPay, and the bank once open (GL-22) */
+  comptes?: { code: string; libelle: string }[];
 }
 
 export interface OperationRapprochee {
@@ -464,12 +466,12 @@ export interface NouvelleRegularisation {
   fichiers: File[];
 }
 
-export async function lireRapprochements(mois: string) {
-  return (await api.get<MoisRapprochement>(`${FINANCE}/rapprochement/${parametres({ mois: mois.slice(0, 7) })}`)).data;
+export async function lireRapprochements(mois: string, compte = "FEDAPAY") {
+  return (await api.get<MoisRapprochement>(`${FINANCE}/rapprochement/${parametres({ mois: mois.slice(0, 7), compte })}`)).data;
 }
 
-export async function lireRapprochementJour(jour: string) {
-  return (await api.get<DetailRapprochement>(`${FINANCE}/rapprochement/${jour}/`)).data;
+export async function lireRapprochementJour(jour: string, compte = "FEDAPAY") {
+  return (await api.get<DetailRapprochement>(`${FINANCE}/rapprochement/${jour}/${parametres({ compte })}`)).data;
 }
 
 /** Reads FedaPay again for these finished days (31 at most) and reconciles each one. */
@@ -478,7 +480,7 @@ export async function importerRapprochement(debut: string, fin: string) {
     "/v1/admin/paiements/rapprochement/importer/", { debut, fin })).data;
 }
 
-export async function regulariserRapprochement(jour: string, r: NouvelleRegularisation) {
+export async function regulariserRapprochement(jour: string, r: NouvelleRegularisation, compte = "FEDAPAY") {
   const corps = new FormData();
   corps.append("reference", r.reference);
   corps.append("nature", r.nature);
@@ -488,7 +490,7 @@ export async function regulariserRapprochement(jour: string, r: NouvelleRegulari
   corps.append("motif", r.motif);
   for (const f of r.fichiers) corps.append("fichiers", f);
   return (await api.post<RegularisationFinance & { attente_validation: boolean }>(
-    `${FINANCE}/rapprochement/${jour}/regulariser/`, corps)).data;
+    `${FINANCE}/rapprochement/${jour}/regulariser/${parametres({ compte })}`, corps)).data;
 }
 
 // --- Expenses, suppliers and associates (GL-15) --------------------------------------------------------------------
@@ -750,4 +752,112 @@ export async function lireHistoriqueParametre(cle: string) {
 
 export async function modifierParametre(cle: string, valeur: string, motif: string) {
   return (await api.patch<ParametreFinance>(`${FINANCE}/parametres/${cle}/`, { valeur, motif })).data;
+}
+
+// --- Internal transfers, money accounts and bank statements (GL-22)
+
+export type StatutVirement = "en_attente" | "ecrit" | "refuse" | "annule";
+
+export interface CompteArgentFinance {
+  code: string;
+  libelle: string;
+  type: string;
+  compte_syscohada: string | null;
+  actif: boolean;
+  actif_depuis: string | null;
+  solde: number;
+  nb_lignes: number;
+  banque: boolean;
+  /** Account of passage or guarantee fund: no statement, no transfer */
+  sans_releve: boolean;
+}
+
+export interface VirementFinance {
+  id: string;
+  numero: string;
+  date_virement: string;
+  source: string;
+  source_libelle: string;
+  destination: string;
+  destination_libelle: string;
+  montant: number;
+  motif: string;
+  reference_externe: string;
+  statut: StatutVirement;
+  demandee_par: string;
+  motif_annulation: string;
+}
+
+export interface ReleveImporte {
+  id: string;
+  compte_argent_id: string;
+  debut: string;
+  fin: string;
+  nb_lignes: number;
+  nom_fichier: string;
+  importe_le: string;
+}
+
+export interface ListeVirements extends PageFinance<VirementFinance> {
+  comptes: CompteArgentFinance[];
+  releves: ReleveImporte[];
+  seuil: number;
+  peut_saisir: boolean;
+  peut_activer: boolean;
+}
+
+export interface NouveauVirement {
+  date_virement: string;
+  source: string;
+  destination: string;
+  montant: number;
+  motif: string;
+  reference_externe: string;
+  fichiers: File[];
+}
+
+export interface ColonnesReleve {
+  date: string;
+  libelle: string;
+  debit: string;
+  credit: string;
+  montant: string;
+  reference: string;
+}
+
+export interface ResultatReleve {
+  debut: string;
+  fin: string;
+  lignes: number;
+  rapprochees: number;
+  inconnues: number;
+  jours: { jour: string; etat: string; ecart: number | null; message: string }[];
+}
+
+export async function lireVirements(page: number, statut = "") {
+  return (await api.get<ListeVirements>(`${FINANCE}/virements/${parametres({ statut, page })}`)).data;
+}
+
+export async function saisirVirement(v: NouveauVirement) {
+  const corps = new FormData();
+  for (const cle of ["date_virement", "source", "destination", "motif", "reference_externe"] as const) corps.append(cle, v[cle]);
+  corps.append("montant", String(v.montant));
+  for (const f of v.fichiers) corps.append("fichiers", f);
+  return (await api.post<VirementFinance & { attente_validation: boolean }>(`${FINANCE}/virements/`, corps)).data;
+}
+
+export async function annulerVirement(id: string, motif: string) {
+  return (await api.post<VirementFinance>(`${FINANCE}/virements/${id}/annuler/`, { motif })).data;
+}
+
+export async function activerCompteArgent(code: string, actif: boolean) {
+  return (await api.post<CompteArgentFinance>(`${FINANCE}/comptes-argent/${code}/activation/`, { actif })).data;
+}
+
+export async function importerReleve(compte: string, fichier: File, colonnes: ColonnesReleve) {
+  const corps = new FormData();
+  corps.append("compte", compte);
+  corps.append("fichier", fichier);
+  for (const [cle, valeur] of Object.entries(colonnes)) corps.append(`col_${cle}`, valeur);
+  return (await api.post<ResultatReleve>(`${FINANCE}/releves-bancaires/`, corps)).data;
 }
