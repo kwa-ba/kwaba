@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cloturerMois, creerRapport, deciderValidation, lireCautions, lireJustificatifs, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
+  cloturerMois, creerRapport, deciderValidation, importerRapprochement, lireCautions, lireRapprochementJour, lireRapprochements,
+  regulariserRapprochement, type NouvelleRegularisation, lireJustificatifs, lireValidations, lireAuxiliaires, lireBalance, lireComptes, lireControlesCloture, lireGrandLivre,
   lireGrandLivreCompte, lireLivreJournal, lireMoisComptables, lireMouvements, lirePilotage, lireRapports,
   lireReferentiels, lireResultatRapport, type DemandeRapport, type FiltresMouvements, type NouveauRapport,
 } from "./api";
@@ -26,6 +27,9 @@ export const CLES_FINANCE = {
   validations: (statut: string) => ["admin", "finance", "validations", statut] as const,
   cautions: (statut: string, retard: boolean) => ["admin", "finance", "cautions", statut, retard] as const,
   justificatifs: (objetType: string, objetId: string) => ["admin", "finance", "justificatifs", objetType, objetId] as const,
+  rapprochement: ["admin", "finance", "rapprochement"] as const,
+  rapprochements: (mois: string) => ["admin", "finance", "rapprochement", "mois", mois] as const,
+  rapprochementJour: (jour: string) => ["admin", "finance", "rapprochement", "jour", jour] as const,
 };
 
 /** The ledger at a glance (invariants, balances, sums owed, latest lines), read only. */
@@ -130,4 +134,33 @@ export function useCautions(statut: string, retard: boolean) {
 
 export function useJustificatifs(objetType: string, objetId: string | null) {
   return useQuery({ queryKey: CLES_FINANCE.justificatifs(objetType, objetId ?? ""), queryFn: () => lireJustificatifs(objetType, objetId!), enabled: !!objetId });
+}
+
+/** Every finished day of the month reconciled with FedaPay (GL-12): green, red or never imported. */
+export function useRapprochements(mois: string) {
+  return useQuery({ queryKey: CLES_FINANCE.rapprochements(mois), queryFn: () => lireRapprochements(mois),
+    placeholderData: keepPreviousData });
+}
+
+export function useRapprochementJour(jour: string | null) {
+  return useQuery({ queryKey: CLES_FINANCE.rapprochementJour(jour ?? ""), queryFn: () => lireRapprochementJour(jour!),
+    enabled: !!jour });
+}
+
+/** An import writes real fees in the ledger: every finance read may change. */
+export function useImporterRapprochement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ debut, fin }: { debut: string; fin: string }) => importerRapprochement(debut, fin),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }),
+  });
+}
+
+export function useRegulariser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jour, regularisation }: { jour: string; regularisation: NouvelleRegularisation }) =>
+      regulariserRapprochement(jour, regularisation),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLES_FINANCE.tout }),
+  });
 }

@@ -17,3 +17,8 @@ class ValidationRefusee(ValueError):
 class CautionRefusee(ValueError):
     """A deposit operation the register refuses (more withheld than held, reason missing, already settled), in
     French."""
+
+
+class RapprochementRefuse(ValueError):
+    """A reconciliation or a regularisation that cannot be done (unknown day, month locked, reason missing), in
+    French."""

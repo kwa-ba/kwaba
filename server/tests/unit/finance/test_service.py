@@ -95,6 +95,12 @@ class FauxJournal(Journal):
     def validation(self, action, par_id, validation):
         self.validations.append((action, par_id, validation.statut))
 
+    def rapprochement(self, par_id, compte, jour, etat):
+        self.validations.append(('rapprochement', par_id, etat))
+
+    def regularisation(self, action, par_id, regularisation):
+        self.validations.append((f'regularisation_{action}', par_id, regularisation.statut))
+
 
 class FausseTransaction(TransactionManager):
     def atomic(self):

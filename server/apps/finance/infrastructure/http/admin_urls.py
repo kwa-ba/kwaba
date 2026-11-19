@@ -2,8 +2,9 @@ from django.urls import path
 
 from .admin_views import (AuxiliairesView, CautionsView, BalanceView, ClotureMoisView, ClotureView, ComptesView,
                           ExportComptableView, GrandLivreCompteView, GrandLivreView, LivreJournalView, MouvementsView,
-                          PilotageView, RapportExportView, RapportResultatView, RapportsView, ReferentielsView,
-                          ValidationDecisionView, ValidationsView)
+                          PilotageView, RapportExportView, RapportResultatView, RapportsView, RapprochementJourView,
+                          RapprochementsView, ReferentielsView, RegularisationView, ValidationDecisionView,
+                          ValidationsView)
 
 urlpatterns = [
     path('grand-livre/', GrandLivreView.as_view(), name='admin-finance-grand-livre'),
@@ -22,6 +23,10 @@ urlpatterns = [
     path('rapports/resultat/', RapportResultatView.as_view(), name='admin-finance-rapport-resultat'),
     path('rapports/export/', RapportExportView.as_view(), name='admin-finance-rapport-export'),
     path('cautions/', CautionsView.as_view(), name='admin-finance-cautions'),
+    path('rapprochement/', RapprochementsView.as_view(), name='admin-finance-rapprochement'),
+    path('rapprochement/<str:jour>/', RapprochementJourView.as_view(), name='admin-finance-rapprochement-jour'),
+    path('rapprochement/<str:jour>/regulariser/', RegularisationView.as_view(),
+         name='admin-finance-regularisation'),
     path('validations/', ValidationsView.as_view(), name='admin-finance-validations'),
     path('validations/<uuid:pk>/<str:decision>/', ValidationDecisionView.as_view(), name='admin-finance-validation'),
 ]

@@ -130,3 +130,25 @@ class FinancesExportView(VueAdmin):
         activity.record('finances_exportees', request, actor=request.user, format=format_export,
                         debut=str(debut), fin=str(fin))
         return reponse
+
+
+class RapprochementImportView(VueAdmin):
+    """POST {debut, fin} (YYYY-MM-DD, a single day if fin is missing, 31 days at most): reads FedaPay again for these
+    finished days, writes the real fees (D01) and reconciles each day (GL-12). Logged."""
+
+    def post(self, request):
+        from apps.finance import api as finance
+
+        from . import rapprochement
+
+        debut = parse_date(str(request.data.get('debut') or ''))
+        fin = parse_date(str(request.data.get('fin') or '')) or debut
+        if debut is None or fin < debut:
+            return Response({'detail': 'Journée attendue au format AAAA-MM-JJ.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            jours = rapprochement.importer_periode(debut, fin, par_id=request.user.pk)
+        except finance.RapprochementRefuse as refus:
+            return Response({'detail': str(refus)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as erreur:  # FedaPay unconfigured or out of reach before the first day
+            return Response({'detail': f'Import impossible : {erreur}'}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({'jours': jours})

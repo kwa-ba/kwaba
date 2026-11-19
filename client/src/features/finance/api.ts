@@ -382,3 +382,111 @@ export async function lireJustificatifs(objetType: string, objetId: string) {
 export function urlJustificatif(id: string) {
   return `/v1/admin/documents/justificatifs/${id}/`;
 }
+
+// --- Reconciliation with FedaPay (GL-12) ---------------------------------------------------------------------------
+
+export type EtatRapprochement = "fait" | "en_erreur" | "non_fait";
+export type EtatOperation = "concorde" | "ecart" | "regularisee" | "hors_livre";
+
+export interface JourRapprochement {
+  jour: string;
+  etat: EtatRapprochement;
+  ecart: number | null;
+  calcule_le: string | null;
+  message: string | null;
+  solde_kwaba?: number;
+  solde_livre?: number | null;
+  solde_externe?: number | null;
+  frais?: number;
+  hors_grand_livre?: number;
+  internes?: number;
+  nb_operations?: number;
+  nb_anomalies?: number;
+}
+
+export interface MoisRapprochement {
+  compte_argent: string;
+  mois: string;
+  jours: JourRapprochement[];
+  resume: Record<EtatRapprochement, number>;
+  peut_importer: boolean;
+  peut_regulariser: boolean;
+  seuil_double_validation: number;
+}
+
+export interface OperationRapprochee {
+  reference: string;
+  type: "encaissement" | "remboursement" | "versement" | "inconnu";
+  sens: "entree" | "sortie";
+  date_operation: string | null;
+  kwaba_reference: string;
+  kwaba_montant: number | null;
+  kwaba_statut: string;
+  externe_montant: number | null;
+  externe_frais: number | null;
+  externe_statut: string;
+  moyen_paiement_code: string | null;
+  hors_grand_livre: boolean;
+  offre_code: string | null;
+  livre_montant: number;
+  etat: EtatOperation;
+  message: string;
+}
+
+export interface RegularisationFinance {
+  id: string;
+  jour: string;
+  reference: string;
+  nature: string;
+  offre: string;
+  sens: "entree" | "sortie";
+  montant: number;
+  motif: string;
+  statut: "en_attente" | "ecrite" | "refusee";
+  demandee_par: string;
+  demandee_le: string;
+  mouvement_id: number | null;
+}
+
+export interface DetailRapprochement {
+  jour: JourRapprochement;
+  operations: OperationRapprochee[];
+  regularisations: RegularisationFinance[];
+}
+
+export interface NouvelleRegularisation {
+  reference: string;
+  nature: string;
+  offre: string;
+  sens: "entree" | "sortie";
+  montant: number;
+  motif: string;
+  fichiers: File[];
+}
+
+export async function lireRapprochements(mois: string) {
+  return (await api.get<MoisRapprochement>(`${FINANCE}/rapprochement/${parametres({ mois: mois.slice(0, 7) })}`)).data;
+}
+
+export async function lireRapprochementJour(jour: string) {
+  return (await api.get<DetailRapprochement>(`${FINANCE}/rapprochement/${jour}/`)).data;
+}
+
+/** Reads FedaPay again for these finished days (31 at most) and reconciles each one. */
+export async function importerRapprochement(debut: string, fin: string) {
+  return (await api.post<{ jours: (JourRapprochement & { remarque?: string })[] }>(
+    "/v1/admin/paiements/rapprochement/importer/", { debut, fin })).data;
+}
+
+export async function regulariserRapprochement(jour: string, r: NouvelleRegularisation) {
+  const corps = new FormData();
+  corps.append("reference", r.reference);
+  corps.append("nature", r.nature);
+  corps.append("offre", r.offre);
+  corps.append("sens", r.sens);
+  corps.append("montant", String(r.montant));
+  corps.append("motif", r.motif);
+  for (const f of r.fichiers) corps.append("fichiers", f);
+  return (await api.post<RegularisationFinance & { attente_validation: boolean }>(
+    `${FINANCE}/rapprochement/${jour}/regulariser/`, corps)).data;
+}

@@ -19,3 +19,12 @@ class AuditJournal(Journal):
         activity.record(f'validation_{action}', actor=par_id, operation=validation.operation,
                         objet=f'{validation.objet_type}:{validation.objet_id}', montant=validation.montant,
                         motif=validation.motif if action == 'demandee' else validation.resultat)
+
+    def rapprochement(self, par_id, compte: str, jour, etat: str) -> None:
+        activity.record('rapprochement_importe', actor=par_id, compte=compte, jour=jour.isoformat(), etat=etat)
+
+    def regularisation(self, action: str, par_id, regularisation) -> None:
+        r = regularisation
+        activity.record(f'regularisation_{action}', actor=par_id, objet=f'regularisation:{r.id}',
+                        jour=r.jour.isoformat(), operation=r.reference, nature=r.nature, sens=r.sens,
+                        montant=r.montant, motif=r.motif)

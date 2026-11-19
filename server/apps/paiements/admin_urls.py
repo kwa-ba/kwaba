@@ -2,7 +2,7 @@ from django.urls import path
 
 from .admin_remboursements import (ApercuRemboursementView, RembourserSejourView, RemboursementActionView,
                                    RemboursementsView)
-from .admin_views import FinancesExportView, FinancesView, TarifsView
+from .admin_views import FinancesExportView, FinancesView, RapprochementImportView, TarifsView
 
 urlpatterns = [
     path('tarifs/', TarifsView.as_view(), name='admin-tarifs'),
@@ -13,5 +13,7 @@ urlpatterns = [
     path('finances/remboursements/sejour/', RembourserSejourView.as_view(), name='admin-remboursement-sejour'),
     path('finances/remboursements/<uuid:pk>/<str:action>/', RemboursementActionView.as_view(),
          name='admin-remboursement-action'),
+    # Reconciliation with FedaPay (GL-12): reading the provider belongs here
+    path('rapprochement/importer/', RapprochementImportView.as_view(), name='admin-rapprochement-importer'),
     path('finances/<str:format_export>/', FinancesExportView.as_view(), name='admin-finances-export'),
 ]

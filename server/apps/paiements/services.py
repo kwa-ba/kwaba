@@ -590,6 +590,12 @@ def passe() -> dict:
     # After the expiries: the "cancelled for lack of payment" email goes in the same pass
     stats['relances'] = relances.envoyer_relances()
     stats['emails'] = notifications.envoyer_notifications()
+    from . import rapprochement  # local import: the reconciliation reads the models and the ledger writer
+    try:
+        # Once a day: the finished days reconciled with FedaPay (GL-12); never blocks the payments
+        stats['jours_rapproches'] = rapprochement.importer_si_du()
+    except Exception:
+        logger.exception('Rapprochement FedaPay en échec')
     return {k: v for k, v in stats.items() if v}
 
 

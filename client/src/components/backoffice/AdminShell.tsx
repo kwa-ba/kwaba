@@ -38,6 +38,7 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
     { href: "/backoffice/finances/comptes", label: "Grand-livre par compte" },
     { href: "/backoffice/finances/balance", label: "Balance générale" },
     { href: "/backoffice/finances/encaissements", label: "Encaissements et versements" },
+    { href: "/backoffice/finances/rapprochement", label: "Rapprochement FedaPay" },
     { href: "/backoffice/finances/remboursements", label: "Remboursements" },
     { href: "/backoffice/finances/validations", label: "Validations" },
     { href: "/backoffice/finances/cautions", label: "Cautions" },

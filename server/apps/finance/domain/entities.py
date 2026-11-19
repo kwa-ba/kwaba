@@ -186,3 +186,65 @@ class Caution:
     soldee_le: datetime | None = None
     mode_restitution: str = ''
     document_numero: str = ''
+
+
+# --- Reconciliation with the payment provider (GL-12, FIN-02) -------------------------------------------------------
+
+# State of a day: « fait » only when every operation agrees and the gap is zero; « en_erreur » when something is off or
+# the provider could not be read; « non_fait » when nothing was imported (never shown as a zero gap, FIN-02.7)
+RAPPROCHEMENT_NON_FAIT, RAPPROCHEMENT_FAIT, RAPPROCHEMENT_EN_ERREUR = 'non_fait', 'fait', 'en_erreur'
+# State of one operation of the day
+LIGNE_CONCORDE, LIGNE_ECART, LIGNE_REGULARISEE, LIGNE_HORS_LIVRE = 'concorde', 'ecart', 'regularisee', 'hors_livre'
+# Kinds of operation at the provider
+TYPES_OPERATION = ('encaissement', 'remboursement', 'versement', 'inconnu')
+# Prefix of the external reference of a regularisation line: « regul:<reference of the operation>:<id> », or
+# « regul:jour:<YYYY-MM-DD>:<id> » for the day itself
+PREFIXE_REGULARISATION = 'regul:'
+REGULARISATION_EN_ATTENTE, REGULARISATION_ECRITE, REGULARISATION_REFUSEE = 'en_attente', 'ecrite', 'refusee'
+
+
+@dataclass(frozen=True)
+class OperationExterne:
+    """One operation of a day seen from the three sides: Kwa-Ba's record (a payment, a refund, a payout), the
+    provider's statement (amount, real fees) and, computed by the ledger, the lines of the money account. An amount is
+    the money that moved: 0 if the side says it failed, None if this side does not know the operation."""
+    reference: str
+    type: str
+    sens: str
+    jour: date
+    date_operation: datetime | None = None
+    kwaba_reference: str = ''
+    kwaba_montant: int | None = None
+    kwaba_statut: str = ''
+    externe_montant: int | None = None
+    externe_frais: int | None = None
+    externe_statut: str = ''
+    moyen_paiement: str | None = None
+    # The product of this money does not write in the ledger yet (Give, transfers, rentals, money older than the
+    # ledger): shown apart, outside the gap of the day (decision of 2026-11-19)
+    hors_grand_livre: bool = False
+    offre: str | None = None
+    message: str = ''
+
+
+@dataclass(frozen=True)
+class Regularisation:
+    """A ledger line written by the finance team to explain a gap the reconciliation found (an unexpected fee, a
+    transaction unknown to Kwa-Ba), with its written reason and its evidence; from the threshold, a second person
+    approves it before it is written."""
+    id: uuid.UUID
+    compte_argent: str
+    jour: date
+    reference: str
+    nature: str
+    offre: str
+    sens: str
+    montant: int
+    motif: str
+    statut: str
+    demandee_par_id: uuid.UUID | None
+    demandee_le: datetime
+    tiers_type: str | None = None
+    tiers_id: str | None = None
+    mouvement_id: int | None = None
+    ecrite_le: datetime | None = None
