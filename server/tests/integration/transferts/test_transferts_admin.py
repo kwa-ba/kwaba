@@ -34,7 +34,7 @@ def _transfert(client, **champs):
 
 
 def _chauffeur(categorie='berline'):
-    c = ChauffeurModel.objects.create(prenom='Komi', nom='A.', telephone='+228 90 00 00 01', categorie=categorie,
+    c = ChauffeurModel.objects.create(photo_validee=True, prenom='Komi', nom='A.', telephone='+228 90 00 00 01', categorie=categorie,
                                       vehicule='Corolla', immatriculation='TG-1', pays_versement='TG',
                                       operateur_versement='togocel', numero_versement='90000001')
     c.aeroports.add('LFW')

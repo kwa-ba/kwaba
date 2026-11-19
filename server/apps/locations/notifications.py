@@ -70,6 +70,14 @@ def a_attribuer(loc: LocationModel, urgent: bool = False):
     })
 
 
+def avis_au_voyageur(loc: LocationModel):
+    """A rental with a partner driver is finished: the traveller is asked once how their driver was."""
+    c = transferts.fiche_chauffeur(loc.chauffeur_partenaire_id)
+    paiements.envoyer_email('emails/locations/avis_chauffeur.txt', 'Votre chauffeur Kwa-Ba : votre avis',
+                            [loc.voyageur.email], {**_location(loc), 'prenom': loc.voyageur.first_name,
+                                                   'prenom_chauffeur': c['prenom'] if c else 'votre chauffeur'})
+
+
 def partenaire_au_voyageur(loc: LocationModel):
     p = loc.partenaire
     paiements.envoyer_email('emails/locations/partenaire_assigne.txt', f"Votre {'chauffeur' if loc.formule == 'chauffeur_seul' else 'véhicule'} à {loc.lieu_prise.ville}",
@@ -77,6 +85,8 @@ def partenaire_au_voyageur(loc: LocationModel):
                  **_location(loc), 'prenom': loc.voyageur.first_name, 'partenaire': p.nom if p else '',
                  'contact': p.contact if p else '', 'telephone_partenaire': p.telephone if p else '',
                  'assistance': settings.ASSISTANCE_CONTACT,
+                 'niveau_chauffeur': (transferts.fiche_chauffeur(loc.chauffeur_partenaire_id) or {}).get('niveau_libelle', '')
+                 if loc.chauffeur_partenaire_id else '',
              })
 
 
@@ -174,6 +184,8 @@ def envoyer_notifications() -> int:
     total += _traiter(assignees.filter(partenaire_notifie=False), partenaire_au_voyageur, 'partenaire_notifie')
     total += _traiter(assignees.filter(location_envoyee_partenaire=False), location_au_partenaire, 'location_envoyee_partenaire')
     total += _traiter(assignees.filter(mission_envoyee_chauffeur=False), mission_au_chauffeur, 'mission_envoyee_chauffeur')
+    total += _traiter(qs.filter(statut='terminee', chauffeur_partenaire_id__isnull=False, avis_chauffeur_demande=False),
+                      avis_au_voyageur, 'avis_chauffeur_demande')
     total += _traiter(
         qs.filter(statut__in=('partenaire_assigne', 'terminee'), caution_en_ligne=True, caution__gt=0,
                   caution_restituee_le__isnull=False, caution_notifiee=False),

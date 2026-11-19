@@ -12,7 +12,7 @@ from apps.paiements import api as paiements
 from apps.reservations import api as reservations
 
 from . import services, tarifs
-from .models import AeroportModel, TransfertModel
+from .models import AeroportModel, AvisChauffeurModel, TransfertModel
 
 
 class AeroportSerializer(serializers.ModelSerializer):
@@ -33,6 +33,7 @@ class TransfertSerializer(serializers.ModelSerializer):
     vehicule = serializers.SerializerMethodField()
     arrivee_locale = serializers.SerializerMethodField()
     chauffeur = serializers.SerializerMethodField()
+    avis_chauffeur = serializers.SerializerMethodField()
     paiement = serializers.SerializerMethodField()
     remboursement = serializers.SerializerMethodField()
     annulation_gratuite = serializers.SerializerMethodField()
@@ -43,7 +44,8 @@ class TransfertSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'reference', 'aeroport', 'aeroport_detail', 'arrivee', 'arrivee_locale', 'numero_vol', 'passagers',
             'bagages', 'categorie', 'vehicule', 'destination', 'telephone', 'message', 'reservation', 'prix',
-            'majoration_nuit', 'moyen', 'statut', 'expire_le', 'annule_par', 'chauffeur', 'paiement', 'remboursement',
+            'majoration_nuit', 'moyen', 'statut', 'expire_le', 'annule_par', 'chauffeur', 'avis_chauffeur', 'paiement',
+            'remboursement',
             'annulation_gratuite', 'cree_le',
         ]
 
@@ -60,7 +62,14 @@ class TransfertSerializer(serializers.ModelSerializer):
         if not c or obj.statut not in ('chauffeur_assigne', 'termine'):
             return None
         return {'nom': f"{c.prenom} {c.nom}", 'telephone': c.telephone, 'vehicule': c.vehicule,
-                'immatriculation': c.immatriculation}
+                'immatriculation': c.immatriculation, 'niveau': c.niveau, 'niveau_libelle': c.get_niveau_display(),
+                'photo': c.photo.url if c.photo and c.photo_validee else None}
+
+    def get_avis_chauffeur(self, obj):
+        """The traveller may rate the driver of a ride done, once."""
+        if obj.statut != 'termine' or not obj.chauffeur_id:
+            return None
+        return {'donne': AvisChauffeurModel.objects.filter(objet_type='transfert', objet_id=obj.pk).exists()}
 
     def get_paiement(self, obj):
         """Status of the last payment: null if none (online payment inactive at booking time)."""
@@ -228,3 +237,32 @@ class CompteRemboursementTransfertView(APIView):
         if not paiements.indiquer_numero_remboursement('transfert', transfert.pk, **serializer.validated_data):
             return Response({'detail': "Aucun remboursement n'attend de numéro pour ce transfert."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'detail': 'Numéro enregistré : le remboursement va être envoyé.'})
+
+
+class AvisChauffeurSerializer(serializers.Serializer):
+    note = serializers.IntegerField(min_value=1, max_value=5)
+    ponctualite = serializers.IntegerField(min_value=1, max_value=5)
+    conduite = serializers.IntegerField(min_value=1, max_value=5)
+    amabilite = serializers.IntegerField(min_value=1, max_value=5)
+    commentaire = serializers.CharField(max_length=2000, required=False, allow_blank=True, default='')
+
+
+class AvisChauffeurTransfertView(APIView):
+    """POST {note, ponctualite, conduite, amabilite, commentaire}: the traveller rates the driver of their ride done,
+    once. Seen by the team only."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        from . import niveaux
+
+        transfert = _du_voyageur(pk, request.user)
+        if not transfert or transfert.statut != 'termine' or not transfert.chauffeur_id:
+            return Response({'detail': 'Transfert introuvable ou pas encore effectué.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AvisChauffeurSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            niveaux.noter(chauffeur_id=transfert.chauffeur_id, objet_type='transfert', objet_id=transfert.pk,
+                          voyageur_id=request.user.pk, **serializer.validated_data)
+        except niveaux.NiveauErreur as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Merci pour votre avis.'}, status=status.HTTP_201_CREATED)

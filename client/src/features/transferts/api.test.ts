@@ -59,3 +59,26 @@ describe("transferts", () => {
     expect(api.post).toHaveBeenLastCalledWith("/v1/admin/transferts/transferts/t1/annuler/", { motif: "Vol annulé" });
   });
 });
+
+describe("chauffeurs : photo, niveaux, avis (décisions du 19 novembre 2026)", () => {
+  it("envoie l'avis du voyageur, la photo, la validation d'un niveau et un incident", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    await transferts.noterChauffeurTransfert("t1", { note: 5 });
+    expect(api.post).toHaveBeenLastCalledWith("/v1/transferts/t1/avis-chauffeur/", { note: 5 });
+    const photo = new File(["x"], "komi.png", { type: "image/png" });
+    await transferts.envoyerPhotoChauffeur(3, photo);
+    const [url, corps] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(url).toBe("/v1/admin/transferts/chauffeurs/3/photo/");
+    expect(((corps as FormData).get("image") as File).name).toBe("komi.png");
+    await transferts.validerPhotoChauffeur(3);
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/transferts/chauffeurs/3/photo/valider/", {});
+    await transferts.lireRevueNiveaux();
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/transferts/chauffeurs/niveaux/");
+    await transferts.validerNiveau(3, "excellence");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/transferts/chauffeurs/niveaux/", { chauffeur: 3, niveau: "excellence", motif: "" });
+    await transferts.signalerIncident(3, { type: "retard", date: "2026-11-19", description: "Vingt minutes de retard", reference: "" });
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/transferts/chauffeurs/3/suivi/",
+      { type: "retard", date: "2026-11-19", description: "Vingt minutes de retard", reference: "" });
+  });
+});

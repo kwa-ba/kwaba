@@ -1,6 +1,7 @@
 "use client";
 
-import { adresseCompteRemboursement, annulerTransfert, lireTransfert } from "./api";
+import { adresseCompteRemboursement, annulerTransfert, lireTransfert, noterChauffeurTransfert } from "./api";
+import AvisChauffeur from "./AvisChauffeur";
 import { clesTransferts } from "./hooks";
 import { Suspense, useState } from "react";
 import { Link } from "@/i18n/navigation";
@@ -139,9 +140,14 @@ function TransfertDetail() {
           <section className="bg-background rounded-3xl border-2 border-secondary/30 p-5 sm:p-6">
             <h2 className="font-heading font-bold text-dark text-lg">{tr("votreChauffeur")}</h2>
             <div className="flex items-center gap-4 mt-4">
-              <div className="w-14 h-14 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0"><Car size={24} /></div>
+              {t.chauffeur.photo
+                ? <img src={t.chauffeur.photo} alt={tr("photoChauffeur", { nom: t.chauffeur.nom })} className="w-16 h-16 rounded-full object-cover shrink-0 border-2 border-secondary/30" />
+                : <div className="w-14 h-14 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0"><Car size={24} /></div>}
               <div className="min-w-0">
                 <p className="font-bold text-dark">{t.chauffeur.nom}</p>
+                {t.chauffeur.niveau !== "standard" && (
+                  <p className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-100 rounded-full px-2 py-0.5 mt-0.5">{tr("niveauChauffeur", { niveau: t.chauffeur.niveau_libelle })}</p>
+                )}
                 <p className="text-sm text-gray-600">{t.chauffeur.vehicule} · <span className="font-mono">{t.chauffeur.immatriculation}</span></p>
               </div>
             </div>
@@ -156,6 +162,11 @@ function TransfertDetail() {
             </div>
             <p className="text-xs text-gray-600 mt-3">{tr("pancarte")}</p>
           </section>
+        )}
+
+        {t.avis_chauffeur && !t.avis_chauffeur.donne && (
+          <AvisChauffeur envoyer={(avis) => noterChauffeurTransfert(t.id, avis)}
+            onEnvoye={() => queryClient.invalidateQueries({ queryKey: ["transfert", params.id] })} />
         )}
 
         <section className="bg-background rounded-3xl border border-gray-100 p-5 sm:p-6">

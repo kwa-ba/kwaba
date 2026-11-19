@@ -1347,7 +1347,9 @@
     "annulationGratuite": "Annulation gratuite jusqu'à 24 heures avant l'arrivée.",
     "plusDeRemboursement": "Moins de 24 heures avant l'arrivée : plus de remboursement.",
     "annulation": "Annulation…",
-    "annuler": "Annuler le transfert"
+    "annuler": "Annuler le transfert",
+    "photoChauffeur": "Photo de {nom}",
+    "niveauChauffeur": "Chauffeur {niveau}"
   },
   "concierge": {
     "suggestions": {
@@ -1862,7 +1864,9 @@
       "payerPar": "Payer par {moyen}",
       "carte": "carte",
       "annulerPartiel": "Le délai d'annulation gratuite est passé : vous serez remboursé de {montant}. Annuler quand même ?",
-      "rembourseSiAnnulation": "En annulant maintenant, vous seriez remboursé de {montant}."
+      "rembourseSiAnnulation": "En annulant maintenant, vous seriez remboursé de {montant}.",
+      "photoChauffeur": "Photo de votre chauffeur",
+      "votreChauffeurNiveau": "Votre chauffeur, niveau {niveau}. Son nom et son numéro vous sont envoyés par email."
     },
     "gammes": {
       "citadine": "Citadine",
@@ -2518,5 +2522,21 @@
     "bannerBook": "Réserver la visite",
     "bannerBooked": "Prochaine visite de vérification : {date} à {time}",
     "bannerSee": "Voir ma visite"
+  },
+  "avisChauffeur": {
+    "titre": "Votre avis sur votre chauffeur",
+    "aide": "Il reste entre vous et l'équipe Kwa-Ba : il nous aide à garder les meilleurs chauffeurs.",
+    "criteres": {
+      "note": "Note générale",
+      "ponctualite": "Ponctualité",
+      "conduite": "Conduite",
+      "amabilite": "Amabilité"
+    },
+    "etoiles": "{n} sur 5",
+    "commentaire": "Un commentaire (facultatif)",
+    "envoyer": "Envoyer mon avis",
+    "envoi": "Envoi…",
+    "merci": "Merci pour votre avis.",
+    "erreur": "Votre avis n’a pas pu être envoyé."
   }
 }

@@ -1,7 +1,8 @@
 from django.urls import path
 
 from .views import (
-    AeroportsView, CompteRemboursementTransfertView, DevisView, PayerTransfertView, TransfertsView, TransfertView,
+    AeroportsView, AvisChauffeurTransfertView, CompteRemboursementTransfertView, DevisView, PayerTransfertView,
+    TransfertsView, TransfertView,
 )
 
 urlpatterns = [
@@ -10,5 +11,6 @@ urlpatterns = [
     path('', TransfertsView.as_view(), name='transferts'),
     path('<uuid:pk>/', TransfertView.as_view(), name='transfert'),
     path('<uuid:pk>/payer/', PayerTransfertView.as_view(), name='transfert-payer'),
+    path('<uuid:pk>/avis-chauffeur/', AvisChauffeurTransfertView.as_view(), name='transfert-avis-chauffeur'),
     path('<uuid:pk>/compte-remboursement/', CompteRemboursementTransfertView.as_view(), name='transfert-compte-remboursement'),
 ]

@@ -107,7 +107,9 @@ def chauffeurs_disponibles(transfert: TransfertModel):
     """Active drivers of this airport, with a large enough vehicle."""
     rang = list(tarifs.CATEGORIES)
     adaptees = rang[rang.index(transfert.categorie):]
-    return ChauffeurModel.objects.filter(actif=True, aeroports=transfert.aeroport, categorie__in=adaptees)
+    # Without a profile photo validated by the team, a driver receives no ride (decision of 19 November 2026)
+    return ChauffeurModel.objects.filter(actif=True, photo_validee=True, aeroports=transfert.aeroport,
+                                         categorie__in=adaptees)
 
 
 def assigner_chauffeur(transfert: TransfertModel, chauffeur: ChauffeurModel):
@@ -116,6 +118,8 @@ def assigner_chauffeur(transfert: TransfertModel, chauffeur: ChauffeurModel):
         transfert = TransfertModel.objects.select_for_update().get(pk=transfert.pk)
         if transfert.statut not in ('confirme', 'chauffeur_assigne'):
             raise TransfertErreur("Un chauffeur ne peut être attribué qu'à un transfert payé et non annulé.")
+        if not chauffeur.photo_validee:
+            raise TransfertErreur("Ce chauffeur n'a pas de photo validée : il ne peut pas recevoir de course.")
         changement = transfert.chauffeur_id not in (None, chauffeur.pk)
         transfert.chauffeur, transfert.statut = chauffeur, 'chauffeur_assigne'
         if changement:
@@ -195,8 +199,15 @@ def envoyer_versements_chauffeurs() -> int:
 def passe() -> dict:
     from . import notifications  # local import: notifications imports the models
 
-    return {
+    from . import niveaux
+
+    stats = {
         'transferts_expires': expirer(),
         'versements_chauffeurs': envoyer_versements_chauffeurs(),
         'emails_transferts': notifications.envoyer_notifications(),
     }
+    try:
+        stats['rappel_niveaux_chauffeurs'] = niveaux.rappel_trimestriel()
+    except Exception:
+        logger.exception('Rappel de la revue des niveaux des chauffeurs en échec')
+    return stats

@@ -271,6 +271,8 @@ class LocationModel(models.Model):
     chauffeur_partenaire_id = models.BigIntegerField(
         null=True, blank=True, db_index=True, help_text='Chauffeur partenaire de Kwa-Ba (formules avec chauffeur)',
     )
+    avis_chauffeur_demande = models.BooleanField(default=False, db_default=False,
+                                                 help_text='Avis sur le chauffeur demandé au voyageur')
     vehicule = models.CharField(max_length=120, blank=True, help_text='Marque, modèle et couleur du véhicule remis')
     immatriculation = models.CharField(max_length=20, blank=True)
     chauffeur_nom = models.CharField(max_length=120, blank=True, help_text='Formule avec chauffeur')

@@ -107,7 +107,13 @@ export interface Location {
   expire_le: string | null;
   annulee_par: string;
   /** Assigned vehicle; the owner and the driver are never shown (contact details sent by email). */
-  vehicule_attribue: { vehicule: string; immatriculation: string } | null;
+  vehicule_attribue: {
+    vehicule: string; immatriculation: string;
+    /** The partner driver's level and photo (never their name nor phone on the site) */
+    chauffeur?: { photo: string | null; niveau: "standard" | "confirme" | "excellence"; niveau_libelle: string };
+  } | null;
+  /** A finished rental with a driver: the traveller may rate the driver once */
+  avis_chauffeur?: { donne: boolean } | null;
   paiement: "en_attente" | "reussi" | "echoue" | "annule" | null;
   remboursement: { montant: number; statut: "attente_numero" | "en_cours" | "envoye" } | null;
   annulation_gratuite: boolean;

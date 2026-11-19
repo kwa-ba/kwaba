@@ -310,8 +310,14 @@ export interface ChauffeurAdmin {
   vehicule: string;
   immatriculation: string;
   actif: boolean;
-  /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000. */
+  /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000; follows the level, set by the quarterly review. */
   excellence: boolean;
+  niveau?: "standard" | "confirme" | "excellence";
+  niveau_libelle?: string;
+  niveau_depuis?: string | null;
+  /** Profile photo; without a photo validated by the team, the driver receives no ride */
+  photo?: string | null;
+  photo_validee?: boolean;
   pays_versement: string;
   operateur_versement: string;
   numero_versement: string;

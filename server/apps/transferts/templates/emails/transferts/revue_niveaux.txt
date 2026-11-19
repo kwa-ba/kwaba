@@ -1,0 +1,8 @@
+{% autoescape off %}Bonjour,
+
+Le {{ trimestre }} commence : c'est le moment de revoir le niveau des chauffeurs partenaires (Standard, Confirmé, Excellence).
+
+L'appli propose le niveau de chacun d'après ses courses, les notes des voyageurs et les incidents des derniers mois. Validez ou corrigez chaque proposition dans le back-office (Transferts, Chauffeurs, Revue des niveaux) : le niveau Excellence change la paie du chauffeur.
+
+Kwa-Ba
+{% endautoescape %}

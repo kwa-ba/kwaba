@@ -89,7 +89,7 @@ def loueur(catalogue):
 
 @pytest.fixture
 def chauffeur():
-    return ChauffeurModel.objects.create(
+    return ChauffeurModel.objects.create(photo_validee=True, 
         prenom='Kodjo', nom='Afi', telephone='+228 91 00 00 00', email='kodjo@test.kwaba', categorie='berline',
         vehicule='Toyota Corolla', immatriculation='TG-1', pays_versement='TG', operateur_versement='togocel',
         numero_versement='91000000',
@@ -231,8 +231,10 @@ def test_full_cycle_owner_and_driver_payouts(client_for, make_user, faux, catalo
     services.attribuer(loc, partenaire=loueur, chauffeur=fiche_chauffeur(chauffeur.pk))
     detail = client.get(f'{LOCATIONS}{loc.id}/').data
     assert detail['statut'] == 'partenaire_assigne'
-    # The site shows the vehicle, never the owner nor the driver
-    assert detail['vehicule_attribue'] == {'vehicule': 'Toyota Corolla', 'immatriculation': 'TG-5678-CD'}
+    # The site shows the vehicle, never the owner nor the driver's name or phone: only the driver's level (and photo)
+    assert detail['vehicule_attribue'] == {'vehicule': 'Toyota Corolla', 'immatriculation': 'TG-5678-CD',
+                                           'chauffeur': {'photo': None, 'niveau': 'standard',
+                                                         'niveau_libelle': 'Standard'}}
     assert not any(x in str(detail) for x in ('Lomé Auto Location', 'Yao', '90 44 55 66', 'Kodjo', '91 00 00 00'))
     mail.outbox.clear()
     paiements.passe()
@@ -277,7 +279,7 @@ def test_my_driver_and_excellence_pay_6500_a_day(client_for, make_user, faux, ca
     client = client_for(voyageur)
     ancienne = _reserver_et_payer(client, faux, catalogue)
     services.attribuer(ancienne, partenaire=loueur, chauffeur=fiche_chauffeur(chauffeur.pk))
-    autre = ChauffeurModel.objects.create(prenom='Afi', nom='Dzifa', telephone='+228 92 00 00 00', categorie='berline',
+    autre = ChauffeurModel.objects.create(photo_validee=True, prenom='Afi', nom='Dzifa', telephone='+228 92 00 00 00', categorie='berline',
                                           vehicule='-', immatriculation='-', pays_versement='TG',
                                           operateur_versement='togocel', numero_versement='92000000')
     # Only a driver who has already driven us can be asked for again

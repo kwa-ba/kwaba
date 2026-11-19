@@ -51,7 +51,7 @@ def faux(settings, monkeypatch):
 
 @pytest.fixture
 def chauffeur():
-    c = ChauffeurModel.objects.create(
+    c = ChauffeurModel.objects.create(photo_validee=True, 
         prenom='Komi', nom='Ablodé', telephone='+228 90 11 22 33', email='komi@test.kwaba', categorie='confort',
         vehicule='Toyota RAV4 grise', immatriculation='TG-1234-AB',
         pays_versement='TG', operateur_versement='togocel', numero_versement='90112233',

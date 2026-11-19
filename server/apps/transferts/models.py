@@ -1,6 +1,7 @@
 import uuid
 from functools import cached_property
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.paiements.api import OPERATEUR_CHOICES, PAYS_CHOICES
@@ -41,6 +42,9 @@ class TarifTransfertModel(models.Model):
         return f"{self.aeroport_id} · {self.get_categorie_display()} : {self.prix} FCFA"
 
 
+NIVEAUX = [('standard', 'Standard'), ('confirme', 'Confirmé'), ('excellence', 'Excellence')]
+
+
 class ChauffeurModel(models.Model):
     """Partner driver (self-employed), paid by Mobile Money after each ride or mission (driver contract):
     transfers with their vehicle, and day missions (an owner's car, the customer's vehicle)."""
@@ -57,6 +61,15 @@ class ChauffeurModel(models.Model):
         default=False, db_default=False,
         help_text='Statut « Chauffeur Excellence » (revu chaque trimestre) : 6 500 FCFA par jour au lieu de 6 000',
     )
+    # Level (Standard, Confirmé, Excellence): proposed each quarter from the rides, the travellers' ratings and the
+    # incidents, then validated by the team; `excellence` follows it (the driver's pay reads it)
+    niveau = models.CharField(max_length=12, choices=NIVEAUX, default='standard', db_default='standard')
+    niveau_depuis = models.DateTimeField(null=True, blank=True)
+    # Profile photo: shown to the traveller once the driver is assigned; without a photo validated by the team, no ride
+    photo = models.ImageField(upload_to='chauffeurs/', blank=True)
+    photo_validee = models.BooleanField(default=False, db_default=False)
+    photo_validee_le = models.DateTimeField(null=True, blank=True)
+    photo_validee_par_id = models.UUIDField(null=True, blank=True)
     # Mobile Money account for their payouts
     pays_versement = models.CharField(max_length=2, choices=PAYS_CHOICES)
     operateur_versement = models.CharField(max_length=30, choices=OPERATEUR_CHOICES)
@@ -115,6 +128,8 @@ class TransfertModel(models.Model):
     chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, null=True, blank=True, related_name='transferts')
     # Emails sent by the worker (one flag per email: a failed sending is retried, never doubled)
     confirmation_notifiee = models.BooleanField(default=False, help_text='Paiement confirmé au voyageur')
+    avis_chauffeur_demande = models.BooleanField(default=False, db_default=False,
+                                                 help_text='Avis sur le chauffeur demandé au voyageur')
     admins_notifies = models.BooleanField(default=False, help_text='Administrateurs prévenus : chauffeur à attribuer')
     alerte_sans_chauffeur = models.BooleanField(default=False, help_text='Alerte : arrivée dans moins de 24 h sans chauffeur')
     chauffeur_notifie = models.BooleanField(default=False, help_text='Coordonnées du chauffeur envoyées au voyageur')
@@ -180,3 +195,74 @@ class VersementChauffeurModel(models.Model):
 
     def __str__(self):
         return f"{self.montant} FCFA → {self.chauffeur} ({self.get_statut_display()})"
+
+
+class AvisChauffeurModel(models.Model):
+    """The traveller's rating of their driver after a ride (a transfer, or a rental with a driver): seen by the team,
+    never public. One per ride."""
+    OBJETS = [('transfert', 'Transfert'), ('location', 'Location avec chauffeur')]
+    NOTE = [MinValueValidator(1), MaxValueValidator(5)]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, related_name='avis')
+    objet_type = models.CharField(max_length=10, choices=OBJETS)
+    objet_id = models.UUIDField()
+    voyageur_id = models.UUIDField()
+    note = models.PositiveSmallIntegerField(validators=NOTE)
+    ponctualite = models.PositiveSmallIntegerField(validators=NOTE)
+    conduite = models.PositiveSmallIntegerField(validators=NOTE)
+    amabilite = models.PositiveSmallIntegerField(validators=NOTE)
+    commentaire = models.TextField(blank=True, default='')
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'transferts'
+        db_table = 'transferts_avis_chauffeur'
+        ordering = ['-cree_le']
+        verbose_name = 'Avis sur un chauffeur'
+        constraints = [
+            models.UniqueConstraint(fields=['objet_type', 'objet_id'], name='un_avis_chauffeur_par_course'),
+            models.CheckConstraint(condition=models.Q(note__gte=1, note__lte=5, ponctualite__gte=1, ponctualite__lte=5,
+                                                      conduite__gte=1, conduite__lte=5, amabilite__gte=1,
+                                                      amabilite__lte=5), name='avis_chauffeur_notes_1_a_5'),
+        ]
+
+
+class IncidentChauffeurModel(models.Model):
+    """An incident the team records on a driver (a serious one, a lateness, a no-show): read by the level review."""
+    TYPES = [('grave', 'Incident grave'), ('retard', 'Retard'), ('absence', 'Absence'), ('autre', 'Autre')]
+
+    id = models.BigAutoField(primary_key=True)
+    chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, related_name='incidents')
+    type = models.CharField(max_length=10, choices=TYPES)
+    date = models.DateField()
+    description = models.TextField()
+    reference = models.CharField(max_length=40, blank=True, default='', help_text='Transfert ou location concerné')
+    par_id = models.UUIDField(null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'transferts'
+        db_table = 'transferts_incident_chauffeur'
+        ordering = ['-date', '-id']
+        verbose_name = 'Incident de chauffeur'
+
+
+class NiveauChauffeurModel(models.Model):
+    """A change of a driver's level, validated by the team: the level proposed, the one kept, why, and the figures it
+    relied on. Append only."""
+    id = models.BigAutoField(primary_key=True)
+    chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, related_name='niveaux')
+    avant = models.CharField(max_length=12, choices=NIVEAUX)
+    apres = models.CharField(max_length=12, choices=NIVEAUX)
+    propose = models.CharField(max_length=12, choices=NIVEAUX)
+    motif = models.TextField(blank=True, default='')
+    chiffres = models.JSONField(default=dict)
+    par_id = models.UUIDField(null=True, blank=True)
+    le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'transferts'
+        db_table = 'transferts_niveau_chauffeur'
+        ordering = ['-le']
+        verbose_name = 'Niveau de chauffeur'
