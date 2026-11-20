@@ -7,8 +7,8 @@ import pika
 from django.conf import settings
 from pika.exceptions import ChannelClosedByBroker
 
-from apps.notifications.application.service.NotificationService import NotificationService
-from apps.notifications.infrastructure.email.DjangoEmailSender import DjangoEmailSender
+from shared.notifications.application.service.NotificationService import NotificationService
+from shared.notifications.infrastructure.email.DjangoEmailSender import DjangoEmailSender
 
 logger = logging.getLogger(__name__)
 

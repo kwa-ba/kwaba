@@ -13,7 +13,7 @@ from django.utils import timezone
 from .coordonnees import Trouvaille, masquees
 from .models import AlerteFraudeModel
 
-logger = logging.getLogger('apps.securite')
+logger = logging.getLogger('shared.securite')
 
 SEUIL = 3
 FENETRE = timedelta(days=30)
@@ -35,7 +35,7 @@ def signaler(utilisateur_id, contexte: str, objet_id, trouvailles: list[Trouvail
 
 
 def _prevenir_admins(alerte: AlerteFraudeModel, nombre: int) -> None:
-    from apps.notifications.api import send_mail
+    from shared.notifications.api import send_mail
 
     try:
         u = get_user_model().objects.get(pk=alerte.utilisateur_id)
@@ -74,7 +74,7 @@ def _describe(user_id) -> str:
 
 
 def _mail_admins(subject: str, body: str) -> None:
-    from apps.notifications.api import send_mail
+    from shared.notifications.api import send_mail
 
     try:
         admins = list(get_user_model().objects.filter(role='admin', is_active=True).values_list('email', flat=True)[:10])

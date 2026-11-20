@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.finance import api as finance
 from apps.finance.models import (CompteArgentModel, CorrespondanceHistoModel, MouvementModel, NatureModel,
                                  OffreModel, ParametreHistoModel, ParametreModel, PeriodeModel, RapportModel)
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 HOTE = str(uuid.uuid4())  # third party ids are text in the ledger
 RESERVATION = uuid.uuid4()

@@ -1,6 +1,6 @@
 from django.db import migrations
 
-from apps.activity.domain import catalogue
+from shared.activity.domain import catalogue
 
 TARGET_IS_ACCOUNT = {'super_admin_nomme', 'super_admin_retire', 'admin_expire'}
 MISSION_KINDS = {'logement': 'listing', 'photos': 'listing', 'piece': 'account'}

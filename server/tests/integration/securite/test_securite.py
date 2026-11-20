@@ -11,8 +11,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.hebergements import views as hebergements_views
-from apps.activity.models import ActivityEntryModel
-from apps.securite.permissions import EstAdministrateur
+from shared.activity.models import ActivityEntryModel
+from shared.securite.permissions import EstAdministrateur
 from apps.users.infrastructure import two_factor_service as two_factor_service_module
 from tests.integration.sessions import session_token
 

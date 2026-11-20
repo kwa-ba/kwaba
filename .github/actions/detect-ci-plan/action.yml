@@ -47,7 +47,7 @@ runs:
             - '.github/**'
             - 'deploy/**'
           broker:
-            - 'server/apps/notifications/**'
+            - 'server/shared/notifications/**'
             - 'server/apps/messaging/infrastructure/**'
             - 'server/apps/users/infrastructure/messaging/**'
             - 'server/requirements.txt'

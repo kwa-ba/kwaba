@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
+from shared.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
 
 
 class Command(BaseCommand):

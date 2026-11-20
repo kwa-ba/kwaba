@@ -1,7 +1,7 @@
 """Resets an admin's second factor from the server, for when no super admin can do it from the back-office (ADR-028)."""
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users.api import revoquer_jetons
 from apps.users.infrastructure.persistence.models import UserModel
 from apps.users.infrastructure.two_factor_service import two_factor_service

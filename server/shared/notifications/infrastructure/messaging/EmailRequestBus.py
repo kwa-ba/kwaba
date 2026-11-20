@@ -4,7 +4,7 @@ import os
 
 import pika
 
-from apps.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
+from shared.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
 
 logger = logging.getLogger(__name__)
 

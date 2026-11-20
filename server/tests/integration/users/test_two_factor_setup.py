@@ -1,4 +1,4 @@
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.models import BackupCodeModel, TwoFactorModel
 
 from .two_factor_helpers import CONFIRM, SETUP, STATUS, Session, code_at, enable

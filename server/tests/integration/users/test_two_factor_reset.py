@@ -2,7 +2,7 @@ import pytest
 from django.core.management import CommandError, call_command
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.models import BackupCodeModel, TwoFactorModel
 
 from .two_factor_helpers import Session, enable

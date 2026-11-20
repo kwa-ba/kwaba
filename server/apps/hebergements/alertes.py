@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.securite.limites import limite_ip
+from shared.securite.limites import limite_ip
 
 from . import stock
 from .models import AlerteDisponibiliteModel, HebergementModel, TypeLogementModel

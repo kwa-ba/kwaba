@@ -1,7 +1,7 @@
 from django.db.models import Count, Exists, OuterRef, Q
 
-from apps.activity.application.ports import EntryRepository
-from apps.activity.domain.entities import Entry, Target
+from shared.activity.application.ports import EntryRepository
+from shared.activity.domain.entities import Entry, Target
 
 from .models import ActivityEntryModel, ActivityHoldModel
 

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
-from apps.activity.application.ports import PeopleLookup, Person
+from shared.activity.application.ports import PeopleLookup, Person
 
 
 class DjangoPeopleLookup(PeopleLookup):

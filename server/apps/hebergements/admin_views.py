@@ -6,11 +6,11 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.reservations import api as reservations_api
-from apps.activity import api as activity
-from apps.securite.backoffice import (
+from shared.activity import api as activity
+from shared.securite.backoffice import (
     VueAdmin, booleen as _booleen, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer,
 )
-from apps.securite.permissions import has_special_permission
+from shared.securite.permissions import has_special_permission
 from apps.users import api as users
 from apps.verifications import api as verifications
 

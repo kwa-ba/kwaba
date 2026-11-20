@@ -5,9 +5,9 @@ from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.activity import api as activity
-from apps.securite.backoffice import VueAdmin
-from apps.securite.permissions import est_en_lecture_seule, has_special_permission
+from shared.activity import api as activity
+from shared.securite.backoffice import VueAdmin
+from shared.securite.permissions import est_en_lecture_seule, has_special_permission
 
 from . import versements
 

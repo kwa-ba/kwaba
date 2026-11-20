@@ -3,13 +3,13 @@ import uuid
 from dataclasses import replace
 from datetime import datetime, time, timedelta
 
-from apps.activity.domain import catalogue
-from apps.activity.domain.entities import Entry, Target
-from apps.activity.domain.retention import purge_before
+from shared.activity.domain import catalogue
+from shared.activity.domain.entities import Entry, Target
+from shared.activity.domain.retention import purge_before
 
 from .ports import Clock, EntryRepository, PeopleLookup, SearchQuery
 
-logger = logging.getLogger('apps.activity')
+logger = logging.getLogger('shared.activity')
 
 BLOCKING_ACTIONS = ['connexion_bloquee', 'code_bloque']
 

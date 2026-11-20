@@ -8,7 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.agenda import api as agenda
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users import api as users
 
 from . import appointments

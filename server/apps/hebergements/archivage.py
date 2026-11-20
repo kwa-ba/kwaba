@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 
-from apps.notifications.api import demander_email
+from shared.notifications.api import demander_email
 
 from .models import HebergementModel
 from .occupations import reservations

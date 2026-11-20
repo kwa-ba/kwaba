@@ -1,6 +1,6 @@
-from apps.activity.domain.entities import Target
-from apps.activity.infrastructure.container import activity_service
-from apps.securite.limites import ip_client
+from shared.activity.domain.entities import Target
+from shared.activity.infrastructure.container import activity_service
+from shared.securite.limites import ip_client
 
 __all__ = ['Target', 'hold', 'record']
 

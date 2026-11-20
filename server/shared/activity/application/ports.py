@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from apps.activity.domain.entities import Entry
+from shared.activity.domain.entities import Entry
 
 
 class Clock(ABC):

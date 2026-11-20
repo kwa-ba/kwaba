@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from apps.hebergements.models import HebergementModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.verifications.models import PieceIdentiteModel, VisiteModel
 
 TOUT_CONFORME = {'identite': True, 'adresse': True, 'photos': True, 'equipements': True}

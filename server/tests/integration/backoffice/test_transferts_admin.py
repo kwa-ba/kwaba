@@ -4,7 +4,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import AeroportModel, ChauffeurModel, TarifTransfertModel, TransfertModel
 
 B = '/api/v1/admin/transferts/'

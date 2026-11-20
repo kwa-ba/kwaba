@@ -9,7 +9,7 @@ from django.utils import formats, timezone
 from apps.documents import api as documents
 from apps.paiements import api as paiements
 from apps.users import api as users
-from apps.securite import coordonnees
+from shared.securite import coordonnees
 from apps.transferts import api as transferts
 
 from .models import LocationModel, ParametresLocationModel, VersementChauffeurLocationModel, VersementPartenaireModel

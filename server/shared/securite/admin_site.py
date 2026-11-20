@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from .limites import Tentatives, ip_client
 
 MAX_ECHECS_IP = 20

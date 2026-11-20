@@ -3,6 +3,6 @@ from django.apps import AppConfig
 
 class ActivityConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.activity'
+    name = 'shared.activity'
     label = 'activity'
     verbose_name = "Journal d'activité"

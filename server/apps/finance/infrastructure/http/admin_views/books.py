@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework.response import Response
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.finance import api as finance
 from apps.finance.infrastructure.persistence.models import (
     CompteArgentModel,
@@ -13,7 +13,7 @@ from apps.finance.infrastructure.persistence.models import (
     OffreModel,
     TiersTypeModel,
 )
-from apps.securite.backoffice import VueAdmin
+from shared.securite.backoffice import VueAdmin
 
 from .common import (
     INCONNU,

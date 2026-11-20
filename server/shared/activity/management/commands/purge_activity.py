@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from apps.activity.infrastructure.container import activity_service
+from shared.activity.infrastructure.container import activity_service
 
 
 class Command(BaseCommand):

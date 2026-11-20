@@ -1,10 +1,10 @@
 from datetime import date
 
-from apps.notifications.infrastructure.email.envoi import send_mail
+from shared.notifications.infrastructure.email.envoi import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import formats
-from apps.notifications.application.ports.NotificationSender import NotificationSender
+from shared.notifications.application.ports.NotificationSender import NotificationSender
 
 
 class DjangoEmailSender(NotificationSender):

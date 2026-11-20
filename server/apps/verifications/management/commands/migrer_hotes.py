@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 from apps.contrats import api as contrats
 from apps.hebergements import api as hebergements
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users import api as users
 from apps.verifications.models import PieceIdentiteModel
 

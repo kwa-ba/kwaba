@@ -4,7 +4,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from .permissions import EstAdministrateur
 from .photos import InvalidPhoto, normalize_photo
 

@@ -1,6 +1,6 @@
 from datetime import date
 
-from apps.notifications.application.ports.NotificationSender import NotificationSender
+from shared.notifications.application.ports.NotificationSender import NotificationSender
 
 
 class NotificationService:

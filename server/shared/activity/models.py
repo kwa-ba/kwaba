@@ -1,3 +1,3 @@
-from apps.activity.infrastructure.persistence.models import ActivityEntryModel, ActivityHoldModel
+from shared.activity.infrastructure.persistence.models import ActivityEntryModel, ActivityHoldModel
 
 __all__ = ['ActivityEntryModel', 'ActivityHoldModel']

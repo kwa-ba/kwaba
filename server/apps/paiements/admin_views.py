@@ -9,8 +9,8 @@ from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.activity import api as activity
-from apps.securite.backoffice import VueAdmin
+from shared.activity import api as activity
+from shared.securite.backoffice import VueAdmin
 
 from . import finances, tarifs
 from .models import FraisMenageModel, ReglagesTarifsModel

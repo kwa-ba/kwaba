@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from config.prelancement import verifier_ouverture
 
 from apps.hebergements import api as hebergements

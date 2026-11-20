@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.finance import api as finance
-from apps.securite.backoffice import VueAdmin
-from apps.securite.permissions import est_en_lecture_seule, has_special_permission
+from shared.securite.backoffice import VueAdmin
+from shared.securite.permissions import est_en_lecture_seule, has_special_permission
 
 from .common import _liste, _pagination, _refus, _uuid
 from .validations import _noms, _peut_operer

@@ -4,14 +4,14 @@ from datetime import date, datetime, time, timedelta
 from django.utils import timezone
 from rest_framework.response import Response
 
-from apps.activity.application.ports import SearchQuery
-from apps.activity.domain import catalogue
-from apps.activity.domain.entities import Target
-from apps.activity.infrastructure.container import activity_service
-from apps.export.api import csv_response
-from apps.securite.backoffice import VueAdmin
-from apps.securite.limites import ip_client
-from apps.securite.permissions import has_special_permission
+from shared.activity.application.ports import SearchQuery
+from shared.activity.domain import catalogue
+from shared.activity.domain.entities import Target
+from shared.activity.infrastructure.container import activity_service
+from shared.export.api import csv_response
+from shared.securite.backoffice import VueAdmin
+from shared.securite.limites import ip_client
+from shared.securite.permissions import has_special_permission
 
 PERMISSION = 'activity_log'
 PERIODS = {'24h': timedelta(hours=24), '7d': timedelta(days=7), '30d': timedelta(days=30)}

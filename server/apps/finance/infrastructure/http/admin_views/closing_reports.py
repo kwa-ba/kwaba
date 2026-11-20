@@ -3,9 +3,9 @@
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.finance import api as finance
-from apps.securite.backoffice import VueAdmin
+from shared.securite.backoffice import VueAdmin
 
 from .common import _csv, _mois, _periode, _refus
 

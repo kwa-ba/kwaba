@@ -10,7 +10,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.securite.two_factor import CLAIM
+from shared.securite.two_factor import CLAIM
 
 from .refresh_lock import remember_replacing_pair
 

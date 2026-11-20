@@ -1,7 +1,7 @@
 """Super admins (the directors) are managed here only, never through the API: a stolen account cannot create one."""
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users.infrastructure.persistence.models import UserModel
 
 

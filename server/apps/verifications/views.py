@@ -10,8 +10,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.hebergements import api as hebergements
-from apps.activity import api as activity
-from apps.securite.permissions import agent_space_access
+from shared.activity import api as activity
+from shared.securite.permissions import agent_space_access
 from apps.terrain import api as terrain
 from apps.users import api as users
 

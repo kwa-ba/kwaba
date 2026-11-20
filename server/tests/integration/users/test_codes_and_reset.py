@@ -7,7 +7,7 @@ from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.infrastructure.persistence.models import VerificationCode, hacher_code
 
 VERIFY = '/api/v1/auth/verify/'

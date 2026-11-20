@@ -4,9 +4,9 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.hebergements import api as hebergements
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users import api as users
-from apps.securite.backoffice import VueAdmin, entier as _entier, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
+from shared.securite.backoffice import VueAdmin, entier as _entier, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
 
 from .models import AvisModel
 

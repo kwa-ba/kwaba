@@ -1,6 +1,6 @@
 """Code of the Django administration sign-in, checked for the shared kernel (registered in UsersConfig.ready)."""
-from apps.activity import api as activity
-from apps.securite.two_factor import INVALID, NOT_ENABLED, VERIFIED
+from shared.activity import api as activity
+from shared.securite.two_factor import INVALID, NOT_ENABLED, VERIFIED
 from apps.users.application.service.TwoFactorService import BACKUP
 from apps.users.domain.two_factor.exceptions import InvalidTwoFactorCode, TwoFactorNotEnabled
 from apps.users.infrastructure.two_factor_service import two_factor_service

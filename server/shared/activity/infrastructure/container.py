@@ -1,7 +1,7 @@
-from apps.activity.application.service import ActivityService
-from apps.activity.infrastructure.clock import DjangoClock
-from apps.activity.infrastructure.lookups import DjangoPeopleLookup
-from apps.activity.infrastructure.persistence.repositories import DjangoEntryRepository
+from shared.activity.application.service import ActivityService
+from shared.activity.infrastructure.clock import DjangoClock
+from shared.activity.infrastructure.lookups import DjangoPeopleLookup
+from shared.activity.infrastructure.persistence.repositories import DjangoEntryRepository
 
 
 def activity_service() -> ActivityService:

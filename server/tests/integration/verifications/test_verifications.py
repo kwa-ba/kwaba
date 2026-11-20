@@ -10,7 +10,7 @@ from django.core.management import call_command
 from PIL import Image
 
 from apps.hebergements.models import HebergementModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.verifications.models import PhotoVisiteModel, PieceIdentiteModel, VisiteModel
 
 HEBERGEMENTS = '/api/v1/hebergements/'
