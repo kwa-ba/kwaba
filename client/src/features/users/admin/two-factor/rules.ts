@@ -1,22 +1,16 @@
 import type { TwoFactorStatus } from "@/types/api/admin";
 
-/**
- * Activation required before entering the back-office. False while the API does not require the second factor yet
- * (ADR-028, second delivery): the setup screen then offers "Plus tard". Set to true with the blocking in the API.
- */
-export const ACTIVATION_REQUIRED = false;
-
 export type GateScreen = "loading" | "open" | "setup" | "code";
 
 /** Which screen the back-office guard shows. The API stays the only judge: an unreadable status opens the page,
  * whose requests are refused if the second factor is missing. */
-export function gateScreen({ isAdmin, loading, status, postponed, now }: {
-  isAdmin: boolean; loading: boolean; status: TwoFactorStatus | undefined; postponed: boolean; now: number;
+export function gateScreen({ isAdmin, loading, status, now }: {
+  isAdmin: boolean; loading: boolean; status: TwoFactorStatus | undefined; now: number;
 }): GateScreen {
   if (!isAdmin) return "open";
   if (loading) return "loading";
   if (!status) return "open";
-  if (!status.enabled) return ACTIVATION_REQUIRED || !postponed ? "setup" : "open";
+  if (!status.enabled) return "setup";
   return isVerified(status, now) ? "open" : "code";
 }
 

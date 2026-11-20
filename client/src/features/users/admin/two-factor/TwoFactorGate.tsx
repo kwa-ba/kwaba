@@ -7,7 +7,6 @@ import { onTwoFactorRequired } from "@/lib/two-factor-signal";
 import { TWO_FACTOR_KEY, useTwoFactorStatus } from "../../hooks";
 import TwoFactorPrompt from "./TwoFactorPrompt";
 import TwoFactorSetup from "./TwoFactorSetup";
-import { usePostponed } from "./postpone";
 import { gateScreen, msBeforeExpiry } from "./rules";
 
 // setTimeout takes at most 2^31 - 1 ms
@@ -21,7 +20,6 @@ export default function TwoFactorGate({ children }: { children: React.ReactNode 
   const { data: session, status: sessionStatus } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const { data: status, isLoading } = useTwoFactorStatus(isAdmin);
-  const postponed = usePostponed();
   const queryClient = useQueryClient();
   const [now, setNow] = useState(() => Date.now());
   const [opened, setOpened] = useState(false);
@@ -41,7 +39,7 @@ export default function TwoFactorGate({ children }: { children: React.ReactNode 
   }, [status]);
 
   if (sessionStatus === "loading") return <div className="min-h-screen bg-canvas" />;
-  const screen = gateScreen({ isAdmin, loading: isLoading, status, postponed, now });
+  const screen = gateScreen({ isAdmin, loading: isLoading, status, now });
   if (screen === "open" && !opened) setOpened(true);
 
   if (screen === "loading") return <div className="min-h-screen bg-canvas" />;

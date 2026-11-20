@@ -13,7 +13,6 @@ import SetupFinish from "./SetupFinish";
 import SetupKey from "./SetupKey";
 import Step from "./Step";
 import TwoFactorFrame from "./TwoFactorFrame";
-import { ACTIVATION_REQUIRED } from "./rules";
 
 const carte = "bg-surface rounded-3xl border border-gray-100 shadow-card p-5 sm:p-7";
 
@@ -56,7 +55,7 @@ export default function TwoFactorSetup({ email }: { email: string }) {
   return (
     <TwoFactorFrame email={email} wide>
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-amber-200 bg-amber-50 text-[11px] font-bold uppercase tracking-wider text-amber-800">
-        <ShieldCheck size={14} aria-hidden /> {ACTIVATION_REQUIRED ? "Étape obligatoire" : "Bientôt obligatoire"}
+        <ShieldCheck size={14} aria-hidden /> Étape obligatoire
       </span>
       <h1 className="font-heading font-bold text-dark text-2xl sm:text-3xl mt-4">Activez la double authentification</h1>
       <p className="text-muted mt-3 max-w-2xl">

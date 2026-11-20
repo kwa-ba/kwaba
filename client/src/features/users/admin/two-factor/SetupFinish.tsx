@@ -4,8 +4,6 @@ import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import CodeInput from "./CodeInput";
 import { SignOutButton } from "./TwoFactorFrame";
-import { postponeSetup } from "./postpone";
-import { ACTIVATION_REQUIRED } from "./rules";
 import { useVerifyCode } from "./useVerifyCode";
 
 /** End of the setup: once the backup codes are noted, a new code of the app opens the back-office. The first code
@@ -21,14 +19,7 @@ export default function SetupFinish({ ready }: { ready: boolean }) {
 
   return (
     <div className="mt-6 flex flex-col-reverse sm:flex-row sm:items-end sm:justify-between gap-4">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <SignOutButton />
-        {!ACTIVATION_REQUIRED && (
-          <button type="button" onClick={postponeSetup} className="px-4 py-2.5 text-sm font-bold text-muted hover:text-dark">
-            Plus tard
-          </button>
-        )}
-      </div>
+      <SignOutButton />
       {ready ? (
         <form onSubmit={acceder} className="w-full sm:w-auto space-y-2">
           <label htmlFor="nouveau-code" className="block text-sm font-bold text-dark">
