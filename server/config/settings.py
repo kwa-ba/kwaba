@@ -2,6 +2,7 @@
 Django settings for Kwa-Ba project.
 """
 
+import base64
 import hashlib
 import hmac
 import os
@@ -411,6 +412,14 @@ CORS_EXPOSE_HEADERS = ['Content-Disposition']
 JWT_SIGNING_KEY = os.getenv('JWT_SIGNING_KEY') or hmac.new(
     SECRET_KEY.encode(), b'kwaba-jwt-signing-key', hashlib.sha256,
 ).hexdigest()
+
+# Back-office two-factor authentication (ADR-028): a verification is valid this many hours, then asked again
+TWO_FACTOR_VALIDITY_HOURS = int(os.getenv('TWO_FACTOR_VALIDITY_HOURS', '12'))
+# Fernet key of the TOTP secrets stored in the database. Set it apart in production: derived from SECRET_KEY otherwise,
+# so changing SECRET_KEY would make every secret unreadable (each admin would then be reset).
+TWO_FACTOR_ENCRYPTION_KEY = os.getenv('TWO_FACTOR_ENCRYPTION_KEY') or base64.urlsafe_b64encode(hmac.new(
+    SECRET_KEY.encode(), b'kwaba-two-factor-key', hashlib.sha256,
+).digest()).decode()
 
 SIMPLE_JWT = {
     'SIGNING_KEY': JWT_SIGNING_KEY,

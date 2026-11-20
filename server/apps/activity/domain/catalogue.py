@@ -123,6 +123,17 @@ ACTIONS: dict[str, ActionSpec] = {
                                         summary=lambda d, t: _join(d.get('email', ''),
                                                                    'bloqué' if d.get('bloque') else '')),
 
+    # Back-office second factor (ADR-028): never the code nor the secret in the details
+    'two_factor_enabled': ActionSpec('Double authentification activée', CONNECTIONS, SENSITIVE),
+    'two_factor_verified': ActionSpec('Double authentification vérifiée', CONNECTIONS, ROUTINE,
+                                      summary=lambda d, t: 'code de secours' if d.get('method') == 'backup' else ''),
+    'two_factor_failed': ActionSpec('Code de double authentification refusé', CONNECTIONS, IMPORTANT),
+    'two_factor_blocked': ActionSpec('Double authentification bloquée', CONNECTIONS, SENSITIVE,
+                                     summary=lambda d, t: 'trop de tentatives'),
+    'two_factor_backup_code_used': ActionSpec('Code de secours utilisé', CONNECTIONS, SENSITIVE,
+                                              summary=lambda d, t: f"{d.get('codes_left', '?')} restant(s)"),
+    'two_factor_reset': ActionSpec('Double authentification réinitialisée', RIGHTS, SENSITIVE, ACCOUNT_RULES, _reason),
+
     'role_modifie': ActionSpec('Rôle modifié', RIGHTS, SENSITIVE, ACCOUNT_RULES, _change),
     'droits_admin_modifies': ActionSpec("Droits d'admin modifiés", RIGHTS, SENSITIVE, ACCOUNT_RULES, _rights),
     'admin_expire': ActionSpec('Accès admin expiré', RIGHTS, SENSITIVE, ACCOUNT_RULES,
