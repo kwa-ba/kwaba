@@ -86,7 +86,13 @@ pgAdmin et la console de gestion RabbitMQ (`compose.yaml` sert au développement
   - Une XSS ne peut plus voler de jeton, mais elle peut encore appeler le proxy tant que la page est ouverte : la CSP reste indispensable.
 - **CSP à nonce** : `client/src/middleware.ts` tire un nonce par réponse. Seuls les scripts qui le portent s'exécutent, puis ceux qu'ils chargent (`'strict-dynamic'`). Toutes les pages sont donc rendues à la demande (`Document.tsx` lit les en-têtes) : un `<script>` en ligne ajouté à la main doit recevoir ce nonce, et une page statique serait bloquée. La CSP arrête le point d'entrée d'une injection (balise `<script>`, `onerror`, lien `javascript:`), pas un code déjà en exécution, qui peut ajouter des scripts : `strict-dynamic` le suppose fiable. Les styles en ligne restent permis.
 - **Redirection après connexion** : `safeCallback` (`client/src/lib/redirection.ts`) contrôle l'adresse telle que le navigateur la lit, résultat compris. Tout nouveau paramètre de redirection doit passer par cette fonction.
-- **Administration Django** : 5 échecs par email et 20 par IP par quart d'heure, échecs journalisés.
+- **Administration Django** : 5 échecs par email et 20 par IP par quart d'heure, échecs journalisés. La connexion demande aussi un code de double authentification, et la session dure 12 h au plus (voir ci-dessous).
+- **Double authentification du back-office** (ADR-028) : tout compte admin, super admins compris, donne un code TOTP (appli d'authentification) ou un code de secours :
+  - à chaque connexion, puis de nouveau 12 h au plus tard après la dernière vérification (`TWO_FACTOR_VALIDITY_HOURS`) ;
+  - c'est l'API qui l'impose : `EstAdministrateur` et l'accès des admins à l'espace agent (`agent_space_access`) lisent la marque `two_factor_verified_at` du jeton (`apps/securite/two_factor.py`) et répondent `403 {"code": "two_factor_required"}`. Une nouvelle vue du back-office est donc protégée d'office ;
+  - seul `POST /v1/auth/two-factor/verify/`, appelé par le serveur Next.js, pose la marque. Elle garde son heure d'origine à chaque renouvellement du jeton, et un changement de mot de passe la fait disparaître avec les jetons ;
+  - le secret est chiffré au repos (Fernet, `TWO_FACTOR_ENCRYPTION_KEY`), les codes de secours ne sont gardés qu'en empreinte HMAC, un même code ne sert jamais deux fois, 5 essais par quart d'heure et par compte ;
+  - téléphone perdu : un super admin réinitialise la double authentification d'un autre admin (liste des utilisateurs, motif obligatoire), ou `manage.py reset_two_factor <email> --reason "…"` sur le serveur. Les sessions de l'admin concerné sont fermées.
 
 ### Données et entrées
 
