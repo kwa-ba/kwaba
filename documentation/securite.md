@@ -13,6 +13,7 @@ Ce que fait le code, et ce qu'il reste à régler au déploiement. Fait suite à
 | `POSTGRES_PASSWORD` | long et aléatoire | obligatoire hors développement (plus de mot de passe par défaut) |
 | `POSTGRES_USER` | `kwaba_app` | rôle à droits minimaux, voir plus bas |
 | `JWT_SIGNING_KEY` | optionnelle | à défaut, dérivée de `DJANGO_SECRET_KEY` (clé distincte pour les JWT) |
+| `TWO_FACTOR_ENCRYPTION_KEY` | clé Fernet propre à la production, gardée à part | chiffre les secrets de la double authentification (ADR-028). À défaut, dérivée de `DJANGO_SECRET_KEY` : changer celle-ci rendrait tous les secrets illisibles |
 | `DJANGO_NUM_PROXIES` | `1`, fixé dans `deploy/vps/compose.yml` (nginx du VPS ajoute l'adresse réelle dans `X-Forwarded-For`) | adresse IP réelle du client pour les limites de débit et le journal d'audit |
 | `FORWARDED_ALLOW_IPS` | `*` sur le VPS (l'API n'est joignable que par le réseau interne Docker) | en-têtes `X-Forwarded-*` acceptés par Gunicorn |
 | `DJANGO_ADMIN_URL` | `admin/` sur le VPS : nginx ne route que `/admin/` vers Django, changer les deux ensemble | les connexions à l'administration sont de toute façon limitées et journalisées |
