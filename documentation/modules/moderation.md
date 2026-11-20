@@ -8,9 +8,9 @@ Décision : [ADR-021](../ADR/ADR-021-message-moderation.md). Complète les garde
 
 | Partie | Emplacement |
 |---|---|
-| Moteur de détection (normalisation, contexte, niveaux) | `server/apps/securite/moderation.py` |
-| Dictionnaires | `server/apps/securite/moderation_lexicons/*.json` |
-| File admin, alertes menace, purge des extraits | `server/apps/securite/fraude.py` (table `securite_alerte_fraude`, champ `kind`) |
+| Moteur de détection (normalisation, contexte, niveaux) | `server/shared/securite/moderation.py` |
+| Dictionnaires | `server/shared/securite/moderation_lexicons/*.json` |
+| File admin, alertes menace, purge des extraits | `server/shared/securite/fraude.py` (table `securite_alerte_fraude`, champ `kind`) |
 | Échelle de sanctions (logique pure, rejeu par date de message) | `server/apps/messaging/domain/services/SanctionLadder.py` |
 | Signalements, sanctions, contestations | `server/apps/messaging/application/service/ModerationService.py` |
 | Envoi modéré, suspension | `MessagingService.send_message` et `_open` |

@@ -72,7 +72,7 @@ pgAdmin et la console de gestion RabbitMQ (`compose.yaml` sert au développement
 - **Modification du profil** : elle n'écrit que le nom et le téléphone (`DjangoUserRepository.update(…, champs=…)`). Le rôle et l'activation, qu'un administrateur peut changer en même temps, ne sont jamais réécrits par une lecture plus ancienne.
 - **Noms** : une seule ligne, sans caractère invisible (catégories Unicode Cc, Cf, Zl, Zp). Les emails HTML transforment une ligne « Libellé : https://… » en bouton Kwa-Ba : un nom sur plusieurs lignes pouvait en fabriquer un.
 - **Limites par adresse IP** : inscription 10/h, codes 30/h, envois de codes 10/h, Google 30/min, connexion 60 par quart d'heure. Ces routes passent par le serveur Next.js, qui transmet à l'API le `X-Forwarded-For` reçu de nginx : tout nouvel appel de serveur à serveur soumis à une limite par IP doit faire de même.
-- **Compteurs atomiques** : les limites reposent sur `apps/securite/limites.py` (une requête PostgreSQL `INSERT … ON CONFLICT` par incrément). Le cache de Django lit puis écrit en deux temps : il laisserait passer des requêtes simultanées.
+- **Compteurs atomiques** : les limites reposent sur `shared/securite/limites.py` (une requête PostgreSQL `INSERT … ON CONFLICT` par incrément). Le cache de Django lit puis écrit en deux temps : il laisserait passer des requêtes simultanées.
 - **Jetons** :
   - jeton d'accès valable 15 minutes ;
   - les jetons portent une empreinte du mot de passe, donc en changer invalide tous les jetons d'accès émis avant ;
@@ -89,7 +89,7 @@ pgAdmin et la console de gestion RabbitMQ (`compose.yaml` sert au développement
 - **Administration Django** : 5 échecs par email et 20 par IP par quart d'heure, échecs journalisés. La connexion demande aussi un code de double authentification, et la session dure 12 h au plus (voir ci-dessous).
 - **Double authentification du back-office** (ADR-028) : tout compte admin, super admins compris, donne un code TOTP (appli d'authentification) ou un code de secours :
   - à chaque connexion, puis de nouveau 12 h au plus tard après la dernière vérification (`TWO_FACTOR_VALIDITY_HOURS`) ;
-  - c'est l'API qui l'impose : `EstAdministrateur` et l'accès des admins à l'espace agent (`agent_space_access`) lisent la marque `two_factor_verified_at` du jeton (`apps/securite/two_factor.py`) et répondent `403 {"code": "two_factor_required"}`. Une nouvelle vue du back-office est donc protégée d'office ;
+  - c'est l'API qui l'impose : `EstAdministrateur` et l'accès des admins à l'espace agent (`agent_space_access`) lisent la marque `two_factor_verified_at` du jeton (`shared/securite/two_factor.py`) et répondent `403 {"code": "two_factor_required"}`. Une nouvelle vue du back-office est donc protégée d'office ;
   - seul `POST /v1/auth/two-factor/verify/`, appelé par le serveur Next.js, pose la marque. Elle garde son heure d'origine à chaque renouvellement du jeton, et un changement de mot de passe la fait disparaître avec les jetons ;
   - le secret est chiffré au repos (Fernet, `TWO_FACTOR_ENCRYPTION_KEY`), les codes de secours ne sont gardés qu'en empreinte HMAC, un même code ne sert jamais deux fois, 5 essais par quart d'heure et par compte ;
   - téléphone perdu : un super admin réinitialise la double authentification d'un autre admin (liste des utilisateurs, motif obligatoire), ou `manage.py reset_two_factor <email> --reason "…"` sur le serveur. Les sessions de l'admin concerné sont fermées.

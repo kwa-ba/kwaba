@@ -149,7 +149,7 @@ Avant chaque push : gitleaks sur les commits poussés, `ruff check`, `lint-impor
 - Dépendances entre modules : `server/.importlinter`, vérifié par `lint-imports` (constat A2 de `AUDIT-ARCHITECTURE.md`). Trois contrats :
   - les modules métier ne s'importent pas entre eux, sauf leur interface publique `apps.<module>.api` (ADR-019) ; les imports existants à l'introduction de la règle sont listés dans `ignore_imports` et tolérés, et chaque module migré retire les siens (voir `documentation/frontieres-modules.md`) ;
   - `securite` et `notifications` (noyau partagé, que tous les modules peuvent importer) n'importent aucun module métier ;
-  - aucun module métier n'importe `apps.notifications.infrastructure.email` : un email passe par `EmailRequestBus`.
+  - aucun module métier n'importe `shared.notifications.infrastructure.email` : un email passe par `EmailRequestBus`.
 
   Un nouvel import entre deux modules métier fait échouer la PR. La liste ne doit que raccourcir : un import supprimé du code doit aussi être retiré de `ignore_imports`, sinon `lint-imports` échoue (entrée sans correspondance). Ajouter une ligne n'est acceptable qu'avec une justification dans la PR.
 - Client : `client/eslint.config.mjs` (`next/core-web-vitals`, `next/typescript`), lancé par `npm run lint`.
