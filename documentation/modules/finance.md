@@ -12,12 +12,41 @@ Chaque mouvement d'argent est écrit **une seule fois**, dans une table en ajout
 | Couche | Contenu |
 | --- | --- |
 | `domain/` | `entities.py` (`Ligne`, `Ecriture`, `Mouvement`, `Referentiels`, sens, états d'un mois), `rules.py` (contrôle d'une ligne, ligne inverse, mois comptable), `exceptions.py` (`MouvementRefuse`, `RestitutionRefusee`). Python pur, sans Django |
-| `application/` | `ports.py` (`GrandLivre`, `Parametres`, `Restitutions`, `Alertes`, `Journal`, `TransactionManager`, `Clock`), `service.py` (`GrandLivreService`, `RestitutionService`) |
-| `infrastructure/` | `persistence/models.py` (tables), `persistence/repositories.py` (écriture, idempotence, verrous consultatifs, traduction des refus de la base), `persistence/sql_restitutions.py` (vues et fonctions SQL, source unique), `persistence/restitutions.py` (leur lecture), `notifications/alertes.py` (emails par `notifications.api`), `journal.py` (journal d'activité, module `activity`), `checks.py` (contrôle `finance.E001`), `clock.py`, `container.py` |
+| `application/` | `ports/` (`GrandLivre`, `Parametres`, `Restitutions`, `Alertes`, `Journal`, `TransactionManager`, `Clock`…), `service/` (`GrandLivreService`, `RestitutionService`, `DepenseService`…) |
+| `infrastructure/` | `persistence/models/` (tables), `persistence/repositories/` (écriture, idempotence, verrous consultatifs, traduction des refus de la base), `persistence/sql_restitutions.py` (vues et fonctions SQL, source unique), `persistence/restitutions.py` (leur lecture), `notifications/alertes.py` (emails par `notifications.api`), `journal.py` (journal d'activité, module `activity`), `checks.py` (contrôle `finance.E001`), `clock.py`, `container.py` |
 | `api.py` | fonctions simples qui délèguent aux services ; données simples en entrée et en sortie |
 | `migrations/` | `0001` tables, `0002` référentiels du fichier, `0003` garde-fous (triggers). Les vues et fonctions ne sont pas dans une migration : supprimées avant chaque `migrate`, recréées après depuis `sql_restitutions.py` (`apps.py`) |
 
 `server/.importlinter` (contrat `finance-couches`) interdit au domaine et à l'application d'importer l'infrastructure.
+
+### Un fichier par sous-domaine
+
+Les paquets `application/service/`, `application/ports/`, `infrastructure/persistence/models/`, `infrastructure/persistence/repositories/` et `infrastructure/http/admin_views/` ont un fichier par sous-domaine, avec les mêmes noms d'une couche à l'autre :
+
+| Fichier | Sous-domaine |
+| --- | --- |
+| `ledger.py` | grand livre, mois comptables, paramètres |
+| `reporting.py`, `reports.py`, `books.py`, `closing.py` | restitutions, rapports, livres de l'article 19, clôture |
+| `validations.py` | double validation |
+| `deposits.py` | registre des cautions |
+| `reconciliation.py` | rapprochement FedaPay et régularisations |
+| `expenses.py`, `current_accounts.py` | dépenses, fournisseurs, associés et comptes courants |
+| `guarantee_fund.py` | fonds de garantie |
+| `parameters.py` | paramètres pilotés |
+| `transfers.py`, `treasury.py` | virements internes, comptes d'argent et relevés bancaires |
+| `core.py`, `common.py`, `reference_tables.py`, `dashboards.py` | pièces partagées, référentiels, tableaux de bord |
+
+Le `__init__.py` de chaque paquet réexporte ses noms publics : on importe toujours `apps.finance.application.service`, `…ports`, `…persistence.models`, etc., jamais un fichier du paquet depuis l'extérieur de sa couche. Un nouveau sous-domaine ajoute son fichier dans chaque couche qui le concerne.
+
+`api.py` reste un seul fichier : c'est la seule porte d'entrée du module pour les autres (ADR-019), et il ne fait que déléguer.
+
+### SQL brut
+
+Les agrégats comptables (balance, grand livre, invariants, pilotage) sont écrits en SQL : l'ORM les exprimerait mal et plus lentement, et ce sont eux qui garantissent l'exactitude des comptes. Règles :
+
+- le SQL brut ne vit que dans `infrastructure/persistence/` (`sql_restitutions.py` pour les vues et fonctions, `restitutions.py` et `pilotage.py` pour leur lecture, quelques requêtes dans `repositories/`), jamais dans le domaine, l'application ou les vues ;
+- chaque requête est couverte par un test d'intégration sur PostgreSQL (`server/tests/integration/finance/`) : une requête modifiée sans test qui la couvre ne passe pas la relecture ;
+- les paramètres passent toujours par `%s` (jamais de f-string avec une valeur venue de l'extérieur).
 
 ## Ce qui écrit dans le grand livre aujourd'hui : les séjours (FIN-03)
 
