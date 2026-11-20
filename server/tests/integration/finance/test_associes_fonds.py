@@ -108,13 +108,37 @@ def test_a_finished_month_allocates_ten_percent_of_its_net_revenue(mois_paye, fi
     ligne = MouvementModel.objects.get(nature_id='G01')
     assert (ligne.compte_argent_id, ligne.sens, ligne.periode_id, ligne.piece_reference) == (
         'GARANTIE', 'sortie', mois_precedent(), f'DOT-{mois_precedent():%Y-%m}')
-    # A provision: the charge 6911 against the fund 192, the free money unchanged
+    # A reserve (ADR-031): an allocation of the result 1301 to the fund 118, the free money unchanged
     ecritures = ecritures_du_jour(mois_precedent())
-    assert ecritures[('6911', None)] == (3_500, 0) and ecritures[('192', None)] == (0, 3_500)
+    assert ecritures[('1301', None)] == (3_500, 0) and ecritures[('118', None)] == (0, 3_500)
     assert solde_du_fonds() == 3_500
     # Written once: asking again adds nothing
     assert admin.post(f'{FONDS}doter/', {}, format='json').json()['ajoute'] == 0
     assert ActivityEntryModel.objects.filter(action='fonds_garantie_dotation').count() == 1
+
+
+def _ecritures_de(nature: str, mois) -> list[dict]:
+    """Double-entry lines of the movements of a nature in a month."""
+    ids = {str(i) for i in MouvementModel.objects.filter(nature_id=nature).values_list('id', flat=True)}
+    return [e for e in finance.ecritures(mois) if str(e['mouvement_id']) in ids]
+
+
+def _resultat(mois) -> int:
+    """Result of the month read in the trial balance: classes 7 and 8 minus class 6."""
+    return sum(e['credit'] - e['debit'] for e in finance.ecritures(mois) if e['compte_general'][:1] in '678')
+
+
+def test_the_allocation_is_a_reserve_that_leaves_the_result_unchanged(mois_paye):
+    """Card C.1 of the recette (doc 35, ADR-031): no charge, no class 6 line, the result of the month unchanged."""
+    avant = _resultat(mois_precedent())
+
+    finance.doter_fonds_garantie(mois_precedent())
+
+    assert _resultat(mois_precedent()) == avant
+    dotation = _ecritures_de('G01', mois_precedent())
+    assert {e['compte_general'] for e in dotation} == {'1301', '118'}
+    assert {e['journal'] for e in dotation} == {'OD'}
+    assert {i['invariant']: i['anomalies'] for i in finance.controle_invariants()}['I7'] == 0
 
 
 def test_a_late_line_of_the_month_adds_what_its_allocation_lacks(mois_paye):
@@ -185,6 +209,12 @@ def test_a_loss_is_covered_by_the_fund_with_its_decision(mois_paye, saisie):  # 
     g02 = MouvementModel.objects.get(nature_id='G02')
     assert (g02.compte_argent_id, g02.sens, g02.montant, g02.piece_reference) == ('GARANTIE', 'entree', 3_000,
                                                                                     sinistre['numero'])
+    # The loss paid is the only charge (658); the reserve is taken back outside the result (118 / 1301)
+    mois = timezone.localdate().replace(day=1)
+    sinistre_paye = {e['compte_general']: (e['debit'], e['credit']) for e in _ecritures_de('D04', mois)}
+    reprise = {e['compte_general']: (e['debit'], e['credit']) for e in _ecritures_de('G02', mois)}
+    assert sinistre_paye['658'] == (5_000, 0)
+    assert reprise == {'118': (3_000, 0), '1301': (0, 3_000)}
     # Covered once; the expense is not cancelled while the fund covers it
     encore = saisie.post(f'{FONDS}sinistres/', {'depense': sinistre['id'], 'montant': 100,
                                                 'decision_reference': 'DEC-2026-007', 'motif': 'Garantie Kwa-Ba accordée'},

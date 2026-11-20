@@ -317,15 +317,15 @@ NATURES_COMPTE_COURANT = ('F02', 'F03', 'F04')
 
 # --- Guarantee fund (GL-17, FIN-06) ---------------------------------------------------------------------------------
 
-# A provision for the guarantees given to customers (proposal 6911 / 192 / 7911, to be confirmed by the chartered
-# accountant): each finished month, 10 % of its net revenue (family R) is allocated to it (G01, on the account of the
-# fund); a loss the fund covers is a D04 expense, and its use takes the provision back (G02). The fund is never cash
-# of its own: it is the part of the money Kwa-Ba holds that is not free
+# A reserve for the guarantees given to customers (ADR-031: 1301 / 118, to be confirmed by the chartered accountant),
+# outside the result: each finished month, 10 % of its net revenue (family R) is allocated to it (G01, on the account
+# of the fund); a loss the fund covers is a D04 expense (658, the only charge), and its use takes the reserve back
+# (G02). The fund is never cash of its own: it is the part of the money Kwa-Ba holds that is not free
 COMPTE_FONDS_GARANTIE = 'GARANTIE'
-TYPE_COMPTE_PROVISION = 'provision'
+TYPE_COMPTE_RESERVE = 'reserve'
 # Money accounts without a provider's statement: never reconciled (I5, closing check 4)
 TYPE_COMPTE_AMORTISSEMENT = 'amortissement'
-TYPES_SANS_RELEVE = (TYPE_COMPTE_AVANCES, TYPE_COMPTE_PROVISION, TYPE_COMPTE_AMORTISSEMENT)
+TYPES_SANS_RELEVE = (TYPE_COMPTE_AVANCES, TYPE_COMPTE_RESERVE, TYPE_COMPTE_AMORTISSEMENT)
 NATURE_DOTATION_GARANTIE, NATURE_UTILISATION_GARANTIE = 'G01', 'G02'
 NATURE_SINISTRE = 'D04'
 PREFIXE_DOTATION = 'garantie:dotation:'

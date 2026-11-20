@@ -106,7 +106,7 @@ class SqlPilotage(Pilotage):
                    COALESCE(m.motif, '') AS motif, ({SIGNE})::bigint AS montant_signe
             FROM finance_mouvement m JOIN finance_nature n ON n.code = m.nature_code
             JOIN finance_compte_argent c ON c.code = m.compte_argent_code
-            WHERE c.type IN ('provision', 'amortissement') AND m.mois_comptable BETWEEN %s AND %s
+            WHERE c.type IN ('reserve', 'amortissement') AND m.mois_comptable BETWEEN %s AND %s
             ORDER BY m.date_evenement, m.id""", [date(annee, 1, 1), date(annee, 12, 1)])
 
     def amortissement_ecrit(self, annee) -> int:

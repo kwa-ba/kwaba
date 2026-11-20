@@ -68,10 +68,15 @@ def test_reference_data_of_the_schema_is_loaded():
     # amortisation of the Solution (GL-23); the bank opens in the app the day it exists (GL-22)
     assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == [
         'AMORTISSEMENTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE']
-    # The guarantee fund natures have their (proposed) accounts, with the history of the change
+    # The guarantee fund is a reserve (ADR-031): its natures leave the result, with the history of every change
     assert dict(NatureModel.objects.filter(famille_id='G').values_list('code', 'compte_syscohada')) == {
-        'G01': '6911', 'G02': '7911'}
+        'G01': '1301', 'G02': '1301'}
+    assert NatureModel.objects.get(code='D04').compte_syscohada == '658'
     assert CorrespondanceHistoModel.objects.filter(nature_id__in=['G01', 'G02'], compte_avant__isnull=True).count() == 2
+    assert list(CorrespondanceHistoModel.objects.filter(nature_id='G01').order_by('pk').values_list(
+        'compte_avant', 'compte_apres')) == [(None, '6911'), ('6911', '1301')]
+    fonds = CompteArgentModel.objects.get(code='GARANTIE')
+    assert (fonds.type, fonds.compte_syscohada) == ('reserve', '118')
     assert finance.parametre('fonds_garantie_cible') == 0
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
     for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):

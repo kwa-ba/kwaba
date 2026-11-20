@@ -54,8 +54,8 @@ def _fin_du_mois(mois: date) -> datetime:
 
 
 class FondsGarantieService:
-    """The guarantee fund, a provision kept apart from the free money: each finished month, its rate (10 %) of the
-    month's net revenue is allocated to it (G01), by the worker each night, by the closing, or by hand. A loss Kwa-Ba
+    """The guarantee fund, a reserve kept apart from the free money (ADR-031): each finished month, its rate (10 %) of
+    the month's net revenue is allocated to it (G01), by the worker each night, by the closing, or by hand. A loss Kwa-Ba
     pays under its guarantee (a D04 expense) is covered by the fund with the reference of the decision (G02), up to the
     fund's balance. Below its target, the finance team is alerted."""
 
