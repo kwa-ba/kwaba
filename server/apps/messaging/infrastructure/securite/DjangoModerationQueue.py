@@ -4,7 +4,7 @@ from apps.messaging.application.ports.ModerationQueue import ModerationQueue
 from apps.messaging.domain.entities.MessageReport import MessageReport
 from apps.messaging.domain.entities.Sanction import Sanction
 from apps.messaging.domain.services.SanctionLadder import ADMIN_DECISION
-from apps.securite import fraude
+from shared.securite import fraude
 from apps.users import api as users
 
 

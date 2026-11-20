@@ -52,7 +52,7 @@ def _body(sanction: Sanction) -> str:
 
 
 def _send(user_id, subject: str, body: str) -> None:
-    from apps.notifications.api import send_mail
+    from shared.notifications.api import send_mail
 
     try:
         account = users.compte(user_id)

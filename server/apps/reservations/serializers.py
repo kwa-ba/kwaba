@@ -4,7 +4,7 @@ from .models import ReservationModel
 from apps.avis import api as avis
 from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
-from apps.securite import coordonnees, fraude
+from shared.securite import coordonnees, fraude
 from apps.users import api as users
 
 # Bookings waiting for payment one traveller can hold at the same time: each one holds its dates for 30 minutes

@@ -1,7 +1,7 @@
 """Back-office API. Contract: documentation/modules/backoffice-api.md.
 
 Every view requires the admin role, read from the database at every request (EstAdministrateur). Every write is
-recorded in the audit log (apps.securite) with the administrator, the target and the reason.
+recorded in the audit log (shared.securite) with the administrator, the target and the reason.
 """
 from datetime import timedelta
 
@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from apps.avis import api as avis_api
 from apps.hebergements import api as hebergements
 from apps.reservations import api as reservations_api
-from apps.securite.backoffice import VueAdmin
+from shared.securite.backoffice import VueAdmin
 from apps.users import api as users
 
 

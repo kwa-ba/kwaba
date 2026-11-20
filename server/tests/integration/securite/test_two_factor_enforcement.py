@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.securite.two_factor import CLAIM
+from shared.securite.two_factor import CLAIM
 from apps.users.infrastructure import two_factor_service as service_module
 
 ADMIN_ROUTES = ['/api/v1/admin/droits/', '/api/v1/admin/users/', '/api/v1/admin/finance/grand-livre/',

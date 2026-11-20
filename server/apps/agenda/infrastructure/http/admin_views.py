@@ -8,9 +8,9 @@ from apps.agenda.domain import rules
 from apps.agenda.domain.entities import CANCELLED
 from apps.agenda.domain.settings import BOUNDS, DEFAULT_TIMEZONE, AgendaSettings, InvalidSettings
 from apps.agenda.infrastructure.container import agenda_service
-from apps.activity import api as activity
-from apps.securite.backoffice import VueAdmin
-from apps.securite.permissions import has_special_permission
+from shared.activity import api as activity
+from shared.securite.backoffice import VueAdmin
+from shared.securite.permissions import has_special_permission
 from apps.users import api as users
 
 PERMISSION = 'agenda_settings'

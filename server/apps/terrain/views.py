@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
-from apps.securite.permissions import agent_space_access
+from shared.activity import api as activity
+from shared.securite.permissions import agent_space_access
 from apps.users import api as users
 
 from . import services

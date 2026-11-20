@@ -2,6 +2,10 @@
 
 Règles : [ADR-019](ADR/ADR-019-monolithe-modulaire-strict.md). Vérification : `server/.importlinter`, lancé par `lint-imports` en CI, au pre-push et par `make lint`. Les clés étrangères entre modules, invisibles pour import-linter, sont refusées par `server/tests/unit/architecture/test_cles_etrangeres.py`.
 
+## Noyau partagé : `server/shared/`
+
+`securite`, `notifications`, `export` et `activity` servent à tous les modules métier et n'en importent aucun ([ADR-029](ADR/ADR-029-dossier-du-noyau-partage.md)). Ils vivent dans `server/shared/` et s'importent par `shared.<module>`. Le contrat `noyau-partage` de `server/.importlinter` couvre tout le dossier : un module qu'on y ajoute est vérifié d'office. N'y mettre qu'un module utile à plusieurs modules métier ; un module qui n'en sert qu'un reste à côté de lui.
+
 ## Migrer un module
 
 Une PR par module. L'API vue par le client ne change pas.
@@ -17,9 +21,9 @@ Une PR par module. L'API vue par le client ne change pas.
    Pour les comptes : `<rôle>_id = models.UUIDField(db_index=True)` et, si le module lit souvent le compte, une propriété `@cached_property def <rôle>(self): return users.compte(self.<rôle>_id)` ; une liste charge tous ses comptes en une requête avec `users.attacher(objets, '<rôle>')`.
 4. **Filtres qui traversent les modules** (`x__hebergement__host`, `select_related`). Les remplacer par des listes d'identifiants obtenues via l'interface.
 5. **Suppressions.** Remplacer les `on_delete` entre modules : soit l'objet disparaît de l'affichage parce que l'interface ne le renvoie plus, soit le module réagit à un événement.
-6. **Emails.** Passer par `apps.notifications.api` : `demander_email` pour un email décrit par un événement (envoyé par le worker, ou directement si RabbitMQ est indisponible), `send_mail` pour un email rédigé par le module (pièces jointes comprises). Les autres paquets de `notifications` sont interdits aux modules métier.
+6. **Emails.** Passer par `shared.notifications.api` : `demander_email` pour un email décrit par un événement (envoyé par le worker, ou directement si RabbitMQ est indisponible), `send_mail` pour un email rédigé par le module (pièces jointes comprises). Les autres paquets de `notifications` sont interdits aux modules métier.
 7. **`.importlinter`.** Retirer les lignes du module dans `ignore_imports` et vérifier que `lint-imports` passe.
-8. **Écrans d'administration.** Ils appartiennent au module : `admin_views.py` et `admin_urls.py`, branchés sur `api/v1/admin/<module>/` dans `config/urls.py`, avant `apps.backoffice.urls`. Les briques communes (`ListeAdmin`, `FicheAdmin`, `Journalise`, `ChampPhoto`) sont dans `apps.securite.backoffice`.
+8. **Écrans d'administration.** Ils appartiennent au module : `admin_views.py` et `admin_urls.py`, branchés sur `api/v1/admin/<module>/` dans `config/urls.py`, avant `apps.backoffice.urls`. Les briques communes (`ListeAdmin`, `FicheAdmin`, `Journalise`, `ChampPhoto`) sont dans `shared.securite.backoffice`.
 9. **Tests.** Comportement inchangé, plus un test qui vérifie que le nombre de requêtes d'une liste ne dépend pas du nombre d'éléments.
 
 ## Avancement

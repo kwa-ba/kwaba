@@ -5,12 +5,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
-from apps.securite.models import AlerteFraudeModel
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.securite.models import AlerteFraudeModel
+from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 
-from apps.securite.backoffice import nom as _nom, paginer as _paginer
+from shared.securite.backoffice import nom as _nom, paginer as _paginer
 
 LIBELLES = {'telephone': 'Téléphone', 'email': 'Email', 'lien': 'Lien', 'reseau': 'Réseau social',
             'application': 'Application de messagerie', 'hors_site': 'Paiement hors site',

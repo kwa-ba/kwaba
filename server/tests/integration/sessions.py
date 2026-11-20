@@ -4,7 +4,7 @@ import time
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.securite.two_factor import CLAIM
+from shared.securite.two_factor import CLAIM
 
 
 def session_token(user, verified: bool = True) -> AccessToken:

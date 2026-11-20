@@ -2,9 +2,9 @@
 from rest_framework import generics, serializers
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 
-from apps.activity import api as activity
-from apps.securite.backoffice import ChampPhoto, Journalise, ListeAdmin
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.securite.backoffice import ChampPhoto, Journalise, ListeAdmin
+from shared.securite.permissions import EstAdministrateur
 
 from .models import ExperienceModel
 

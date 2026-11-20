@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 
 from apps.hebergements.models import HebergementModel
 from apps.reservations.models import ReservationModel
-from apps.notifications.infrastructure.messaging.EmailRequestBus import EmailRequestBus
+from shared.notifications.infrastructure.messaging.EmailRequestBus import EmailRequestBus
 from apps.users.infrastructure.messaging.RabbitMQEventBus import RabbitMQEventBus
 from apps.users.infrastructure.persistence.models import UserModel
 from tests.integration.sessions import session_token

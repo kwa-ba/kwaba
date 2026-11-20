@@ -4,7 +4,7 @@ import pytest
 
 from apps.agenda import api as agenda
 from apps.agenda.models import AgendaSettingsModel, AppointmentModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 from .conftest import at, in_days
 

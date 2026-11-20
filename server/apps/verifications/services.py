@@ -19,8 +19,8 @@ from apps.agenda import api as agenda
 from apps.contrats import api as contrats
 from apps.documents import api as documents
 from apps.hebergements import api as hebergements
-from apps.notifications.api import send_mail
-from apps.activity import api as activity
+from shared.notifications.api import send_mail
+from shared.activity import api as activity
 from apps.users import api as users
 
 from . import positions

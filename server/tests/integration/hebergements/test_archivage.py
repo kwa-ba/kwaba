@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.hebergements.models import HebergementModel
 from apps.messaging.infrastructure.persistence.models import ConversationModel
 from apps.reservations.models import ReservationModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.verifications.models import VisiteModel
 
 HEBERGEMENTS = '/api/v1/hebergements/'

@@ -1,4 +1,4 @@
-from apps.notifications.infrastructure.email.html import CID_LOGO, corps_html, page_html
+from shared.notifications.infrastructure.email.html import CID_LOGO, corps_html, page_html
 
 
 def test_logo_joint_et_pied_de_page(settings):

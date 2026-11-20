@@ -10,7 +10,7 @@ import pytest
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.finance import api as finance
 from apps.finance.models import MouvementModel, PeriodeModel, RapprochementJourModel
 

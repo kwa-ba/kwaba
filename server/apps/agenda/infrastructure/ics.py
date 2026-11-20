@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 
 from apps.agenda.domain.entities import CANCELLED, Appointment
-from apps.export import api as export
+from shared.export import api as export
 
 PRODID = '-//Kwa-Ba//Agenda//FR'
 

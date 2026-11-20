@@ -8,8 +8,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.activity.models import ActivityEntryModel
-from apps.securite.permissions import ROUTES_TOUS_ADMINS, SECTIONS_ADMIN, section_de
+from shared.activity.models import ActivityEntryModel
+from shared.securite.permissions import ROUTES_TOUS_ADMINS, SECTIONS_ADMIN, section_de
 from apps.users.infrastructure.persistence.models import UserModel
 from tests.integration.sessions import mark_verified
 

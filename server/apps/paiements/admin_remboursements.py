@@ -8,9 +8,9 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.activity import api as activity
-from apps.securite.backoffice import VueAdmin, paginer
-from apps.securite.permissions import has_special_permission
+from shared.activity import api as activity
+from shared.securite.backoffice import VueAdmin, paginer
+from shared.securite.permissions import has_special_permission
 
 from . import grand_livre, services
 from .api import apercu_annulation_sejour

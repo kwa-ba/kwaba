@@ -8,7 +8,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.give.models import DonModel, OrganisationModel, ReversementModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 B = '/api/v1/admin/give/'
 

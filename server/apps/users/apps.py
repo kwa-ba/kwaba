@@ -6,7 +6,7 @@ class UsersConfig(AppConfig):
     label = 'users'
 
     def ready(self):
-        from apps.securite import two_factor
+        from shared.securite import two_factor
         from .infrastructure.two_factor_admin_login import check_admin_code
 
         # The Django administration sign-in asks for a second factor code too (ADR-028)

@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
-from apps.securite.limites import Tentatives
+from shared.activity import api as activity
+from shared.securite.limites import Tentatives
 from apps.users.application.service.TwoFactorService import BACKUP
 from apps.users.domain.two_factor.exceptions import (
     InvalidTwoFactorCode, NoPendingSetup, TwoFactorAlreadyEnabled, TwoFactorNotEnabled,

@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.securite import fraude
+from shared.securite import fraude
 from apps.users import api as users
 from apps.verifications import api as verifications
 

@@ -8,8 +8,8 @@ from apps.messaging.infrastructure.persistence import moderation_retention
 from apps.messaging.infrastructure.persistence.models import (
     MessageModel, MessageReportModel, NotificationOutboxModel, SanctionModel,
 )
-from apps.activity.models import ActivityEntryModel, ActivityHoldModel
-from apps.securite.models import AlerteFraudeModel
+from shared.activity.models import ActivityEntryModel, ActivityHoldModel
+from shared.securite.models import AlerteFraudeModel
 
 CONVERSATIONS = '/api/v1/messaging/conversations/'
 MODERATION = '/api/v1/messaging/moderation/'
@@ -152,7 +152,7 @@ class TestThreatAlerts:
         assert AlerteFraudeModel.objects.filter(threat_notified_at__isnull=True).count() == 1
 
         AlerteFraudeModel.objects.update(cree_le=timezone.now() - datetime.timedelta(hours=2))
-        from apps.securite import limites
+        from shared.securite import limites
         limites.reinitialiser(f'moderation-threat-email:{guest.id}')
         moderation_retention.purge()
         assert len(admin_mails('Menace')) == 2
