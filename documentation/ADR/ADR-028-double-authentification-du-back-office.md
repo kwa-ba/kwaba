@@ -80,14 +80,19 @@ Si le dernier super admin perd son téléphone, la commande serveur `manage.py r
 
 ## Stockage
 - `users_two_factor` : compte, secret chiffré, secret en attente chiffré, activé le, dernier pas TOTP accepté.
-- `users_backup_code` : compte, code haché (`make_password`), utilisé le.
+- `users_backup_code` : compte, empreinte du code, utilisé le. L'empreinte est un HMAC-SHA256 avec une clé secrète, comme celle des codes reçus par email (`hacher_code`), et non `make_password`. `make_password` est lent par conception (environ 0,3 s) et salé, et il faudrait comparer le code saisi aux 10 codes un par un. Les codes de secours sont aléatoires (40 bits) et limités à 5 essais par 15 minutes : sans la clé, une empreinte ne sert à rien.
 - Le **secret est chiffré au repos** avec Fernet (paquet `cryptography`). La clé vient de `TWO_FACTOR_ENCRYPTION_KEY`, ou par défaut d'une dérivation HMAC de `SECRET_KEY` propre à cet usage, comme `JWT_SIGNING_KEY`. Une fuite de la base seule ne donne pas les codes.
 - Changer `SECRET_KEY` sans clé dédiée rend tous les secrets illisibles : chaque admin devra être réinitialisé. En production, `TWO_FACTOR_ENCRYPTION_KEY` est donc fixée à part, dans le dépôt d'infra.
 
 ## Sécurité
 - **Anti-rejeu** : un code du même pas que le dernier accepté, ou d'un pas antérieur, est refusé.
 - **Anti-force brute** : `Tentatives`, 5 essais par 15 minutes et par compte, codes TOTP et codes de secours confondus, comme pour le code par email. Un succès remet le compteur à zéro.
-- **Journal d'activité** (`activity.api.record`, niveau sensible, catégorie Connexions) : activation, vérification réussie, échec, blocage, code de secours utilisé, réinitialisation (auteur, cible et motif). Jamais le code, le secret ni l'URI.
+- **Journal d'activité** (`activity.api.record`), avec les niveaux de la connexion existante, pour ne pas noyer le bandeau des événements sensibles sous une vérification toutes les 12 h par admin :
+  - vérification réussie : courant ;
+  - échec : important ;
+  - activation, blocage, code de secours utilisé et réinitialisation (auteur, cible et motif) : sensibles.
+
+  Jamais le code, le secret ni l'URI.
 - Dépendances ajoutées : `pyotp` et `cryptography`.
 
 ## Admin Django
