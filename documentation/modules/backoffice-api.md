@@ -165,6 +165,7 @@ Filtres : `q` (commentaire, nom de l'annonce, email de l'auteur), `note` (1 à 5
 | GET | `/admin/users/` | liste des comptes |
 | PATCH | `/admin/users/<id>/` | activer / désactiver, changer le rôle, droits d'un admin |
 | GET | `/admin/droits/` | droits de l'admin connecté (ouvert à tous les admins) |
+| POST | `/admin/droits/<id>/two-factor/reset/` | super admin : réinitialise la double authentification d'un autre admin, `{"motif"}` (10 caractères au moins), ferme ses sessions (ADR-028) |
 | GET | `/admin/hebergements/` | liste des annonces |
 | PATCH | `/admin/hebergements/<id>/` | masquer / publier, vérifier |
 | DELETE | `/admin/hebergements/<id>/?motif=` | supprimer une annonce |
