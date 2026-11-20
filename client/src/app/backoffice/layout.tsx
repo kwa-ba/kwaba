@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AdminShell from "@/components/backoffice/AdminShell";
+import TwoFactorGate from "@/features/users/admin/two-factor/TwoFactorGate";
 import Document, { metadataDuSite } from "@/components/layout/Document";
 
 // The back-office stays in French
@@ -14,7 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function BackofficeLayout({ children }: { children: React.ReactNode }) {
   return (
     <Document locale="fr">
-      <AdminShell>{children}</AdminShell>
+      {/* Second factor before anything of the back-office, menu included (ADR-028) */}
+      <TwoFactorGate>
+        <AdminShell>{children}</AdminShell>
+      </TwoFactorGate>
     </Document>
   );
 }

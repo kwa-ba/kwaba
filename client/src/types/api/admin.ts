@@ -59,6 +59,22 @@ export interface DroitsAdmin {
   lecture_seule: boolean;
 }
 
+/** Back-office second factor of the signed-in admin (ADR-028). */
+export interface TwoFactorStatus {
+  enabled: boolean;
+  enabled_at: string | null;
+  /** Last verification carried by the session's token, null if none. */
+  verified_at: string | null;
+  /** verified_at + 12 h: the code is asked again afterwards. */
+  expires_at: string | null;
+  backup_codes_left: number;
+}
+
+export interface TwoFactorSetup {
+  otpauth_uri: string;
+  secret: string;
+}
+
 export interface ConditionsHote {
   categorie: "particulier" | "hotel";
   fondateur_debut: string | null;

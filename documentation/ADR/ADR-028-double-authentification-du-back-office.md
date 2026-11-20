@@ -117,10 +117,10 @@ Si le dernier super admin perd son téléphone, la commande serveur `manage.py r
 - Textes en français seulement, comme tout le back-office.
 
 ### Code
-- Les écrans vivent dans `features/users/two-factor/` (module `users`, comme côté serveur). `AdminShell` et la coque de l'espace agent les branchent par la garde `TwoFactorGate`. Les requêtes d'admin de la coque (droits, compteurs) attendent la vérification.
+- Les écrans vivent dans `features/users/admin/two-factor/` (module `users`, comme côté serveur ; `admin/` regroupe les écrans du back-office, en français seulement). La garde `TwoFactorGate` enveloppe `AdminShell` et `AgentShell` dans les layouts `app/backoffice` et `app/agent` : les coques, leur menu et leurs requêtes d'admin (droits, compteurs) attendent la vérification, et la feature `verifications` n'importe pas `users`.
 - **Jetons** : ils restent dans le cookie chiffré de NextAuth. Le navigateur appelle `update({ twoFactorCode })`, et le callback `jwt` de `src/auth.ts`, côté serveur, appelle `verify/` avec le jeton de la session puis écrit la paire marquée dans le cookie. La paire ne passe jamais par le navigateur. Le résultat (code faux, blocage et délai) remonte par la session.
 - `setup/` et `confirm/` passent par le proxy habituel (`app/api/proxy`) : ils ne renvoient pas de jetons.
-- **Intercepteur** (`lib/api.ts`) : un 403 `two_factor_required` reçu pendant la session relit l'état, et la garde réaffiche l'écran du code.
+- **Intercepteur** (`lib/api.ts`) : un 403 `two_factor_required` reçu pendant la session émet un signal (`lib/two-factor-signal.ts`, car `lib/` ne connaît pas les features). La garde relit alors l'état et réaffiche l'écran du code.
 
 ## Mise en service
 Trois livraisons, dans cet ordre, pour qu'aucun admin ne soit bloqué sans écran pour activer sa 2FA :

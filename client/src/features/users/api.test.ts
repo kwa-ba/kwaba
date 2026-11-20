@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
-import { fermerMonCompte, lireDroitsAdmin, lireMoi, lireStatsAdmin, modifierMoi, modifierUtilisateurAdmin, ouvrirCandidature } from "./api";
+import {
+  confirmTwoFactorSetup, fermerMonCompte, lireDroitsAdmin, lireMoi, lireStatsAdmin, modifierMoi, modifierUtilisateurAdmin,
+  ouvrirCandidature, readTwoFactorStatus, resetTwoFactor, startTwoFactorSetup,
+} from "./api";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 
@@ -32,5 +35,19 @@ describe("users", () => {
     expect(api.patch).toHaveBeenLastCalledWith("/v1/admin/users/u1/", { is_active: false });
     await lireStatsAdmin();
     expect(api.get).toHaveBeenLastCalledWith("/v1/admin/stats/");
+  });
+
+  it("gère la double authentification", async () => {
+    await readTwoFactorStatus();
+    expect(api.get).toHaveBeenLastCalledWith("/v1/auth/two-factor/");
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { otpauth_uri: "otpauth://totp/x", secret: "S" } });
+    await expect(startTwoFactorSetup()).resolves.toEqual({ otpauth_uri: "otpauth://totp/x", secret: "S" });
+    expect(api.post).toHaveBeenLastCalledWith("/v1/auth/two-factor/setup/");
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { backup_codes: ["K7QF-92XM"] } });
+    await expect(confirmTwoFactorSetup("482913")).resolves.toEqual(["K7QF-92XM"]);
+    expect(api.post).toHaveBeenLastCalledWith("/v1/auth/two-factor/confirm/", { code: "482913" });
+    vi.mocked(api.post).mockResolvedValueOnce({ data: undefined });
+    await resetTwoFactor("u1", "Téléphone perdu");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/droits/u1/two-factor/reset/", { motif: "Téléphone perdu" });
   });
 });
