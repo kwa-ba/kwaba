@@ -97,7 +97,9 @@ def lire(texte: str, colonnes: dict[str, str]) -> list[LigneReleve]:
             # Stable across imports of the same statement: a line imported twice is the same operation
             base = f'{jour.isoformat()}|{libelle}|{somme}|{sens}'
             vues[base] = vues.get(base, 0) + 1
-            reference = 'banque:' + hashlib.sha1(f'{base}|{vues[base]}'.encode()).hexdigest()[:16]
+            # Not a security use: a short fingerprint, kept on sha1 so the references already stored do not change
+            empreinte = hashlib.sha1(f'{base}|{vues[base]}'.encode(), usedforsecurity=False)  # nosemgrep
+            reference = 'banque:' + empreinte.hexdigest()[:16]
         lignes.append(LigneReleve(jour=jour, libelle=libelle, montant=somme, sens=sens, reference=reference))
     if erreurs:
         raise VirementRefuse('Relevé illisible, ' + ' ; '.join(erreurs[:5]) + (' …' if len(erreurs) > 5 else '') + '.')
