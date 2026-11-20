@@ -6,3 +6,8 @@ class SecuriteConfig(AppConfig):
     name = 'apps.securite'
     label = 'securite'
     verbose_name = 'Sécurité (limites, journal d\'audit)'
+
+    def ready(self):
+        from .admin_site import configure_admin_site
+
+        configure_admin_site()

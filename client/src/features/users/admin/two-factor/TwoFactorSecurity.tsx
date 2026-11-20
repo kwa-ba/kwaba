@@ -2,7 +2,6 @@
 
 import { AlertTriangle, ShieldCheck, ShieldOff } from "lucide-react";
 import { useTwoFactorStatus } from "../../hooks";
-import { resumeSetup } from "./postpone";
 
 const dateHeure = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" }) : "-";
@@ -27,7 +26,7 @@ export default function TwoFactorSecurity() {
             <p className="text-sm text-muted">
               {isLoading ? "Chargement…" : status?.enabled
                 ? "Active : un code de votre application est demandé à la connexion et toutes les 12 heures."
-                : "Inactive : votre accès au back-office ne repose que sur votre connexion."}
+                : "Inactive."}
             </p>
           </div>
         </div>
@@ -38,12 +37,7 @@ export default function TwoFactorSecurity() {
             <div><dt className="text-muted">Prochaine vérification</dt><dd className="font-bold text-dark">{dateHeure(status.expires_at)}</dd></div>
             <div><dt className="text-muted">Codes de secours restants</dt><dd className="font-bold text-dark">{status.backup_codes_left} sur 10</dd></div>
           </dl>
-        ) : !isLoading && (
-          <button type="button" onClick={resumeSetup}
-            className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-600">
-            Activer maintenant
-          </button>
-        )}
+        ) : null}
 
         {status?.enabled && status.backup_codes_left < FEW_CODES && (
           <p role="status" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

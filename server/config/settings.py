@@ -415,6 +415,9 @@ JWT_SIGNING_KEY = os.getenv('JWT_SIGNING_KEY') or hmac.new(
 
 # Back-office two-factor authentication (ADR-028): a verification is valid this many hours, then asked again
 TWO_FACTOR_VALIDITY_HOURS = int(os.getenv('TWO_FACTOR_VALIDITY_HOURS', '12'))
+# Name shown by the authenticator app: one per environment ("Kwa-Ba Prod", "Kwa-Ba Préprod"), so that an admin with
+# an account on each one tells their codes apart
+TWO_FACTOR_ISSUER = os.getenv('TWO_FACTOR_ISSUER', 'Kwa-Ba Dev')
 # Fernet key of the TOTP secrets stored in the database. Set it apart in production: derived from SECRET_KEY otherwise,
 # so changing SECRET_KEY would make every secret unreadable (each admin would then be reset).
 TWO_FACTOR_ENCRYPTION_KEY = os.getenv('TWO_FACTOR_ENCRYPTION_KEY') or base64.urlsafe_b64encode(hmac.new(

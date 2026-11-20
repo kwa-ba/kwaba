@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from apps.hebergements import api as hebergements
 from apps.activity import api as activity
-from apps.securite.permissions import a_acces_section
+from apps.securite.permissions import agent_space_access
 from apps.terrain import api as terrain
 from apps.users import api as users
 
@@ -27,7 +27,7 @@ class EstVerificateur(IsAuthenticated):
     def has_permission(self, request, view):
         if not (super().has_permission(request, view) and request.user.role in services.ROLES_VERIFICATEURS):
             return False
-        return request.user.role != 'admin' or a_acces_section(request.user, 'verifications')
+        return agent_space_access(request)
 
 
 def _piece_json(piece: PieceIdentiteModel | None) -> dict:

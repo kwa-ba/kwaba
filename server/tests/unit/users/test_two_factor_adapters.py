@@ -1,5 +1,5 @@
 import time
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import pyotp
 import pytest
@@ -35,12 +35,12 @@ def test_secret_is_160_bits_of_base32():
     assert secret != PyOtpPasswords().new_secret()
 
 
-def test_setup_uri_names_kwaba_and_the_account():
-    uri = PyOtpPasswords().setup_uri(SECRET, 'admin@kwa-ba.test')
-    parts = urlsplit(uri)
+def test_setup_uri_names_the_environment_and_the_account(settings):
+    settings.TWO_FACTOR_ISSUER = 'Kwa-Ba Préprod'
+    parts = urlsplit(PyOtpPasswords().setup_uri(SECRET, 'admin@kwa-ba.test'))
     assert (parts.scheme, parts.netloc) == ('otpauth', 'totp')
-    assert parts.path == '/Kwa-Ba:admin%40kwa-ba.test'
-    assert parse_qs(parts.query) == {'secret': [SECRET], 'issuer': ['Kwa-Ba']}
+    assert unquote(parts.path) == '/Kwa-Ba Préprod:admin@kwa-ba.test'
+    assert parse_qs(parts.query) == {'secret': [SECRET], 'issuer': ['Kwa-Ba Préprod']}
 
 
 def test_code_at_matches_what_an_authenticator_app_shows():

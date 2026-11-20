@@ -8,7 +8,7 @@ const status = (fields: Partial<TwoFactorStatus> = {}): TwoFactorStatus => ({
   ...fields,
 });
 const gate = (fields: Partial<Parameters<typeof gateScreen>[0]> = {}) =>
-  gateScreen({ isAdmin: true, loading: false, status: status(), postponed: false, now: NOW, ...fields });
+  gateScreen({ isAdmin: true, loading: false, status: status(), now: NOW, ...fields });
 
 describe("gateScreen", () => {
   it("never stops an account that is not an admin", () => {
@@ -20,9 +20,8 @@ describe("gateScreen", () => {
     expect(gate({ status: undefined })).toBe("open");
   });
 
-  it("asks to set up the second factor, unless postponed while it is optional", () => {
+  it("asks to set up the second factor before anything else", () => {
     expect(gate({ status: status({ enabled: false }) })).toBe("setup");
-    expect(gate({ status: status({ enabled: false }), postponed: true })).toBe("open");
   });
 
   it("asks for the code until verified, and again once expired", () => {

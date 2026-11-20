@@ -48,7 +48,7 @@ Nous retenons l'option 4.
 ## Second facteur
 - Code TOTP à 6 chiffres, pas de 30 s, fenêtre de ±1 pas (horloges du téléphone et du serveur légèrement décalées).
 - **10 codes de secours** à usage unique, générés à l'activation, montrés une seule fois.
-- Le QR code est dessiné par le client à partir de l'URI `otpauth://` (émetteur « Kwa-Ba », compte = email).
+- Le QR code est dessiné par le client à partir de l'URI `otpauth://` (compte = email). L'émetteur, nom affiché par l'appli, dépend de l'environnement (`TWO_FACTOR_ISSUER` : « Kwa-Ba Prod », « Kwa-Ba Préprod ») : un admin qui a un compte sur chacun distingue ses codes.
 
 ## Marque dans le jeton
 - Après un code juste, l'API renvoie une nouvelle paire SimpleJWT. Le refresh porte la revendication `two_factor_verified_at` (horodatage Unix).

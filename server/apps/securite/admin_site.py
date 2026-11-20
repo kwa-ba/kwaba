@@ -1,4 +1,5 @@
 """Sign-in to the Django administration: attempts limited per IP address and per email, failures logged."""
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 
@@ -32,6 +33,16 @@ def connexion_admin(request, extra_context=None):
     if request.user.is_authenticated and request.user.is_staff:
         for c in compteurs:
             c.reussite()
+        # Like the back-office: the second factor is asked again after TWO_FACTOR_VALIDITY_HOURS (ADR-028)
+        request.session.set_expiry(settings.TWO_FACTOR_VALIDITY_HOURS * 3600)
     else:
         activity.record('admin_connexion_echec', request, email=email)
     return reponse
+
+
+def configure_admin_site() -> None:
+    """Password and second factor code on the sign-in page (called by SecuriteConfig.ready)."""
+    from .admin_login_form import AdminLoginForm
+
+    admin.site.login_form = AdminLoginForm
+    admin.site.login_template = 'securite/admin_login.html'

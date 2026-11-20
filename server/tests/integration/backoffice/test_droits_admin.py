@@ -11,6 +11,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from apps.activity.models import ActivityEntryModel
 from apps.securite.permissions import ROUTES_TOUS_ADMINS, SECTIONS_ADMIN, section_de
 from apps.users.infrastructure.persistence.models import UserModel
+from tests.integration.sessions import mark_verified
 
 ADMIN = '/api/v1/admin/'
 
@@ -22,7 +23,7 @@ def _user_url(compte):
 def _client_jwt(compte):
     """Real token, unlike client_for (force_authenticate): the end date is checked by the authentication itself."""
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {AccessToken.for_user(compte)}')
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {mark_verified(AccessToken.for_user(compte))}')
     return client
 
 
