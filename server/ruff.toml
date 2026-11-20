@@ -14,6 +14,13 @@ select = ["E4", "E7", "E9", "F"]
 "config/settings.py" = ["S105"]
 "apps/securite/limites.py" = ["S311"]
 "apps/users/infrastructure/external/GoogleAPITokenVerifier.py" = ["S105"]
+# Ledger SQL: the f-strings only insert module constants (SIGNE, RESULTAT…) and fixed WHERE fragments;
+# every value is a %s parameter
+"apps/finance/infrastructure/persistence/pilotage.py" = ["S608"]
+"apps/finance/infrastructure/persistence/repositories.py" = ["S608"]
+"apps/finance/infrastructure/persistence/restitutions.py" = ["S608"]
+# Seeded generator of the preprod demo data, refused in production
+"apps/paiements/management/commands/seed_finance_demo.py" = ["S311"]
 "tests/**" = ["S"]
 
 [format]
