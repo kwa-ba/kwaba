@@ -9,7 +9,7 @@ from shared.activity.domain import catalogue
 from shared.activity.domain.entities import Target
 from shared.activity.infrastructure.container import activity_service
 from shared.export.api import csv_response
-from shared.securite.backoffice import VueAdmin
+from shared.backoffice_kit.views import VueAdmin
 from shared.securite.limites import ip_client
 from shared.securite.permissions import has_special_permission
 

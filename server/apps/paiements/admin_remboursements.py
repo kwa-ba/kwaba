@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from shared.activity import api as activity
-from shared.securite.backoffice import VueAdmin, paginer
+from shared.backoffice_kit.views import VueAdmin, paginer
 from shared.securite.permissions import has_special_permission
 
 from . import grand_livre, services

@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from apps.messaging import api as messaging
 from shared.securite import fraude
 from shared.activity import api as activity
-from shared.securite.backoffice import nom
+from shared.backoffice_kit.views import nom
 from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 

@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.finance import api as finance
-from shared.securite.backoffice import VueAdmin
+from shared.backoffice_kit.views import VueAdmin
 
 from .common import _mois, _refus, _soldes_reels, _uuid
 from .expenses import _peut_saisir

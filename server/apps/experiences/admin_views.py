@@ -3,7 +3,7 @@ from rest_framework import generics, serializers
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 
 from shared.activity import api as activity
-from shared.securite.backoffice import ChampPhoto, Journalise, ListeAdmin
+from shared.backoffice_kit.views import ChampPhoto, Journalise, ListeAdmin
 from shared.securite.permissions import EstAdministrateur
 
 from .models import ExperienceModel

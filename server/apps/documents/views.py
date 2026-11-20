@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from apps.contrats import api as contrats
 from shared.activity import api as activity
-from shared.securite.backoffice import paginer
+from shared.backoffice_kit.views import paginer
 from shared.securite.permissions import EstAdministrateur
 
 from . import generateurs, services

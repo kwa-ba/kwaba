@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from apps.avis import api as avis_api
 from apps.hebergements import api as hebergements
 from apps.reservations import api as reservations_api
-from shared.securite.backoffice import VueAdmin
+from shared.backoffice_kit.views import VueAdmin
 from apps.users import api as users
 
 

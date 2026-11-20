@@ -12,7 +12,7 @@ from apps.documents.api import societe_immatriculee
 from apps.give import api as give
 from apps.locations import api as locations
 from shared.activity import api as activity
-from shared.securite.backoffice import paginer
+from shared.backoffice_kit.views import paginer
 from shared.securite.limites import ip_client, limite_ip
 from shared.securite.permissions import EstAdministrateur
 from apps.transferts import api as transferts

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.reservations import api as reservations_api
 from shared.activity import api as activity
-from shared.securite.backoffice import (
+from shared.backoffice_kit.views import (
     VueAdmin, booleen as _booleen, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer,
 )
 from shared.securite.permissions import has_special_permission
