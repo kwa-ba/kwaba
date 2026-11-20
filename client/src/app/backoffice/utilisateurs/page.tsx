@@ -10,7 +10,7 @@ import { apiErrorMessage } from "@/lib/api";
 import { formatDate, initials, ROLE_LABELS } from "@/lib/utils";
 import { PAGE_SIZE, useAdminList, useDebounced } from "@/lib/useAdminList";
 import AdminTable, { ActionButton, Pagination, Pill, SearchInput, type Colonne } from "@/components/backoffice/AdminTable";
-import { modifierUtilisateurAdmin, useDroitsAdmin } from "@/features/users";
+import { modifierUtilisateurAdmin, resetTwoFactor, useDroitsAdmin } from "@/features/users";
 import ConditionsHote from "@/features/users/admin/ConditionsHote";
 import DroitsAdmin from "@/features/users/admin/DroitsAdmin";
 import ConfirmDialog, { type Confirmation } from "@/components/backoffice/ConfirmDialog";
@@ -126,6 +126,22 @@ function Utilisateurs() {
           }}
         />
         {u.role === "admin" && <ActionButton onClick={() => setDroitsDe(u)}>Droits</ActionButton>}
+        {u.role === "admin" && (
+          <ActionButton danger onClick={() => setConfirmation({
+            titre: "Réinitialiser la double authentification",
+            message: <><strong>{nom(u)}</strong> devra la réactiver à sa prochaine connexion, et ses sessions ouvertes sont fermées. Motif obligatoire (10 caractères au moins).</>,
+            libelle: "Réinitialiser", danger: true, motif: true,
+            action: async (motif) => {
+              try {
+                await resetTwoFactor(u.id, motif);
+                toast.success("Double authentification réinitialisée");
+              } catch (err) {
+                toast.error(apiErrorMessage(err));
+                throw err;
+              }
+            },
+          })}>Réinitialiser la 2FA</ActionButton>
+        )}
         {(u.role === "hote" || u.candidature_hote === "ouverte") && <ActionButton onClick={() => setConditions(u)}>Commission</ActionButton>}
         {u.candidature_hote === "ouverte" && (
           <ActionButton danger onClick={() => setConfirmation({
