@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from shared.activity import api as activity
-from .permissions import EstAdministrateur
-from .photos import InvalidPhoto, normalize_photo
+from shared.securite.permissions import EstAdministrateur
+from shared.media.photos import InvalidPhoto, normalize_photo
 
 
 class ChampPhoto(serializers.ImageField):

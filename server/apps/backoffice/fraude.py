@@ -10,7 +10,7 @@ from shared.securite.models import AlerteFraudeModel
 from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 
-from shared.securite.backoffice import nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import nom as _nom, paginer as _paginer
 
 LIBELLES = {'telephone': 'Téléphone', 'email': 'Email', 'lien': 'Lien', 'reseau': 'Réseau social',
             'application': 'Application de messagerie', 'hors_site': 'Paiement hors site',

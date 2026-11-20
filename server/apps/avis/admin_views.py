@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from apps.hebergements import api as hebergements
 from shared.activity import api as activity
 from apps.users import api as users
-from shared.securite.backoffice import VueAdmin, entier as _entier, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import VueAdmin, entier as _entier, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
 
 from .models import AvisModel
 

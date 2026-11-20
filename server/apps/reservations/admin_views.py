@@ -9,7 +9,7 @@ from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from shared.activity import api as activity
 from apps.users import api as users
-from shared.securite.backoffice import VueAdmin, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import VueAdmin, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
 
 from . import paiement
 from .models import ReservationModel

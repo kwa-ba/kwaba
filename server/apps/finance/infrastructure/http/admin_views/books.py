@@ -13,7 +13,7 @@ from apps.finance.infrastructure.persistence.models import (
     OffreModel,
     TiersTypeModel,
 )
-from shared.securite.backoffice import VueAdmin
+from shared.backoffice_kit.views import VueAdmin
 
 from .common import (
     INCONNU,

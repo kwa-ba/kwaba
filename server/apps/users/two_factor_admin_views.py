@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from shared.activity import api as activity
-from shared.securite.backoffice import VueAdmin
+from shared.backoffice_kit.views import VueAdmin
 
 from .api import revoquer_jetons
 from .infrastructure.http.serializers.two_factor_serializers import TwoFactorResetSerializer

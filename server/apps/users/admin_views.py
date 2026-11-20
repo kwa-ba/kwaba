@@ -10,7 +10,7 @@ from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from apps.reservations import api as reservations
 from shared.activity import api as activity
-from shared.securite.backoffice import VueAdmin, booleen as _booleen, introuvable as _introuvable, paginer as _paginer
+from shared.backoffice_kit.views import VueAdmin, booleen as _booleen, introuvable as _introuvable, paginer as _paginer
 from shared.securite.permissions import SECTIONS_ADMIN, SPECIAL_PERMISSIONS, est_en_lecture_seule
 
 from .api import ROLES, hote_ou_candidat, revoquer_jetons

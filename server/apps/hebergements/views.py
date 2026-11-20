@@ -19,7 +19,7 @@ from .disponibilites import a_des_reservations, periodes_indisponibles, verrouil
 from .models import BlocageModel, BrouillonAnnonceModel, HebergementModel, HebergementPhotoModel, TypeLogementModel
 from .occupations import reservations
 from shared.securite import fraude
-from shared.securite.photos import InvalidPhoto, normalize_photo
+from shared.media.photos import InvalidPhoto, normalize_photo
 
 from . import types_logement
 from .serializers import (
