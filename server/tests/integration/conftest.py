@@ -11,6 +11,7 @@ from apps.reservations.models import ReservationModel
 from apps.notifications.infrastructure.messaging.EmailRequestBus import EmailRequestBus
 from apps.users.infrastructure.messaging.RabbitMQEventBus import RabbitMQEventBus
 from apps.users.infrastructure.persistence.models import UserModel
+from tests.integration.sessions import session_token
 
 PASSWORD = 'Kwaba-Test-2026!'
 
@@ -131,10 +132,22 @@ def raw_client():
 
 @pytest.fixture
 def client_for():
-    """A separate authenticated client per user."""
+    """A separate authenticated client per user. An admin has given the second factor: the tests of its refusal
+    use unverified_client_for."""
     def _login_as(user):
         client = APIClient()
-        client.force_authenticate(user=user)
+        client.force_authenticate(user=user, token=session_token(user, verified=True))
+        return client
+
+    return _login_as
+
+
+@pytest.fixture
+def unverified_client_for():
+    """Authenticated client whose token carries no second factor verification."""
+    def _login_as(user):
+        client = APIClient()
+        client.force_authenticate(user=user, token=session_token(user, verified=False))
         return client
 
     return _login_as

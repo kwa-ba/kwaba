@@ -1,5 +1,7 @@
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
+from . import two_factor
+
 ADMIN_API = '/api/v1/admin/'
 
 # Back-office sections an admin can be limited to, shown in this order to the super admins
@@ -77,6 +79,15 @@ def has_special_permission(user, permission: str) -> bool:
     return user.role == 'admin' and (user.is_superuser or permission in (user.admin_permissions or []))
 
 
+def agent_space_access(request) -> bool:
+    """Agents' space: a field agent, or an admin who gave the second factor (ADR-028) and has the verifications
+    section. Shared by the permissions of terrain, agenda and verifications."""
+    if request.user.role != 'admin':
+        return True
+    two_factor.require(request)
+    return a_acces_section(request.user, 'verifications')
+
+
 class EstAdministrateur(IsAuthenticated):
     """Back-office: role and sections read from the database at every request (request.user), never from the frontend
     session."""
@@ -86,6 +97,8 @@ class EstAdministrateur(IsAuthenticated):
     def has_permission(self, request, view):
         if not (super().has_permission(request, view) and request.user.role == 'admin'):
             return False
+        # Second factor verified less than 12 h ago, whatever the route (ADR-028)
+        two_factor.require(request)
         if request.path.removeprefix(ADMIN_API).startswith(ROUTES_TOUS_ADMINS):
             return True
         if not a_acces_section(request.user, section_de(request.path)):
