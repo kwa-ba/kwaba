@@ -2,7 +2,7 @@
 Double authentification (TOTP) obligatoire pour tous les comptes du back-office
 
 # Status:
-Proposé (20 novembre 2026), en attente de la relecture de MENDE Fadel.
+Accepté (20 novembre 2026), relu par MENDE Fadel.
 
 # Contexte :
 La recette finance du 19 novembre demande, au ticket DEV-L11 (P1, avant la première clôture du 31 janvier 2027), une « 2FA exigée » pour tout accès financier. Aujourd'hui, un admin entre dans le back-office avec un seul facteur : mot de passe, compte Google ou code reçu par email. Si ce facteur fuit, quelqu'un d'autre peut lire les finances, valider une opération ou modifier des droits.
