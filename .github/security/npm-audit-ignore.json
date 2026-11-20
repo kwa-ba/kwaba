@@ -1,8 +1,1 @@
-[
-  {
-    "id": "GHSA-fc5q-39xc-vjpf",
-    "package": "picomatch",
-    "until": "2026-12-18",
-    "reason": "No patched picomatch yet (<= 4.0.7, the latest). Pulled by next-intl -> @parcel/watcher, which only watches files with patterns fixed in the code, never visitor input. Remove once picomatch publishes a fix."
-  }
-]
+[]
