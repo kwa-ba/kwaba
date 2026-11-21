@@ -132,8 +132,12 @@ PAIEMENTS_PAUSE_EMAIL=1                  # secondes entre deux emails du worker 
 ```
 
 Sans aucune clé :
-- **en production** (`PAIEMENT_HORS_LIGNE` faux, par défaut hors `DJANGO_DEBUG`), logements, transferts et locations ne peuvent pas être réservés (`503` / message « paiement momentanément indisponible ») : rien n'est jamais confirmé sans paiement ;
+- **hors développement, production et préprod** (`PAIEMENT_HORS_LIGNE` faux, par défaut hors `DJANGO_DEBUG`), logements, transferts et locations ne peuvent pas être réservés (`503` / message « paiement momentanément indisponible ») : rien n'est jamais confirmé sans paiement ;
 - **en développement** (`PAIEMENT_HORS_LIGNE=True`), les réservations sont confirmées immédiatement, sans paiement.
+
+**La simulation est coupée hors développement** (décision D1, [ADR-033](../ADR/ADR-033-preuve-d-encaissement-et-sandbox-en-preprod.md)) : le contrôle `paiements.E001` arrête le déploiement si `PAIEMENT_HORS_LIGNE` est actif avec `DJANGO_DEBUG` faux, en production comme en préprod. La préprod passe par la sandbox FedaPay (`FEDAPAY_ENV=sandbox`), la production par FedaPay en direct (`live`) à partir du lancement.
+
+**Preuve d'encaissement** : le webhook et la page de retour n'apportent qu'un identifiant de transaction ; le serveur relit son statut chez FedaPay et ne confirme qu'un paiement « approuvé ». Un webhook non signé est refusé, un événement envoyé plusieurs fois (ou suivi de la page de retour) n'écrit qu'un encaissement, et les frais réels (D01) sont écrits au rapprochement. Tests : `server/tests/integration/paiements/test_payment_proof.py`, `finance/test_sejours.py` (DEV-L3), `finance/test_rapprochement.py` (D01).
 
 Webhook à déclarer dans le tableau de bord FedaPay : `https://<domaine-api>/api/v1/paiements/webhooks/fedapay/`, événements `transaction.*` et `payout.*`. En local, FedaPay ne peut pas joindre `localhost` : la page de retour et le worker suffisent.
 
