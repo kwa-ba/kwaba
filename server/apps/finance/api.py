@@ -557,6 +557,16 @@ def souscrire_capital(jour: date, *, par_id: uuid.UUID | None = None) -> int:
     return capital_service().souscrire(jour, par_id=par_id)
 
 
+def amortir_si_du() -> int:
+    """Worker: once an hour at most, the monthly amortisation of the Solution for the finished months still open
+    (ADR-037). Returns the amount written."""
+    from django.core.cache import cache  # local import: only the worker paces itself
+
+    if not cache.add('finance:amortissement', 1, timeout=3600):
+        return 0
+    return _pilotage().amortisation.amortise_finished_months()
+
+
 def regulariser_cut_off(mois: date | None = None, *, par_id: uuid.UUID | None = None) -> int:
     """Cut-off of the service fees (ADR-034): writes what 477 lacks at the end of a finished month (every finished
     open month if `mois` is None). Returns the number of lines written."""

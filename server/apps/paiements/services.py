@@ -624,6 +624,11 @@ def passe() -> dict:
         stats['cut_off'] = finance.regulariser_cut_off_si_du()
     except Exception:
         logger.exception('Cut-off des frais de service en échec')
+    try:
+        # Monthly amortisation of the Solution, for the finished months (ADR-037)
+        stats['amortissement'] = finance.amortir_si_du()
+    except Exception:
+        logger.exception('Amortissement de la Solution en échec')
     return {k: v for k, v in stats.items() if v}
 
 
