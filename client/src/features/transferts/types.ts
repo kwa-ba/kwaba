@@ -58,9 +58,17 @@ export interface Transfert {
   statut: StatutTransfert;
   expire_le: string | null;
   annule_par: "" | "voyageur" | "plateforme" | "expiration";
-  chauffeur: { nom: string; telephone: string; vehicule: string; immatriculation: string } | null;
+  chauffeur: {
+    nom: string; telephone: string; vehicule: string; immatriculation: string;
+    /** Level of the driver, and their photo validated by the team (to recognise them at arrivals) */
+    niveau: NiveauChauffeur; niveau_libelle: string; photo: string | null;
+  } | null;
+  /** A ride done: the traveller may rate the driver once */
+  avis_chauffeur: { donne: boolean } | null;
   paiement: StatutPaiement | null;
   remboursement: { montant: number; statut: "attente_numero" | "en_cours" | "envoye" } | null;
   annulation_gratuite: boolean;
   cree_le: string;
 }
+
+export type NiveauChauffeur = "standard" | "confirme" | "excellence";

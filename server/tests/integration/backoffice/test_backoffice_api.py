@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.avis.models import CRITERES, AvisModel
 from apps.hebergements.models import HebergementModel
 from apps.reservations.models import ReservationModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 ADMIN = '/api/v1/admin/'
 

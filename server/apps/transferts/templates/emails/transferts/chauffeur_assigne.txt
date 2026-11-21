@@ -2,7 +2,7 @@
 
 Votre chauffeur pour le {{ arrivee }} est attribué :
 
-  {{ chauffeur }}
+  {{ chauffeur }}, chauffeur {{ niveau }}
   Téléphone / WhatsApp : {{ telephone_chauffeur }}
   Véhicule : {{ vehicule }}, immatriculation {{ immatriculation }}
 
@@ -10,7 +10,7 @@ Il vous attendra à la sortie des arrivées de l'aéroport {{ aeroport }} avec u
 
 Un souci à l'arrivée ? Assistance Kwa-Ba : {{ assistance }}
 
-Votre transfert : {{ url }}
+Votre transfert{% if photo %}, avec la photo de votre chauffeur pour le reconnaître{% endif %} : {{ url }}
 
 Bon voyage,
 L'équipe Kwa-Ba

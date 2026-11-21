@@ -4,8 +4,8 @@ import pytest
 from django.core import mail
 
 from apps.messaging.infrastructure.persistence.models import MessageModel, NotificationOutboxModel
-from apps.securite.coordonnees import MASQUE, analyser
-from apps.securite.models import AlerteFraudeModel
+from shared.securite.coordonnees import MASQUE, analyser
+from shared.securite.models import AlerteFraudeModel
 
 CONVERSATIONS = '/api/v1/messaging/conversations/'
 

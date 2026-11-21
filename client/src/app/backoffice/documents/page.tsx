@@ -5,11 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Contrats from "@/features/contrats/admin/Contrats";
 import ModelesContrats from "@/features/contrats/admin/ModelesContrats";
+import Avoirs from "@/features/documents/admin/Avoirs";
 import Factures from "@/features/documents/admin/Factures";
 import Societe from "@/features/documents/admin/Societe";
 
 const ONGLETS = [
   { id: "factures", label: "Factures", Composant: Factures },
+  { id: "avoirs", label: "Avoirs", Composant: Avoirs },
   { id: "contrats", label: "Contrats", Composant: Contrats },
   { id: "modeles", label: "Modèles de contrat", Composant: ModelesContrats },
   { id: "societe", label: "Informations société", Composant: Societe },
@@ -24,7 +26,7 @@ function Documents() {
     <div className="space-y-5">
       <div>
         <h1 className="font-heading font-bold text-2xl sm:text-3xl text-dark">Documents</h1>
-        <p className="text-muted text-sm mt-1">Factures, contrats signés électroniquement et informations légales imprimées sur tous les documents.</p>
+        <p className="text-muted text-sm mt-1">Factures, avoirs, contrats signés électroniquement et informations légales imprimées sur tous les documents.</p>
       </div>
       <div role="tablist" className="flex gap-5 overflow-x-auto scrollbar-hide border-b border-gray-200">
         {ONGLETS.map((o) => (

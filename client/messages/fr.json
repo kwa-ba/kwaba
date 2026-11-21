@@ -56,6 +56,12 @@
     },
     "titreAccueil": "Kwa-Ba · Logements vérifiés à Lomé et partout au Togo"
   },
+  "introuvable": {
+    "titre": "Page introuvable",
+    "texte": "Cette adresse ne correspond à aucune page. Elle a peut-être changé, ou le lien est incomplet.",
+    "retourAccueil": "Retour à l'accueil",
+    "retourBackoffice": "Retour au back-office"
+  },
   "commun": {
     "allerAuContenu": "Aller au contenu principal",
     "chargement": "Chargement…",
@@ -240,7 +246,7 @@
         "texte": "Une équipe sur place, qui vous répond par email."
       },
       "versement": {
-        "titre": "Votre hôte payé 24 h après votre arrivée",
+        "titre": "Votre hôte payé 48 h après votre arrivée",
         "texte": "Vous avez le temps de signaler un problème avant que l'hôte ne soit payé."
       }
     },
@@ -944,7 +950,9 @@
     "informations": "Informations légales",
     "miseAJour": "Dernière mise à jour : {date}",
     "sommaire": "Sommaire",
-    "aCompleter": "À compléter"
+    "aCompleter": "À compléter",
+    "adresseSiege": "adresse du siège",
+    "capitalSocial": "capital social"
   },
   "aide": {
     "titre": "Centre d'aide",
@@ -1347,7 +1355,9 @@
     "annulationGratuite": "Annulation gratuite jusqu'à 24 heures avant l'arrivée.",
     "plusDeRemboursement": "Moins de 24 heures avant l'arrivée : plus de remboursement.",
     "annulation": "Annulation…",
-    "annuler": "Annuler le transfert"
+    "annuler": "Annuler le transfert",
+    "photoChauffeur": "Photo de {nom}",
+    "niveauChauffeur": "Chauffeur {niveau}"
   },
   "concierge": {
     "suggestions": {
@@ -1438,7 +1448,7 @@
       },
       "recevoir": {
         "titre": "Recevez des réservations",
-        "texte": "Les voyageurs paient en ligne ; votre part vous est versée par Mobile Money 24 h après leur arrivée."
+        "texte": "Les voyageurs paient en ligne ; votre part vous est versée par Mobile Money 48 h après leur arrivée."
       }
     },
     "active": "C'est parti ! Préparez votre annonce.",
@@ -1714,7 +1724,7 @@
     },
     "totaux": {
       "aVenir": "À venir",
-      "aVenirAide": "Versé 24 h après l'arrivée du voyageur",
+      "aVenirAide": "Versé 48 h après l'arrivée du voyageur",
       "enCours": "En cours d'envoi",
       "enCoursAide": "Sur votre Mobile Money sous peu",
       "verse": "Déjà versé",
@@ -1731,7 +1741,7 @@
     "modifier": "Modifier",
     "ouRecevoir": "Où recevoir mon argent",
     "manquant": "Indiquez votre compte Mobile Money : sans lui, nous ne pouvons pas vous verser vos revenus.",
-    "envoyeSur": "Votre part est envoyée sur ce compte Mobile Money 24 heures après l'arrivée du voyageur.",
+    "envoyeSur": "Votre part est envoyée sur ce compte Mobile Money 48 heures après l'arrivée du voyageur.",
     "titulaire": "Nom du titulaire",
     "titulaireAide": "Tel qu'enregistré chez l'opérateur",
     "annuler": "Annuler",
@@ -1862,7 +1872,9 @@
       "payerPar": "Payer par {moyen}",
       "carte": "carte",
       "annulerPartiel": "Le délai d'annulation gratuite est passé : vous serez remboursé de {montant}. Annuler quand même ?",
-      "rembourseSiAnnulation": "En annulant maintenant, vous seriez remboursé de {montant}."
+      "rembourseSiAnnulation": "En annulant maintenant, vous seriez remboursé de {montant}.",
+      "photoChauffeur": "Photo de votre chauffeur",
+      "votreChauffeurNiveau": "Votre chauffeur, niveau {niveau}. Son nom et son numéro vous sont envoyés par email."
     },
     "gammes": {
       "citadine": "Citadine",
@@ -2081,7 +2093,7 @@
     "commissionTotale": "Commission totale",
     "revenuEstime": "Votre revenu estimé",
     "voyageur": "Le voyageur paie {total}, dont {frais} de frais de service Kwa-Ba ({taux}) : ces frais s'ajoutent à votre prix et ne réduisent pas votre revenu.",
-    "note": "Estimation indicative. Le montant définitif est calculé par Kwa-Ba à la réservation et versé par Mobile Money 24 heures après l'arrivée du voyageur."
+    "note": "Estimation indicative. Le montant définitif est calculé par Kwa-Ba à la réservation et versé par Mobile Money 48 heures après l'arrivée du voyageur."
   },
   "typesHote": {
     "titre": "Chambres et types de logement",
@@ -2255,7 +2267,7 @@
     },
     "versement": {
       "titre": "Où recevoir vos revenus ?",
-      "texte": "Votre part vous est versée par Mobile Money, 24 h après l'arrivée des voyageurs."
+      "texte": "Votre part vous est versée par Mobile Money, 48 h après l'arrivée des voyageurs."
     },
     "contrat": {
       "titre": "Les conditions à accepter",
@@ -2518,5 +2530,21 @@
     "bannerBook": "Réserver la visite",
     "bannerBooked": "Prochaine visite de vérification : {date} à {time}",
     "bannerSee": "Voir ma visite"
+  },
+  "avisChauffeur": {
+    "titre": "Votre avis sur votre chauffeur",
+    "aide": "Il reste entre vous et l'équipe Kwa-Ba : il nous aide à garder les meilleurs chauffeurs.",
+    "criteres": {
+      "note": "Note générale",
+      "ponctualite": "Ponctualité",
+      "conduite": "Conduite",
+      "amabilite": "Amabilité"
+    },
+    "etoiles": "{n} sur 5",
+    "commentaire": "Un commentaire (facultatif)",
+    "envoyer": "Envoyer mon avis",
+    "envoi": "Envoi…",
+    "merci": "Merci pour votre avis.",
+    "erreur": "Votre avis n’a pas pu être envoyé."
   }
 }

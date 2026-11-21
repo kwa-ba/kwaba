@@ -4,10 +4,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.messaging import api as messaging
-from apps.securite import fraude
-from apps.activity import api as activity
-from apps.securite.backoffice import nom
-from apps.securite.permissions import EstAdministrateur
+from shared.securite import fraude
+from shared.activity import api as activity
+from shared.backoffice_kit.views import nom
+from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 
 

@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 
 from config.prelancement import verifier_ouverture
-from apps.export import api as export
+from shared.export import api as export
 from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from apps.users import api as users

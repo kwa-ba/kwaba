@@ -62,6 +62,16 @@ Le voyageur saisit l'heure de son billet (heure locale de l'aéroport). Elle est
 | POST | `<id>/payer/` | `{moyen}` → `{url}` de la page de paiement |
 | PUT | `<id>/compte-remboursement/` | Compte Mobile Money pour le remboursement |
 
+## Photo, niveaux et avis des chauffeurs (décisions du 19 novembre 2026)
+
+Décision : [ADR-027](../ADR/ADR-027-chauffeurs-photo-avis-niveaux.md).
+
+- **Photo de profil obligatoire** : l'équipe l'ajoute dans le back-office (Transferts → Chauffeurs, fiche du chauffeur ; JPEG, PNG ou WebP, 400 px au moins, réencodée sans métadonnées), puis la **valide** (un visage net, celui du chauffeur). Sans photo validée, un chauffeur ne reçoit **aucune course ni mission** : il n'est pas proposé à l'attribution (transferts et locations avec chauffeur), et l'attribution est refusée. Une nouvelle photo attend une nouvelle validation.
+- **Ce que voit le voyageur** : une fois le chauffeur attribué, sa photo et son niveau sur la page du transfert (et de la location avec chauffeur, sans son nom ni son numéro, qui restent dans l'email), et son niveau dans l'email d'attribution.
+- **Avis du voyageur** : après la course (transfert effectué, location avec chauffeur terminée), un email lui demande une fois une note de 1 à 5, la ponctualité, la conduite, l'amabilité et un commentaire facultatif (`POST /api/v1/transferts/<id>/avis-chauffeur/`, `POST /api/v1/locations/<id>/avis-chauffeur/`). Un seul avis par course, vu par l'équipe seulement (`transferts_avis_chauffeur`).
+- **Incidents** : l'équipe enregistre un incident grave, un retard, une absence (fiche du chauffeur, « Suivi » : `POST /api/v1/admin/transferts/chauffeurs/<id>/suivi/`).
+- **Niveaux** Standard, Confirmé, Excellence (`niveaux.py`) : chaque trimestre, l'appli propose le niveau de chaque chauffeur d'après les 3 derniers mois (`chauffeur_niveau_periode_mois`) : ses courses (transferts effectués et locations terminées), sa note moyenne, ses incidents. **Confirmé** : 15 courses (`chauffeur_confirme_courses`) et une note de 4,3 (`chauffeur_confirme_note`). **Excellence** : 40 courses (`chauffeur_excellence_courses`), 4,7 (`chauffeur_excellence_note`), ni retard ni absence. Un incident grave fait descendre d'un niveau ; sans avis, Standard. L'équipe **valide** ou corrige chaque proposition (un motif quand elle s'en écarte) : `transferts_niveau_chauffeur` garde l'avant, l'après, la proposition, le motif et les chiffres ; journal `backoffice_modification`. Le niveau Excellence donne la part de 6 500 F par jour (le champ `excellence` le suit) ; le niveau ne se change plus depuis la fiche. Au début de chaque trimestre, l'équipe reçoit un rappel si aucun niveau n'a encore été validé. Les seuils sont des paramètres (Finance → Paramètres, migration finance `0018`).
+
 ## Paiement
 
 Les tables de `apps.paiements` servent aussi aux transferts : `PaiementModel` et `RemboursementModel` portent soit une `reservation`, soit un `transfert` (contrainte en base). Les versements aux chauffeurs (`VersementChauffeurModel`) utilisent les mêmes fonctions d'envoi que ceux des hôtes (`envoyer_payout`, nouveaux essais progressifs, alerte aux administrateurs en cas d'échec). Le worker `traiter_paiements` traite aussi les transferts.

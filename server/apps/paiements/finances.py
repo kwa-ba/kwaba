@@ -38,7 +38,7 @@ def _jour(valeur) -> date | None:
 
 
 def _reference(type_objet: str, objet_id) -> str:
-    """Reference of a paid object as its module writes it (RES-AF2026-3A43), through the registry."""
+    """Reference of a paid object as its module writes it (RES-KB2026-3A43), through the registry."""
     produit = PRODUITS.get(type_objet)
     description = produit.decrire(objet_id) if produit and produit.decrire else None
     return (description or {}).get('reference', '')

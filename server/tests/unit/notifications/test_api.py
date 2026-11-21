@@ -1,4 +1,4 @@
-from apps.notifications import api
+from shared.notifications import api
 
 
 def test_an_event_without_an_email_is_ignored(mailoutbox):

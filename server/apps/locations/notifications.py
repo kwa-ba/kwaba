@@ -6,9 +6,10 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.utils import formats, timezone
 
+from apps.documents import api as documents
 from apps.paiements import api as paiements
 from apps.users import api as users
-from apps.securite import coordonnees
+from shared.securite import coordonnees
 from apps.transferts import api as transferts
 
 from .models import LocationModel, ParametresLocationModel, VersementChauffeurLocationModel, VersementPartenaireModel
@@ -69,6 +70,14 @@ def a_attribuer(loc: LocationModel, urgent: bool = False):
     })
 
 
+def avis_au_voyageur(loc: LocationModel):
+    """A rental with a partner driver is finished: the traveller is asked once how their driver was."""
+    c = transferts.fiche_chauffeur(loc.chauffeur_partenaire_id)
+    paiements.envoyer_email('emails/locations/avis_chauffeur.txt', 'Votre chauffeur Kwa-Ba : votre avis',
+                            [loc.voyageur.email], {**_location(loc), 'prenom': loc.voyageur.first_name,
+                                                   'prenom_chauffeur': c['prenom'] if c else 'votre chauffeur'})
+
+
 def partenaire_au_voyageur(loc: LocationModel):
     p = loc.partenaire
     paiements.envoyer_email('emails/locations/partenaire_assigne.txt', f"Votre {'chauffeur' if loc.formule == 'chauffeur_seul' else 'véhicule'} à {loc.lieu_prise.ville}",
@@ -76,6 +85,8 @@ def partenaire_au_voyageur(loc: LocationModel):
                  **_location(loc), 'prenom': loc.voyageur.first_name, 'partenaire': p.nom if p else '',
                  'contact': p.contact if p else '', 'telephone_partenaire': p.telephone if p else '',
                  'assistance': settings.ASSISTANCE_CONTACT,
+                 'niveau_chauffeur': (transferts.fiche_chauffeur(loc.chauffeur_partenaire_id) or {}).get('niveau_libelle', '')
+                 if loc.chauffeur_partenaire_id else '',
              })
 
 
@@ -119,14 +130,24 @@ def versement_au_partenaire(v: VersementPartenaireModel):
 
 
 def caution_au_voyageur(loc: LocationModel):
-    """Deposit return: amount given back, withheld amount and its reason; Mobile Money number to give if needed."""
+    """Deposit return: amount given back, withheld amount and its reason; Mobile Money number to give if needed. The
+    REC receipt or RET notice is attached (GL-14); a RET notice also goes to the owner who receives the amount."""
     rendu = loc.caution - loc.caution_retenue
+    piece = documents.piece_caution('location', loc.pk)
+    numero = piece[0].removesuffix('.pdf') if piece else ''
     paiements.envoyer_email('emails/locations/caution_restituee.txt', f"Restitution de votre caution : {loc.reference}", [loc.voyageur.email], {
         'prenom': loc.voyageur.first_name, 'reference': loc.reference, 'caution': paiements.fcfa(loc.caution),
         'rendu': paiements.fcfa(rendu), 'retenue': paiements.fcfa(loc.caution_retenue) if loc.caution_retenue else '',
         'motif': loc.caution_motif, 'numero_requis': paiements.numero_remboursement_requis('location', loc.pk),
         'url': f"{settings.FRONTEND_URL}/location/{loc.id}", 'assistance': settings.ASSISTANCE_CONTACT,
-    })
+        'document': numero,
+    }, pieces_jointes=[piece] if piece else None)
+    if loc.caution_retenue and piece and loc.partenaire and loc.partenaire.email:
+        paiements.envoyer_email('emails/locations/retenue_partenaire.txt', f"Retenue sur caution : {loc.reference}",
+                                [loc.partenaire.email], {
+            'contact': loc.partenaire.contact, 'reference': loc.reference, 'caution': paiements.fcfa(loc.caution),
+            'retenue': paiements.fcfa(loc.caution_retenue), 'motif': loc.caution_motif, 'document': numero,
+        }, pieces_jointes=[piece])
 
 
 def _traiter(qs, fonction, drapeau):
@@ -163,6 +184,8 @@ def envoyer_notifications() -> int:
     total += _traiter(assignees.filter(partenaire_notifie=False), partenaire_au_voyageur, 'partenaire_notifie')
     total += _traiter(assignees.filter(location_envoyee_partenaire=False), location_au_partenaire, 'location_envoyee_partenaire')
     total += _traiter(assignees.filter(mission_envoyee_chauffeur=False), mission_au_chauffeur, 'mission_envoyee_chauffeur')
+    total += _traiter(qs.filter(statut='terminee', chauffeur_partenaire_id__isnull=False, avis_chauffeur_demande=False),
+                      avis_au_voyageur, 'avis_chauffeur_demande')
     total += _traiter(
         qs.filter(statut__in=('partenaire_assigne', 'terminee'), caution_en_ligne=True, caution__gt=0,
                   caution_restituee_le__isnull=False, caution_notifiee=False),

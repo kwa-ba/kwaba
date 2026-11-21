@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.finance import api as finance
 from apps.finance.models import (CompteArgentModel, CorrespondanceHistoModel, MouvementModel, NatureModel,
                                  OffreModel, ParametreHistoModel, ParametreModel, PeriodeModel, RapportModel)
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 HOTE = str(uuid.uuid4())  # third party ids are text in the ledger
 RESERVATION = uuid.uuid4()
@@ -56,14 +56,36 @@ def executer(sql: str, params=()):
 def test_reference_data_of_the_schema_is_loaded():
     assert NatureModel.objects.count() == 54
     assert NatureModel.objects.filter(actif=True).count() == 40
-    assert ParametreModel.objects.count() == 95
-    assert ParametreModel.objects.filter(actif=True).count() == 53
+    # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
+    # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
+    # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),
+    # the thresholds of the drivers' levels (0018)
+    assert ParametreModel.objects.count() == 109
+    assert ParametreModel.objects.filter(actif=True).count() == 67
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
-    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == ['FEDAPAY']
+    # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
+    # amortisation of the Solution (GL-23); the bank opens in the app the day it exists (GL-22)
+    assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == [
+        'AMORTISSEMENTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE']
+    # The guarantee fund is a reserve (ADR-031): its natures leave the result, with the history of every change
+    assert dict(NatureModel.objects.filter(famille_id='G').values_list('code', 'compte_syscohada')) == {
+        'G01': '1301', 'G02': '1301'}
+    assert NatureModel.objects.get(code='D04').compte_syscohada == '658'
+    assert CorrespondanceHistoModel.objects.filter(nature_id__in=['G01', 'G02'], compte_avant__isnull=True).count() == 2
+    assert list(CorrespondanceHistoModel.objects.filter(nature_id='G01').order_by('pk').values_list(
+        'compte_avant', 'compte_apres')) == [(None, '6911'), ('6911', '1301')]
+    fonds = CompteArgentModel.objects.get(code='GARANTIE')
+    assert (fonds.type, fonds.compte_syscohada) == ('reserve', '118')
+    assert finance.parametre('fonds_garantie_cible') == 0
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
-    for cle in ('fonds_garantie_taux', 'double_validation_seuil', 'garantie_renforcee_beneficiaire'):
+    for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):
         assert finance.parametre(cle) == 0
+    # Decided on 18 November 2026, each with its dated history
+    assert (finance.parametre('double_validation_seuil'), finance.parametre('fonds_garantie_taux'),
+            finance.parametre('capital_social')) == (250_000, 10, 500_000)
+    assert ParametreHistoModel.objects.filter(cle__in=['double_validation_seuil', 'fonds_garantie_taux',
+                                                       'capital_social']).count() == 3
 
 
 def test_parametre_reads_an_active_value_and_refuses_unknown_or_inactive_keys():

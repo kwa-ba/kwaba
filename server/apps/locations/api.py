@@ -27,3 +27,15 @@ def parametres_contrat() -> dict | None:
         return None
     return {'commission_pourcent': p.commission_pourcent, 'delai_min_jours': p.delai_min_jours,
             'restitution_caution_heures': p.restitution_caution_heures}
+
+
+def missions_chauffeur(chauffeur_ids, depuis) -> dict[int, int]:
+    """Finished rentals with a driver since `depuis`, by partner driver: their rides counted by the level review of the
+    drivers (module transferts)."""
+    from django.db.models import Count
+
+    from .models import LocationModel
+
+    return dict(LocationModel.objects.filter(chauffeur_partenaire_id__in=list(chauffeur_ids), statut='terminee',
+                                             fin__gte=depuis)
+                .values('chauffeur_partenaire_id').annotate(n=Count('id')).values_list('chauffeur_partenaire_id', 'n'))

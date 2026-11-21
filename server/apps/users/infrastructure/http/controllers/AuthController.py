@@ -12,9 +12,9 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from apps.securite import captcha
-from apps.activity import api as activity
-from apps.securite.limites import Tentatives, incrementer, limite_ip
+from shared.securite import captcha
+from shared.activity import api as activity
+from shared.securite.limites import Tentatives, incrementer, limite_ip
 from apps.users.api import revoquer_jetons
 from apps.users.application.dto.dto import GoogleAuthDTO, RegisterDTO, UserRole
 from apps.users.application.service.UserService import UserService

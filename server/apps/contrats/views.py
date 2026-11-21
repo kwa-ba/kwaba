@@ -11,10 +11,10 @@ from config import prelancement
 from apps.documents.api import societe_immatriculee
 from apps.give import api as give
 from apps.locations import api as locations
-from apps.activity import api as activity
-from apps.securite.backoffice import paginer
-from apps.securite.limites import ip_client, limite_ip
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.backoffice_kit.views import paginer
+from shared.securite.limites import ip_client, limite_ip
+from shared.securite.permissions import EstAdministrateur
 from apps.transferts import api as transferts
 from apps.users import api as users
 

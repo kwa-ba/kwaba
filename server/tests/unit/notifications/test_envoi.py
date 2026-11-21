@@ -1,4 +1,4 @@
-from apps.notifications.infrastructure.email.envoi import send_mail
+from shared.notifications.infrastructure.email.envoi import send_mail
 
 
 def test_each_recipient_gets_their_own_email_without_the_others_addresses(mailoutbox, settings):

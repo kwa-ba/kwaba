@@ -4,7 +4,7 @@ import pytest
 
 from apps.agenda import api as agenda
 from apps.agenda.models import AgendaSettingsModel, AppointmentModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 from .conftest import at, in_days
 
@@ -81,4 +81,4 @@ def test_a_super_admin_grants_the_permission(super_admin, make_user, client_for)
 
 def test_super_admins_have_every_permission(super_admin, client_for):
     assert set(client_for(super_admin).get('/api/v1/admin/droits/').data['permissions']) == {
-        'agenda_settings', 'validate_without_visit', 'activity_log'}
+        'agenda_settings', 'validate_without_visit', 'activity_log', 'finance_operations'}

@@ -1,16 +1,14 @@
 # JSON validation, deserialization and serialization
-import hashlib
 import re
 import unicodedata
 
 from django.contrib.auth.password_validation import validate_password
-from django.conf import settings
-from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import connection, transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from apps.users.infrastructure.http.refresh_lock import locked_refresh, remember_replacing_pair, replacing_pair
 
 
 NOM_REFUSE = "Un nom tient sur une ligne, sans caractère invisible."
@@ -108,17 +106,13 @@ class RefreshWithGracePeriodSerializer(TokenRefreshSerializer):
     """
 
     def validate(self, attrs):
-        empreinte = hashlib.sha256(attrs['refresh'].encode()).digest()
-        cle = f'jwt_refresh_grace:{empreinte.hex()}'
-        with transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute('SELECT pg_advisory_xact_lock(%s)', [int.from_bytes(empreinte[:8], 'big', signed=True)])
-            deja_renouvele = cache.get(cle)
+        with locked_refresh(attrs['refresh']):
+            deja_renouvele = replacing_pair(attrs['refresh'])
             if deja_renouvele is not None:
                 # Reading the new token fails if it is blacklisted: a session closed in the meantime stays closed
                 RefreshToken(deja_renouvele['refresh'])
                 return deja_renouvele
             data = super().validate(attrs)
-            cache.set(cle, data, timeout=settings.JWT_REFRESH_GRACE_SECONDS)
+            remember_replacing_pair(attrs['refresh'], data)
             return data
 

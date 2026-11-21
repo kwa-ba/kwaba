@@ -4,7 +4,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import AeroportModel, ChauffeurModel, TarifTransfertModel, TransfertModel
 
 B = '/api/v1/admin/transferts/'
@@ -16,7 +16,7 @@ def admin(make_user, client_for):
 
 
 def _chauffeur(categorie='berline', **extra):
-    c = ChauffeurModel.objects.create(prenom='Komi', nom='Adjo', telephone='+22890000001', categorie=categorie,
+    c = ChauffeurModel.objects.create(photo_validee=True, prenom='Komi', nom='Adjo', telephone='+22890000001', categorie=categorie,
                                       vehicule='Corolla grise', immatriculation='TG 1', pays_versement='TG',
                                       operateur_versement='togocel', numero_versement='90000001', **extra)
     c.aeroports.add('LFW')
@@ -66,7 +66,7 @@ def test_chauffeur(admin):
 
 def test_attribution_et_annulation(admin, transfert):
     bon = _chauffeur()
-    trop_petit = ChauffeurModel.objects.create(prenom='A', nom='B', telephone='+22890000002', categorie='berline',
+    trop_petit = ChauffeurModel.objects.create(photo_validee=True, prenom='A', nom='B', telephone='+22890000002', categorie='berline',
                                                vehicule='x', immatriculation='x', pays_versement='TG',
                                                operateur_versement='togocel', numero_versement='90000002')
     assert [c['id'] for c in admin.get(f'{B}transferts/{transfert.id}/chauffeurs/').data] == [bon.id]

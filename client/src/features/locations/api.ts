@@ -101,10 +101,21 @@ export async function attribuerLocation(locationId: string, attribution: Record<
   await api.post(`${ADMIN}/locations/${locationId}/attribuer/`, attribution);
 }
 
-export async function retenirCaution(locationId: string, retenue: { montant: number; motif: string }) {
-  await api.post(`${ADMIN}/locations/${locationId}/caution/`, retenue);
+/** Withholding on the deposit (GL-14): its reason, the article of the terms of sale and the evidence (photos, report,
+ * quote), sent as multipart. 0 cancels it. */
+export async function retenirCaution(locationId: string, retenue: { montant: number; motif: string; cgv_article?: string; justificatifs?: File[] }) {
+  const corps = new FormData();
+  corps.append("montant", String(retenue.montant));
+  corps.append("motif", retenue.motif);
+  if (retenue.cgv_article) corps.append("cgv_article", retenue.cgv_article);
+  for (const f of retenue.justificatifs ?? []) corps.append("justificatifs", f);
+  await api.post(`${ADMIN}/locations/${locationId}/caution/`, corps);
 }
 
 export async function annulerLocationAdmin(locationId: string, motif: string) {
   await api.post(`${ADMIN}/locations/${locationId}/annuler/`, { motif });
+}
+
+export async function noterChauffeurLocation(id: string, avis: unknown) {
+  return (await api.post(`${LOCATIONS}/${id}/avis-chauffeur/`, avis)).data;
 }

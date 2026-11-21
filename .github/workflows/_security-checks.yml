@@ -47,7 +47,8 @@ jobs:
       - name: npm audit
         working-directory: client
         # Reads the lockfile, without installing. Dev dependencies do not go to production.
-        run: npm audit --omit=dev --audit-level=high
+        # Fails on high and critical advisories, except those accepted with a date in npm-audit-ignore.json.
+        run: node ../.github/scripts/npm-audit.mjs ../.github/security/npm-audit-ignore.json
 
   pip-audit:
     name: pip-audit (serveur)

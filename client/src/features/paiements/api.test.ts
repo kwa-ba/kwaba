@@ -52,3 +52,40 @@ describe("paiements", () => {
     expect(api.put).toHaveBeenLastCalledWith("/v1/paiements/profil-versement/", profil);
   });
 });
+
+describe("remboursements au back-office (GL-9)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("lit la liste et l'aperçu d'un séjour, puis rembourse ou demande une validation", async () => {
+    const p = paiements;
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    await p.lireRemboursements("a_traiter", 2);
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/", { params: { statut: "a_traiter", page: 2 } });
+    await p.lireApercuRemboursement("RES-KB2026-3A43");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/apercu/", { params: { reference: "RES-KB2026-3A43" } });
+
+    vi.mocked(api.post).mockResolvedValueOnce({ status: 202, data: { detail: "Deuxième personne", validation: "v1" } });
+    await expect(p.rembourserSejour("r1", "plateforme", "Hôte injoignable")).resolves.toEqual({ attenteValidation: true, message: "Deuxième personne" });
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/sejour/",
+      { reservation_id: "r1", bareme: "plateforme", motif: "Hôte injoignable" });
+
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { id: "x" } });
+    await p.agirSurRemboursement("x", "manuel", { reference: "FP-1" });
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/x/manuel/", { reference: "FP-1" });
+  });
+});
+
+describe("versements aux partenaires (GL-11)", () => {
+  it("lit les versements filtrés, relance un versement et demande un remboursement", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    await paiements.lireVersementsPartenaires("echoue");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/", { params: { statut: "echoue" } });
+    await paiements.lireVersementsPartenaires("");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/", { params: {} });
+    await paiements.relancerVersement("hote", "v1");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/versements/hote/v1/relancer/", {});
+    await paiements.relancerRecuperation("r1");
+    expect(api.post).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/recuperations/r1/relancer/", {});
+  });
+});

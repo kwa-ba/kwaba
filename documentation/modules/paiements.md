@@ -9,7 +9,7 @@ Kwa-Ba encaisse tout le paiement, le conserve jusqu'au séjour, puis reverse sa 
 
 ```
 Voyageur ──paie 64 800 FCFA──▶ Kwa-Ba (FedaPay ou PayPal)
-                                   │  conservé jusqu'à l'arrivée + 24 h
+                                   │  conservé jusqu'à l'arrivée + 48 h
                                    ├──▶ Hôte : 55 200 FCFA (Mobile Money, via FedaPay)
                                    └──▶ Kwa-Ba : 8 400 FCFA (avant frais des prestataires)
 ```
@@ -53,7 +53,7 @@ Pays ouverts aux versements : Togo, Bénin, Burkina Faso, Niger, Mali (`operateu
    - la page de retour interroge `GET .../statut/` toutes les 3 s ;
    - le webhook FedaPay `POST /api/v1/paiements/webhooks/fedapay/` ;
    - le worker, à chaque passe (il rattrape les webhooks perdus, et leur absence en local).
-   Paiement réussi → réservation `confirmed` + versement `planifie` à l'arrivée + 24 h (arrivée = 14 h le jour du check-in).
+   Paiement réussi → réservation `confirmed` + versement `planifie` à l'arrivée + 48 h (arrivée = 14 h le jour du check-in). Le délai est le paramètre `versement_hote_heures` du module finance, lu à la date de la réservation : 24 h pour les réservations faites avant le 19 novembre 2026 (CGV 2.4), 48 h depuis (CGV 2.5).
 4. **Relances** (`relances.py`, même principe pour les transferts et les locations) : dès la réservation, email « Payez avant HH:MM » avec le lien de paiement ; à mi-délai (15 min), rappel s'il n'a pas payé ; après l'annulation, email « Réservation annulée : paiement non reçu ». L'étape atteinte est gardée dans `relance_paiement`.
 5. **Sans paiement à temps** : le worker annule la réservation (`annule_par = expiration`) et libère les dates. Un paiement qui arrive après coup confirme la réservation si les dates sont encore libres, sinon il est remboursé intégralement.
 6. **Versement** : à l'échéance, le worker envoie la part de l'hôte sur son compte Mobile Money (profil saisi dans Espace hôte → Revenus). Sans profil, le versement attend, et l'hôte voit le message.
@@ -132,8 +132,12 @@ PAIEMENTS_PAUSE_EMAIL=1                  # secondes entre deux emails du worker 
 ```
 
 Sans aucune clé :
-- **en production** (`PAIEMENT_HORS_LIGNE` faux, par défaut hors `DJANGO_DEBUG`), logements, transferts et locations ne peuvent pas être réservés (`503` / message « paiement momentanément indisponible ») : rien n'est jamais confirmé sans paiement ;
+- **hors développement, production et préprod** (`PAIEMENT_HORS_LIGNE` faux, par défaut hors `DJANGO_DEBUG`), logements, transferts et locations ne peuvent pas être réservés (`503` / message « paiement momentanément indisponible ») : rien n'est jamais confirmé sans paiement ;
 - **en développement** (`PAIEMENT_HORS_LIGNE=True`), les réservations sont confirmées immédiatement, sans paiement.
+
+**La simulation est coupée hors développement** (décision D1, [ADR-033](../ADR/ADR-033-preuve-d-encaissement-et-sandbox-en-preprod.md)) : le contrôle `paiements.E001` arrête le déploiement si `PAIEMENT_HORS_LIGNE` est actif avec `DJANGO_DEBUG` faux, en production comme en préprod. La préprod passe par la sandbox FedaPay (`FEDAPAY_ENV=sandbox`), la production par FedaPay en direct (`live`) à partir du lancement.
+
+**Preuve d'encaissement** : le webhook et la page de retour n'apportent qu'un identifiant de transaction ; le serveur relit son statut chez FedaPay et ne confirme qu'un paiement « approuvé ». Un webhook non signé est refusé, un événement envoyé plusieurs fois (ou suivi de la page de retour) n'écrit qu'un encaissement, et les frais réels (D01) sont écrits au rapprochement. Tests : `server/tests/integration/paiements/test_payment_proof.py`, `finance/test_sejours.py` (DEV-L3), `finance/test_rapprochement.py` (D01).
 
 Webhook à déclarer dans le tableau de bord FedaPay : `https://<domaine-api>/api/v1/paiements/webhooks/fedapay/`, événements `transaction.*` et `payout.*`. En local, FedaPay ne peut pas joindre `localhost` : la page de retour et le worker suffisent.
 
@@ -163,11 +167,13 @@ L'admin Django (`/admin/`) liste les paiements, versements, remboursements et pr
 - **Versements « Échoué »** : après 5 tentatives (numéro faux, mode non activé…) ; le message d'erreur est dans `derniere_erreur`. Corriger puis repasser à « Planifié ». Si l'hôte a été payé à la main, passer la ligne à « Envoyé » : un hôte qui enregistre un nouveau numéro relance ses versements « Planifié », jamais un « Échoué ».
 - **Un payout n'est jamais créé deux fois** : son identifiant FedaPay est gardé avant le lancement. Si la réponse au lancement se perd (délai dépassé, erreur 5xx), l'essai suivant relit ce payout chez FedaPay au lieu d'en créer un second : relancé s'il est encore en attente (`pending`), laissé au suivi s'il est parti, remplacé seulement s'il a échoué ou si le compte de l'hôte a changé avant son lancement.
 - **Hôte désactivé** (compte fermé ou banni) : ses annonces quittent le site et ses versements « Planifié » restent suspendus, avec la raison dans `derniere_erreur`. Ils repartent seuls si le compte est réactivé.
-- Une annulation après le versement à l'hôte est journalisée en avertissement : à régulariser avec l'hôte.
+- **Versements aux partenaires** (back-office → Finance → Versements aux partenaires, GL-11, `GET /api/v1/admin/paiements/finances/versements/?statut=`) : chaque versement encore à envoyer (ou de l'état choisi), hôtes, chauffeurs et propriétaires de véhicules, avec sa date prévue, son état, ses essais et sa dernière erreur. Il est **en retard** au-delà de `versement_alerte_retard_heures` (24 h, paramètre du module finance) après sa date prévue. Un versement « Échoué » se **relance** d'un bouton (`POST …/versements/<type>/<id>/relancer/`, permission « Opérations financières », journal `versement_relance`) : il repart de zéro essai au prochain passage du worker. Chaque produit donne ses versements par le registre (`ProduitPaye.a_verser`, `ProduitPaye.relancer`). Une fois par jour, l'équipe finance reçoit le nombre de versements en retard et en échec (email sans montant ni nom).
+- **Annulation après le versement à l'hôte** (GL-23, cas FF-04) : ce que l'hôte a reçu au-delà de ce que le barème lui laisse devient une **récupération** (`paiements_recuperation`). Elle est **retenue sur ses prochains versements**, la plus ancienne d'abord, une fois par versement (`retenue` du versement, `paiements_retenue_versement`) ; un versement entièrement retenu ne part pas (« Envoyé », 0 F, sans email). Un versement modifié avant de partir (son séjour annulé à son tour) rend sa retenue. Un versement qui échoue après l'annulation de son séjour n'a rien payé : la récupération est sans objet, l'hôte ne reçoit que ce que le barème lui laisse. Sans versement à venir, la demande de remboursement à l'hôte part de la page (`POST …/recuperations/<id>/relancer/`, journal `recuperation_relancee`), et la somme reste affichée tant qu'elle n'est pas récupérée. Au grand livre, le compte de l'hôte est débiteur de cette somme jusqu'à la retenue : la récupération l'explique. Limite : un hôte qui rembourse par un autre moyen n'est pas encore saisi dans l'appli.
 
 ## Tests
 
 - `server/tests/unit/paiements/` : montants, arrondis, barème d'annulation, conversion en euros (sans base).
+- `server/tests/integration/paiements/test_versements_partenaires.py` : retenue sur le versement suivant, versement entièrement retenu, retenue rendue quand le versement change, échec après annulation, demande de remboursement, page des versements (retard, relance, permission, produits du registre), alerte quotidienne.
 - `server/tests/integration/paiements/` : cycle complet sur PostgreSQL, prestataires simulés (aucun appel réseau) — confirmation, idempotence, expiration, paiement tardif, versements, remboursements Mobile Money (numéro demandé au voyageur) / carte / PayPal, nouveaux essais progressifs, emails, signature des webhooks.
 
 Voir `documentation/ci.md` pour les lancer.

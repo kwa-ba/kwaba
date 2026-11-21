@@ -14,6 +14,7 @@ from .services import (
     reservation_possible,
     synchroniser_paiement, synchroniser_payout,
 )
+from .versements import VersementErreur, remettre_en_route
 from .views import CompteRemboursementSerializer
 
 __all__ = [
@@ -26,11 +27,20 @@ __all__ = [
     'reservation_possible', 'synchroniser_paiement', 'synchroniser_payout', 'texte_politique', 'total_sejour',
     'devis_sejour', 'frais_reduits', 'frais_reduits_sejour', 'montants_de', 'hotes_deja_visites', 'rembourser_en_partie',
     'paye_par_un_tiers', 'statut_paiement_de',
+    # Payouts page (GL-11): a failed payout row of a product planned again
+    'VersementErreur', 'remettre_en_route', 'ligne_a_verser',
     # Ledger of the finance module (grand_livre.py)
     'arrivee', 'commission_a_l_arrivee', 'encaisser_sejour', 'frais_rectifies', 'offre_sejour',
 ]
 
 arrivee = tarifs.arrivee
+
+
+def ligne_a_verser(v, *, categorie: str, beneficiaire: str, objet: str) -> dict:
+    """A payout row of a product for the payouts page (GL-11), from its payout model (same fields as the hosts')."""
+    return {'id': str(v.pk), 'categorie': categorie, 'beneficiaire': beneficiaire, 'objet': objet, 'montant': v.montant,
+            'retenue': 0, 'commission': v.commission, 'statut': v.statut, 'date_prevue': v.date_prevue,
+            'envoye_le': v.envoye_le, 'tentatives': v.tentatives, 'derniere_erreur': v.derniere_erreur}
 offre_sejour = grand_livre.offre_sejour
 frais_rectifies = grand_livre.frais_rectifies
 
@@ -119,6 +129,27 @@ def hotes_fondateurs(hote_ids) -> set:
 def frais_reduits_sejour(prix_nuits: int) -> int:
     """Service fees of a stay at the reduced rate (loyal customer, Stay Pack + Driver)."""
     return tarifs.arrondi(Decimal(prix_nuits) * tarifs.reglages().frais_reduits)
+
+
+def total_rembourse(type_objet: str, objet_id) -> int:
+    """Money given back to the client on the sale of this object (refunds decided on its first successful payment,
+    whatever their sending state): what its invoice's credit notes neutralise (documents, GL-8). A payment made twice
+    and given back is not a sale cancelled: it is left out."""
+    paiement = _paiement_reussi(type_objet, objet_id)
+    if paiement is None:
+        return 0
+    return sum(paiement.remboursements.values_list('montant', flat=True))
+
+
+def apercu_annulation_sejour(reservation) -> dict | None:
+    """What a cancellation would give back now, from the booking's frozen amounts (never today's rates, GL-9):
+    {paye, voyageur (terms of sale), plateforme (full refund)}; None if the stay was never paid."""
+    paiement = _paiement_reussi('reservation', reservation.pk)
+    if paiement is None:
+        return None
+    montants = tarifs.montants_de(reservation)
+    return {'paye': paiement.montant, 'voyageur': tarifs.bareme_voyageur(montants, reservation).rembourse_voyageur,
+            'plateforme': montants.total}
 
 
 def rembourser_en_partie(type_objet: str, objet_id, montant: int, motif: str) -> bool:

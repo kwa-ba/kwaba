@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 import LegalPage, { AC, VersionFrancaiseFaitFoi } from "@/components/legal/LegalPage";
 
@@ -22,12 +23,12 @@ export default function ContenuEn() {
           titre: "Website publisher",
           contenu: (
             <ul>
-              <li>Company name: <strong>KWA-BA</strong>, <FormeSociete /> with a share capital of 100,000 F CFA</li>
-              <li>Registered office: Totsi Gblenkomé district, street 243, Lomé (Togo)</li>
+              <li>Company name: <strong>KWA-BA</strong>, <FormeSociete /> with a share capital of <CapitalSociete /></li>
+              <li>Registered office: <AdresseSociete /></li>
               <li>Registration: Lomé RCCM no. <MentionSociete cle="rccm" libelle="RCCM" />; tax number (NIF) <MentionSociete cle="nif" libelle="NIF" /></li>
               <li>E-commerce: registered as an e-commerce provider under no. <MentionSociete cle="commerce_electronique" libelle="number" /> (decree no. 2018-062/PR)</li>
               <li>Personal data: declaration to the personal data protection authority (IPDCP) no. <MentionSociete cle="ipdcp" libelle="number" /></li>
-              <li>Contact: <LienContact />; postal address: Totsi Gblenkomé district, street 243, Lomé, Togo</li>
+              <li>Contact: <LienContact />; postal address: <AdresseSociete /></li>
               <li>President: Mr MENDE Fadel — General Manager: Mr KPOGLO Dzidoula Godwin Trésor — Publication director: Mr MENDE Fadel.</li>
             </ul>
           ),

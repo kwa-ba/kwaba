@@ -1,7 +1,9 @@
 """Fixes from the security audit: attempt limits, audit log, invalid input, webhook, images."""
 import json
+from types import SimpleNamespace
 from datetime import timedelta
 
+import pyotp
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
@@ -9,8 +11,10 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.hebergements import views as hebergements_views
-from apps.activity.models import ActivityEntryModel
-from apps.securite.permissions import EstAdministrateur
+from shared.activity.models import ActivityEntryModel
+from shared.securite.permissions import EstAdministrateur
+from apps.users.infrastructure import two_factor_service as two_factor_service_module
+from tests.integration.sessions import session_token
 
 LOGIN = '/api/v1/auth/login/'
 REGISTER = '/api/v1/auth/register/'
@@ -124,9 +128,14 @@ class TestAdministration:
         assert response.status_code == 429
         assert 'admin_connexion_echec' in _actions(actor_email=admin.email)
 
-    def test_admin_login_still_works(self, make_user, password):
+    def test_admin_login_still_works(self, make_user, password, monkeypatch):
         admin = make_user(role='admin', is_staff=True, is_superuser=True)
-        response = Client().post(self.URL, {'username': admin.email, 'password': password, 'next': '/admin/'})
+        now = timezone.now()
+        monkeypatch.setattr(two_factor_service_module, 'timezone', SimpleNamespace(now=lambda: now))
+        secret = two_factor_service_module.two_factor_service().start_setup(admin.pk, admin.email).secret
+        two_factor_service_module.two_factor_service().confirm_setup(admin.pk, pyotp.TOTP(secret).at(now.timestamp() - 30))
+        response = Client().post(self.URL, {'username': admin.email, 'password': password, 'next': '/admin/',
+                                            'code': pyotp.TOTP(secret).at(now.timestamp())})
         assert response.status_code == 302
 
     def test_back_office_permission_reads_the_role_in_the_database(self, make_user, rf):
@@ -138,7 +147,7 @@ class TestAdministration:
             (make_user(), False),
         ]:
             requete = rf.get('/')
-            requete.user = user
+            requete.user, requete.auth = user, session_token(user)
             assert permission.has_permission(requete, None) is attendu
 
 

@@ -94,3 +94,98 @@ class FactureModel(models.Model):
 
     def __str__(self):
         return f"{self.numero} · {self.client_nom} · {self.total_ttc} FCFA"
+
+
+class SequencePieceModel(models.Model):
+    """Last number issued per series and year, for the series other than invoices (AVO credit notes…): continuous
+    numbering without gaps, under a lock at every issue."""
+    serie = models.CharField(max_length=5)
+    annee = models.PositiveSmallIntegerField()
+    dernier = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['serie', 'annee'], name='une_sequence_par_serie_et_annee')]
+
+
+class AvoirModel(models.Model):
+    """Credit note (GL-8): neutralises all or part of an invoice that stays as it was (an invoice is never deleted
+    nor changed, LPF Togo art. 64). Never changed nor deleted either; its PDF is frozen when issued. Amounts are
+    positive: they are deducted from the invoice."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    numero = models.CharField(max_length=20, unique=True)
+    facture = models.ForeignKey(FactureModel, on_delete=models.PROTECT, related_name='avoirs')
+    emis_le = models.DateTimeField(auto_now_add=True)
+    emis_par_id = models.UUIDField(null=True, blank=True, db_index=True)
+    motif = models.CharField(max_length=300)
+    lignes = models.JSONField(default=list, help_text='[{libelle, quantite, prix_unitaire}] en FCFA TTC, à déduire')
+    total_ht = models.PositiveIntegerField()
+    tva = models.PositiveIntegerField(default=0)
+    total_ttc = models.PositiveIntegerField()
+    taux_tva = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    pdf = models.FileField(upload_to='avoirs/', storage=stockage_prive, blank=True)
+
+    class Meta:
+        ordering = ['-emis_le']
+        verbose_name = 'Avoir'
+        constraints = [models.CheckConstraint(condition=models.Q(total_ttc__gt=0), name='avoir_montant_positif')]
+
+    def __str__(self):
+        return f"{self.numero} · avoir sur {self.facture.numero} · {self.total_ttc} FCFA"
+
+
+class JustificatifCautionModel(models.Model):
+    """Evidence of a withholding on a deposit (photo of the damage, report, quote), kept in private storage and quoted
+    in the RET notice. Never deleted: the decision rests on it."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    objet_type = models.CharField(max_length=20)
+    objet_id = models.UUIDField(db_index=True)
+    fichier = models.FileField(upload_to='justificatifs/', storage=stockage_prive)
+    nom = models.CharField(max_length=150)
+    taille = models.PositiveIntegerField()
+    ajoute_le = models.DateTimeField(auto_now_add=True)
+    ajoute_par_id = models.UUIDField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['ajoute_le']
+        verbose_name = 'Justificatif de retenue'
+
+
+class DocumentCautionModel(models.Model):
+    """Document of a settled deposit (GL-14): REC receipt when it is given back in full, RET notice when part of it is
+    kept for a motivated decision. Continuous numbering per series, frozen PDF, never changed nor deleted."""
+    TYPES = [('REC', 'Reçu de restitution'), ('RET', 'Avis de retenue')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    numero = models.CharField(max_length=20, unique=True)
+    type = models.CharField(max_length=3, choices=TYPES)
+    emis_le = models.DateTimeField(auto_now_add=True)
+    objet_type = models.CharField(max_length=20)
+    objet_id = models.UUIDField(db_index=True)
+    reference = models.CharField(max_length=40)
+    client_nom = models.CharField(max_length=150)
+    client_email = models.EmailField(blank=True)
+    montant_caution = models.PositiveIntegerField()
+    montant_rendu = models.PositiveIntegerField()
+    montant_retenu = models.PositiveIntegerField(default=0)
+    mode_restitution = models.CharField(max_length=120)
+    motif = models.TextField(blank=True)
+    cgv_article = models.CharField(max_length=30, blank=True)
+    decision = models.CharField(max_length=200, blank=True, help_text='Qui a décidé la retenue, et quand')
+    justificatifs = models.JSONField(default=list, blank=True, help_text='Noms des pièces justificatives citées')
+    pdf = models.FileField(upload_to='cautions/', storage=stockage_prive, blank=True)
+
+    class Meta:
+        ordering = ['-emis_le']
+        verbose_name = 'Document de caution'
+        constraints = [
+            models.UniqueConstraint(fields=['objet_type', 'objet_id'], name='un_document_par_caution'),
+            models.CheckConstraint(condition=models.Q(montant_rendu__lte=models.F('montant_caution')),
+                                   name='document_caution_rendu_borne'),
+            # A notice of withholding states its reason and the article of the terms of sale
+            models.CheckConstraint(condition=models.Q(type='REC', montant_retenu=0) | (
+                models.Q(type='RET', montant_retenu__gt=0) & ~models.Q(motif='') & ~models.Q(cgv_article='')),
+                name='document_caution_type_coherent'),
+        ]
+
+    def __str__(self):
+        return f"{self.numero} · {self.reference}"

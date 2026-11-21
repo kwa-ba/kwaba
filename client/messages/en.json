@@ -56,6 +56,12 @@
     },
     "titreAccueil": "Kwa-Ba · Verified places to stay in Lomé and across Togo"
   },
+  "introuvable": {
+    "titre": "Page not found",
+    "texte": "This address does not match any page. It may have changed, or the link is incomplete.",
+    "retourAccueil": "Back to the home page",
+    "retourBackoffice": "Back to the back-office"
+  },
   "commun": {
     "allerAuContenu": "Skip to main content",
     "chargement": "Loading…",
@@ -240,7 +246,7 @@
         "texte": "A team on the ground that answers you by email."
       },
       "versement": {
-        "titre": "Your host is paid 24 h after you arrive",
+        "titre": "Your host is paid 48 h after you arrive",
         "texte": "You have time to report a problem before the host is paid."
       }
     },
@@ -944,7 +950,9 @@
     "informations": "Legal information",
     "miseAJour": "Last updated: {date}",
     "sommaire": "Contents",
-    "aCompleter": "To be completed"
+    "aCompleter": "To be completed",
+    "adresseSiege": "registered office address",
+    "capitalSocial": "share capital"
   },
   "aide": {
     "titre": "Help centre",
@@ -1347,7 +1355,9 @@
     "annulationGratuite": "Free cancellation up to 24 hours before arrival.",
     "plusDeRemboursement": "Less than 24 hours before arrival: no more refunds.",
     "annulation": "Cancelling…",
-    "annuler": "Cancel the transfer"
+    "annuler": "Cancel the transfer",
+    "photoChauffeur": "Photo of {nom}",
+    "niveauChauffeur": "{niveau} driver"
   },
   "concierge": {
     "suggestions": {
@@ -1438,7 +1448,7 @@
       },
       "recevoir": {
         "titre": "Get bookings",
-        "texte": "Travellers pay online; your share is sent to your Mobile Money account 24 hours after their arrival."
+        "texte": "Travellers pay online; your share is sent to your Mobile Money account 48 hours after their arrival."
       }
     },
     "active": "You're all set! Prepare your listing.",
@@ -1714,7 +1724,7 @@
     },
     "totaux": {
       "aVenir": "Upcoming",
-      "aVenirAide": "Paid 24 h after the guest arrives",
+      "aVenirAide": "Paid 48 h after the guest arrives",
       "enCours": "Being sent",
       "enCoursAide": "On your Mobile Money shortly",
       "verse": "Already paid",
@@ -1731,7 +1741,7 @@
     "modifier": "Edit",
     "ouRecevoir": "Where to receive my money",
     "manquant": "Enter your Mobile Money account: without it, we can't pay you your earnings.",
-    "envoyeSur": "Your share is sent to this Mobile Money account 24 hours after the guest arrives.",
+    "envoyeSur": "Your share is sent to this Mobile Money account 48 hours after the guest arrives.",
     "titulaire": "Account holder name",
     "titulaireAide": "As registered with the operator",
     "annuler": "Cancel",
@@ -1862,7 +1872,9 @@
       "payerPar": "Pay by {moyen}",
       "carte": "card",
       "annulerPartiel": "The free cancellation period has passed: you will be refunded {montant}. Cancel anyway?",
-      "rembourseSiAnnulation": "If you cancel now, you would be refunded {montant}."
+      "rembourseSiAnnulation": "If you cancel now, you would be refunded {montant}.",
+      "photoChauffeur": "Photo of your driver",
+      "votreChauffeurNiveau": "Your driver, level {niveau}. Their name and number are sent to you by email."
     },
     "gammes": {
       "citadine": "Small car",
@@ -2081,7 +2093,7 @@
     "commissionTotale": "Total commission",
     "revenuEstime": "Your estimated earnings",
     "voyageur": "The guest pays {total}, including {frais} of Kwa-Ba service fee ({taux}): this fee is added to your price and does not reduce your earnings.",
-    "note": "Indicative estimate. The final amount is calculated by Kwa-Ba at booking and paid by Mobile Money 24 hours after the guest arrives."
+    "note": "Indicative estimate. The final amount is calculated by Kwa-Ba at booking and paid by Mobile Money 48 hours after the guest arrives."
   },
   "typesHote": {
     "titre": "Rooms and unit types",
@@ -2255,7 +2267,7 @@
     },
     "versement": {
       "titre": "Where should we send your earnings?",
-      "texte": "Your share is paid by Mobile Money, 24 hours after travellers arrive."
+      "texte": "Your share is paid by Mobile Money, 48 hours after travellers arrive."
     },
     "contrat": {
       "titre": "The terms to accept",
@@ -2518,5 +2530,21 @@
     "bannerBook": "Book the visit",
     "bannerBooked": "Next verification visit: {date} at {time}",
     "bannerSee": "See my visit"
+  },
+  "avisChauffeur": {
+    "titre": "Rate your driver",
+    "aide": "Only the Kwa-Ba team sees it: it helps us keep the best drivers.",
+    "criteres": {
+      "note": "Overall",
+      "ponctualite": "Punctuality",
+      "conduite": "Driving",
+      "amabilite": "Friendliness"
+    },
+    "etoiles": "{n} out of 5",
+    "commentaire": "A comment (optional)",
+    "envoyer": "Send my rating",
+    "envoi": "Sending…",
+    "merci": "Thank you for your rating.",
+    "erreur": "Your rating could not be sent."
   }
 }

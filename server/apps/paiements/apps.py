@@ -6,3 +6,12 @@ class PaiementsConfig(AppConfig):
     name = 'apps.paiements'
     label = 'paiements'
     verbose_name = 'Paiements'
+
+    def ready(self):
+        from apps.finance.api import declarer_operation
+
+        from . import checks  # noqa: F401  (paiements.E001: no booking confirmed without payment in production)
+        from .services import autoriser_versement
+
+        # A payout to a host from the threshold waits for two people (GL-10)
+        declarer_operation('versement_hote', "Versement à l'hôte", autoriser_versement)

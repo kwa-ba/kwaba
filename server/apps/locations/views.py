@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from config.prelancement import verifier_ouverture
 from apps.paiements import api as paiements
 from apps.reservations import api as reservations
+from apps.transferts import api as transferts
 
 from . import services
 from .models import CategorieVehiculeModel, LieuRemiseModel, LocationModel, ParametresLocationModel
@@ -36,8 +37,8 @@ def _categorie_json(request, c: CategorieVehiculeModel | None) -> dict | None:
 
 
 def _tarifs_chauffeur() -> dict:
-    return {'prix_jour': services.CHAUFFEUR_JOUR, 'prime_hors_lome': services.PRIME_HORS_LOME,
-            'prime_hors_pays': services.PRIME_HORS_PAYS, 'heure_sup': 1000}
+    return {'prix_jour': services.chauffeur_jour(), 'prime_hors_lome': services.prime_hors_lome(),
+            'prime_hors_pays': services.prime_hors_pays(), 'heure_sup': 1000}
 
 
 def _lieu_json(lieu: LieuRemiseModel) -> dict:
@@ -127,6 +128,7 @@ class LocationSerializer(serializers.ModelSerializer):
     debut_locale = serializers.SerializerMethodField()
     fin_locale = serializers.SerializerMethodField()
     vehicule_attribue = serializers.SerializerMethodField()
+    avis_chauffeur = serializers.SerializerMethodField()
     a_payer = serializers.IntegerField(source='montant_a_payer', read_only=True)
     caution_etat = serializers.SerializerMethodField()
     paiement = serializers.SerializerMethodField()
@@ -146,7 +148,8 @@ class LocationSerializer(serializers.ModelSerializer):
             'fin_locale', 'passagers', 'telephone', 'precisions', 'conducteur', 'permis_numero', 'permis_pays',
             'reservation', 'jours', 'prix_jour', 'frais_lieux', 'prix_chauffeur', 'primes', 'jours_hors_lome',
             'jours_hors_pays', 'chauffeur_demande', 'libelle', 'prix', 'caution', 'caution_en_ligne', 'a_payer',
-            'caution_etat', 'moyen', 'statut', 'expire_le', 'annulee_par', 'vehicule_attribue', 'paiement',
+            'caution_etat', 'moyen', 'statut', 'expire_le', 'annulee_par', 'vehicule_attribue', 'avis_chauffeur',
+            'paiement',
             'remboursement', 'annulation_gratuite', 'rembourse_si_annulation', 'cree_le',
         ]
 
@@ -170,7 +173,19 @@ class LocationSerializer(serializers.ModelSerializer):
         # by email to the traveller, once the rental is paid and assigned (notifications.partenaire_au_voyageur)
         if not (obj.partenaire_id or obj.chauffeur_partenaire_id) or obj.statut not in ('partenaire_assigne', 'terminee'):
             return None
-        return {'vehicule': obj.vehicule, 'immatriculation': obj.immatriculation}
+        attribue = {'vehicule': obj.vehicule, 'immatriculation': obj.immatriculation}
+        if obj.chauffeur_partenaire_id:
+            # The driver's photo and level, to recognise them (never their name nor phone on the site)
+            c = transferts.fiche_chauffeur(obj.chauffeur_partenaire_id) or {}
+            attribue['chauffeur'] = {'photo': c.get('photo'), 'niveau': c.get('niveau'),
+                                     'niveau_libelle': c.get('niveau_libelle', '')}
+        return attribue
+
+    def get_avis_chauffeur(self, obj):
+        """The traveller may rate the partner driver of a finished rental, once."""
+        if obj.statut != 'terminee' or not obj.chauffeur_partenaire_id:
+            return None
+        return {'donne': transferts.avis_donne('location', obj.pk)}
 
     def get_caution_etat(self, obj):
         """Deposit kept by Kwa-Ba: given back or not, withheld amount and reason, return period after the vehicle return."""
@@ -322,3 +337,30 @@ class CompteRemboursementLocationView(APIView):
         if not paiements.indiquer_numero_remboursement('location', location.pk, **serializer.validated_data):
             return Response({'detail': "Aucun remboursement n'attend de numéro pour cette location."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'detail': 'Numéro enregistré : le remboursement va être envoyé.'})
+
+
+class AvisChauffeurLocationSerializer(serializers.Serializer):
+    note = serializers.IntegerField(min_value=1, max_value=5)
+    ponctualite = serializers.IntegerField(min_value=1, max_value=5)
+    conduite = serializers.IntegerField(min_value=1, max_value=5)
+    amabilite = serializers.IntegerField(min_value=1, max_value=5)
+    commentaire = serializers.CharField(max_length=2000, required=False, allow_blank=True, default='')
+
+
+class AvisChauffeurLocationView(APIView):
+    """POST {note, ponctualite, conduite, amabilite, commentaire}: the traveller rates the partner driver of their
+    finished rental, once. Seen by the team only."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        location = _de_l_utilisateur(pk, request.user)
+        if not location or location.statut != 'terminee' or not location.chauffeur_partenaire_id:
+            return Response({'detail': 'Location introuvable ou pas encore terminée.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AvisChauffeurLocationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            transferts.noter_chauffeur(chauffeur_id=location.chauffeur_partenaire_id, objet_type='location',
+                                       objet_id=location.pk, voyageur_id=request.user.pk, **serializer.validated_data)
+        except transferts.NoteRefusee as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Merci pour votre avis.'}, status=status.HTTP_201_CREATED)

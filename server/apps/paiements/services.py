@@ -21,7 +21,7 @@ from django.utils import timezone
 from apps.users import api as users
 from config import prelancement
 
-from . import fedapay, grand_livre, paypal, tarifs
+from . import fedapay, grand_livre, paypal, tarifs, versements
 from .models import PaiementModel, ProfilVersementModel, RemboursementModel, VersementModel
 from .registre import PRODUITS
 
@@ -257,6 +257,9 @@ def rembourser(paiement, montant: int, motif: str):
         )
         # The money is owed to the traveller from now on (ledger, T05)
         grand_livre.du_au_voyageur(remboursement)
+        # An invoiced sale given back is neutralised by a credit note quoting the invoice (GL-8), never deleted
+        from apps.documents import api as documents  # local import: documents loads the paid products
+        documents.regulariser_avoirs(paiement.type_objet, remboursement.objet_id, motif=motif)
     return remboursement
 
 
@@ -288,6 +291,8 @@ def annuler_paiement_reservation(reservation, par: str) -> int:
 
     versement = VersementModel.objects.select_for_update().filter(reservation_id=reservation.id).first()
     if versement and versement.statut in ('planifie', 'echoue'):
+        # What it withheld for an older recovery goes back to it, withheld again on the payout that really leaves
+        versements.liberer_retenues(versement)
         if bareme.nuits_retenues:
             versement.montant_brut = bareme.nuits_retenues
             versement.commission = bareme.commission_hote
@@ -297,7 +302,9 @@ def annuler_paiement_reservation(reservation, par: str) -> int:
             versement.statut = 'annule'
         versement.save()
     elif versement and versement.statut in ('en_cours', 'envoye'):
-        logger.warning("Annulation de %s après le versement à l'hôte : à régulariser", reservation.reference)
+        # Paid (or being paid) before the cancellation: the host's next payouts give it back (GL-23, FF-04)
+        versements.ouvrir_recuperation(versement, bareme.montant_hote if bareme.nuits_retenues else 0,
+                                       motif=f"{motif} après le versement ({reservation.reference})")
 
     # Ledger: what is given back leaves the host's money and the fees, then is owed to the traveller (rembourser)
     grand_livre.annulation_sejour(reservation, paiement, bareme,
@@ -382,6 +389,11 @@ def synchroniser_payout(ligne):
     elif statut == 'echoue':
         ligne.derniere_erreur = str(donnees.get('last_error_code') or 'Versement refusé par FedaPay')
         ligne.statut = 'echoue' if ligne.tentatives >= MAX_TENTATIVES else 'planifie'
+        if isinstance(ligne, VersementModel):
+            with transaction.atomic():
+                # Its stay was cancelled meanwhile: nothing was paid, nothing to recover, never sent again in full
+                if versements.versement_echoue_apres_annulation(ligne):
+                    return
     else:
         return
     with transaction.atomic():
@@ -394,6 +406,43 @@ def synchroniser_payout(ligne):
 
 
 COMPTE_DESACTIVE = "Compte de l'hôte désactivé : versement suspendu tant que le compte n'est pas réactivé."
+
+
+EN_ATTENTE_VALIDATION = "En attente de la double validation : deux personnes doivent l'accepter (Finance → Validations)."
+REFUSE_EN_VALIDATION = "Refusé en double validation : à reprendre avec l'équipe finance."
+
+
+def _versement_autorise(versement) -> bool:
+    """A payout from the threshold leaves only once two people have approved it (GL-10); the worker asks for it once
+    and waits. Below the threshold, or without a threshold decided, it leaves as before."""
+    from apps.finance import api as finance  # local import: finance is read at the worker's pass only
+
+    if not finance.validation_requise(versement.montant):
+        return True
+    statut = finance.statut_validation('versement_hote', 'versement', versement.pk)
+    if statut == 'executee':
+        return True
+    if statut is None:
+        nom = versement.hote.get_full_name() if versement.hote else ''
+        finance.demander_validation('versement_hote', objet_type='versement', objet_id=versement.pk,
+                                    montant=versement.montant, motif=f"Versement automatique à l'hôte {nom}".strip(),
+                                    donnees={'versement_id': str(versement.pk), 'beneficiaire': nom,
+                                             'reservation_id': str(versement.reservation_id)})
+    erreur = REFUSE_EN_VALIDATION if statut in ('refusee', 'echouee') else EN_ATTENTE_VALIDATION
+    if versement.derniere_erreur != erreur:
+        versement.derniere_erreur = erreur
+        versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+    return False
+
+
+def autoriser_versement(donnees: dict) -> str:
+    """Approval of a payout by two people: it leaves at the worker's next pass."""
+    versement = VersementModel.objects.get(pk=donnees['versement_id'])
+    if versement.statut not in ('planifie', 'echoue'):
+        raise PaiementErreur(f"Ce versement n'est plus à envoyer ({versement.get_statut_display()}).")
+    versement.derniere_erreur = ''
+    versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+    return f"Versement de {versement.montant} F CFA autorisé : il part au prochain passage du worker des paiements."
 
 
 def envoyer_versements_dus() -> int:
@@ -411,11 +460,16 @@ def envoyer_versements_dus() -> int:
                 versement.derniere_erreur = COMPTE_DESACTIVE
                 versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
             continue
+        if not _versement_autorise(versement):
+            continue
         profil = ProfilVersementModel.objects.filter(hote_id=versement.hote_id).first()
         if not profil:
             if not versement.derniere_erreur:
                 versement.derniere_erreur = "L'hôte n'a pas encore indiqué où recevoir son argent."
                 versement.save(update_fields=['derniere_erreur', 'mis_a_jour_le'])
+            continue
+        # What the host still owes on a stay cancelled after its payout is withheld first (GL-23)
+        if not versements.retenir(versement):
             continue
         envoyes += envoyer_payout(
             versement, mode=profil.operateur, numero=profil.numero, pays=profil.pays,
@@ -544,10 +598,27 @@ def passe() -> dict:
     for produit in PRODUITS.values():
         if produit.passe:
             stats.update(produit.passe())
+    try:
+        # Late or failed partner payouts: the finance team is told once a day (GL-11)
+        stats['versements_en_retard'] = versements.alerter_retards()
+    except Exception:
+        logger.exception('Alerte des versements en retard en échec')
     from . import relances
     # After the expiries: the "cancelled for lack of payment" email goes in the same pass
     stats['relances'] = relances.envoyer_relances()
     stats['emails'] = notifications.envoyer_notifications()
+    from . import rapprochement  # local import: the reconciliation reads the models and the ledger writer
+    try:
+        # Once a day: the finished days reconciled with FedaPay (GL-12); never blocks the payments
+        stats['jours_rapproches'] = rapprochement.importer_si_du()
+    except Exception:
+        logger.exception('Rapprochement FedaPay en échec')
+    from apps.finance import api as finance  # local import: finance is read at the worker's pass only
+    try:
+        # The allocations of the finished months to the guarantee fund (GL-17), once an hour at most
+        stats['dotations_fonds_garantie'] = finance.doter_fonds_garantie_si_du()
+    except Exception:
+        logger.exception('Dotation du fonds de garantie en échec')
     return {k: v for k, v in stats.items() if v}
 
 

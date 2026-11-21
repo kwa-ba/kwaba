@@ -12,9 +12,9 @@ from apps.agenda.domain.exceptions import AgendaError
 from apps.agenda.domain.settings import PER_DAY_CEILING
 from apps.agenda.infrastructure import ics
 from apps.agenda.infrastructure.container import agenda_service, current_settings
-from apps.export import api as export
-from apps.activity import api as activity
-from apps.securite.permissions import a_acces_section
+from shared.export import api as export
+from shared.activity import api as activity
+from shared.securite.permissions import agent_space_access
 from apps.users import api as users
 
 MAX_PERIOD_DAYS = 62
@@ -26,7 +26,7 @@ class IsAgent(IsAuthenticated):
     def has_permission(self, request, view):
         if not (super().has_permission(request, view) and request.user.role in ('agent', 'admin')):
             return False
-        return request.user.role != 'admin' or a_acces_section(request.user, 'verifications')
+        return agent_space_access(request)
 
 
 class IsAdmin(IsAgent):

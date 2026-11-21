@@ -9,7 +9,8 @@ Le délai de vérification du véhicule est terminé pour votre location {{ refe
 {% if numero_requis %}Pour recevoir ce remboursement, indiquez votre numéro Mobile Money sur la page de votre location : {{ url }}
 {% else %}Le remboursement part sur le moyen de paiement utilisé ; selon votre opérateur ou votre banque, il peut mettre quelques jours à apparaître.
 {% endif %}
-Une question sur la retenue ? Assistance Kwa-Ba : {{ assistance }}
+{% if document %}Vous trouverez en pièce jointe {% if retenue %}l'avis de retenue{% else %}le reçu de restitution{% endif %} {{ document }}{% if retenue %}, qui indique le motif de la décision et son fondement dans nos conditions générales{% endif %}.
+{% endif %}Une question sur la retenue ? Assistance Kwa-Ba : {{ assistance }}
 
 L'équipe Kwa-Ba
 {% endautoescape %}

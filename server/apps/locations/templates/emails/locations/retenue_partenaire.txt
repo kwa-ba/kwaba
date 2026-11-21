@@ -1,0 +1,12 @@
+{% autoescape off %}Bonjour {{ contact }},
+
+Une retenue a été décidée sur la caution de la location {{ reference }}.
+
+  Caution : {{ caution }}
+  Retenue en votre faveur : {{ retenue }}
+  Motif : {{ motif }}
+
+Elle vous est versée avec le paiement de la location. L'avis de retenue {{ document }} est joint à ce message.
+
+L'équipe Kwa-Ba
+{% endautoescape %}

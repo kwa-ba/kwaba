@@ -16,7 +16,7 @@ export default function ContenuEn() {
             <Link href="/cgv">terms of sale</Link>, which prevail.
           </p>
           <p>
-            Kwa-Ba holds your payment: the host is only paid 24 hours after your arrival, the vehicle owner after the rental starts.
+            Kwa-Ba holds your payment: the host is only paid 48 hours after your arrival, the vehicle owner after the rental starts.
             That is what lets us refund you quickly if you cancel or something goes wrong.
           </p>
           <VersionFrancaiseFaitFoi />

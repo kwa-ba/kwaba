@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.transferts.models import ChauffeurModel, TransfertModel
+from tests.integration.sessions import session_token
 
 TRANSFERTS = '/api/v1/transferts/'
 
@@ -20,7 +21,7 @@ def sans_paiement(settings):
 
 def _client(user):
     c = APIClient()
-    c.force_authenticate(user=user)
+    c.force_authenticate(user=user, token=session_token(user))
     return c
 
 
@@ -34,7 +35,7 @@ def _transfert(client, **champs):
 
 
 def _chauffeur(categorie='berline'):
-    c = ChauffeurModel.objects.create(prenom='Komi', nom='A.', telephone='+228 90 00 00 01', categorie=categorie,
+    c = ChauffeurModel.objects.create(photo_validee=True, prenom='Komi', nom='A.', telephone='+228 90 00 00 01', categorie=categorie,
                                       vehicule='Corolla', immatriculation='TG-1', pays_versement='TG',
                                       operateur_versement='togocel', numero_versement='90000001')
     c.aeroports.add('LFW')

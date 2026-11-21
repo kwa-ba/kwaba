@@ -5,7 +5,7 @@ from django.conf import settings
 from apps.users.application.ports.EventPublisher import EventPublisher
 from apps.users.application.events.DomainEvent import DomainEvent
 from apps.users.infrastructure.messaging.RabbitMQEventBus import RabbitMQEventBus
-from apps.notifications.api import traiter
+from shared.notifications.api import traiter
 
 logger = logging.getLogger(__name__)
 

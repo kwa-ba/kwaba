@@ -1,6 +1,8 @@
 "use client";
 
-import { adresseCompteRemboursement, annulerLocation, lireLocation } from "./api";
+import { AvisChauffeur } from "@/features/transferts";
+
+import { adresseCompteRemboursement, annulerLocation, lireLocation, noterChauffeurLocation } from "./api";
 import { clesLocations } from "./hooks";
 import { Suspense, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -141,10 +143,23 @@ function LocationDetail() {
                 <p className="min-w-0 font-bold text-dark">{v.vehicule}{v.immatriculation && <> · <span className="font-mono font-normal text-gray-600">{v.immatriculation}</span></>}</p>
               </div>
             )}
+            {v.chauffeur && (
+              <div className="flex items-center gap-4 mt-4">
+                {v.chauffeur.photo
+                  ? <img src={v.chauffeur.photo} alt={td("photoChauffeur")} className="w-16 h-16 rounded-full object-cover shrink-0 border-2 border-secondary/30" />
+                  : <div className="w-14 h-14 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0"><Car size={24} aria-hidden /></div>}
+                <p className="min-w-0 text-sm text-dark">{td("votreChauffeurNiveau", { niveau: v.chauffeur.niveau_libelle })}</p>
+              </div>
+            )}
             <p className="flex items-start gap-2 mt-4 text-sm text-gray-600">
               <Mail size={16} className="text-secondary shrink-0 mt-0.5" aria-hidden /> {td("coordonneesParEmail")}
             </p>
           </section>
+        )}
+
+        {l.avis_chauffeur && !l.avis_chauffeur.donne && (
+          <AvisChauffeur envoyer={(avis) => noterChauffeurLocation(l.id, avis)}
+            onEnvoye={() => queryClient.invalidateQueries({ queryKey: clesLocations.location(params.id) })} />
         )}
 
         <section className="bg-background rounded-3xl border border-gray-100 p-5 sm:p-6">

@@ -11,7 +11,7 @@ from PIL import Image
 from apps.locations.models import (
     CategorieVehiculeModel, LieuRemiseModel, LocationModel, PartenaireLocationModel, PhotoVehiculeModel,
 )
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import ChauffeurModel
 
 B = '/api/v1/admin/location/'
@@ -142,7 +142,7 @@ def test_attribuer_proprietaire_et_chauffeur(admin, location, berline, lieu):
     bon = _loueur(berline, lieu)
     autre = _loueur(berline, lieu, email='')
     CategorieVehiculeModel.objects.filter(pk=berline.pk).update(proprietaire=bon)
-    chauffeur = ChauffeurModel.objects.create(prenom='Komlan', nom='Ade', telephone='+22890998877', categorie='berline',
+    chauffeur = ChauffeurModel.objects.create(photo_validee=True, prenom='Komlan', nom='Ade', telephone='+22890998877', categorie='berline',
                                               vehicule='-', immatriculation='-', pays_versement='TG',
                                               operateur_versement='togocel', numero_versement='90998877', excellence=True)
     # The vehicle has an owner: only they are offered

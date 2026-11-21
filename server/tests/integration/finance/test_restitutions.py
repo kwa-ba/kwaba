@@ -11,7 +11,7 @@ import pytest
 from django.utils import timezone
 
 from apps.finance import api as finance
-from apps.finance.models import CompteArgentModel, PeriodeModel, RapportModel, RapprochementJourModel
+from apps.finance.models import CompteArgentModel, NatureModel, PeriodeModel, RapportModel, RapprochementJourModel
 
 HOTE = str(uuid.uuid4())  # third party ids are text in the ledger
 APPORTEUR = uuid.uuid4()
@@ -72,8 +72,6 @@ def sejour(cas: Cas, reservation=None, hote=HOTE, moment=None, ref='TX-1') -> uu
     lignes = [finance.Ligne(nature='T01', montant=cas.nuits, sens=finance.ENTREE, externe_reference=ref,
                             **tiers, **commun),
               finance.Ligne(nature='R01', montant=cas.frais_service, sens=finance.ENTREE, externe_reference=ref,
-                            **commun),
-              finance.Ligne(nature='D01', montant=cas.frais_paiement, sens=finance.SORTIE, externe_reference=ref,
                             **commun)]
     if cas.menage:
         lignes.append(finance.Ligne(nature='T02', montant=cas.menage, sens=finance.ENTREE, externe_reference=ref,
@@ -82,6 +80,9 @@ def sejour(cas: Cas, reservation=None, hote=HOTE, moment=None, ref='TX-1') -> uu
         lignes.append(finance.Ligne(nature='C01', montant=cas.caution, sens=finance.ENTREE, externe_reference=ref,
                                     **commun))
     finance.enregistrer(lignes, origine='paiement')
+    # The provider's real fees, read on its statement under the reference of the payment (GL-12)
+    finance.enregistrer([finance.Ligne(nature='D01', montant=cas.frais_paiement, sens=finance.SORTIE,
+                                       externe_reference=ref, **commun)], origine='frais_paiement')
     # At the arrival, the commission leaves the host's money for Kwa-Ba's (FIN-03, case FA-01)
     arrivee = [finance.Ligne(nature='T01', montant=cas.commission, sens=finance.SORTIE, **tiers, **commun),
                finance.Ligne(nature=cas.nature_commission, montant=cas.commission, sens=finance.ENTREE, **commun)]
@@ -182,7 +183,8 @@ def test_reference_booking_balances_in_double_entry():
     assert [e['ecart'] for e in finance.controle_equilibre()] == [0]
     assert finance.du_aux_partenaires() == []
     assert {i['invariant']: i['anomalies'] for i in finance.controle_invariants()} == dict.fromkeys(
-        ['I5', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14'], 0)
+        ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16',
+         'I17'], 0)
 
 
 def test_internal_transfer_balances_account_585():
@@ -254,12 +256,16 @@ def _mois_rapproche(mois: date) -> None:
 
 
 def test_a_sound_month_can_be_closed():
-    """FH-17: last month, fully reconciled: the six checks are OK."""
+    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the ten checks are OK."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     sejour(CAS[0], moment=timezone.now().replace(day=1) - timedelta(days=15))
     _mois_rapproche(mois)
+    controles = {c['controle']: c['verdict'] for c in finance.peut_on_cloturer(mois)}
+    assert controles['Dotation du mois au fonds de garantie'] == 'REFUSE'
 
-    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 6
+    finance.doter_fonds_garantie(mois)
+
+    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 10
 
 
 def test_a_month_without_reconciliation_cannot_be_closed():
@@ -271,11 +277,13 @@ def test_a_month_without_reconciliation_cannot_be_closed():
 
 
 def test_a_movement_without_account_blocks_the_closing():
-    """FH-12, FH-18: the guarantee fund has no SYSCOHADA account yet (question to the chartered accountant)."""
+    """FH-12, FH-18: a nature still waiting for its SYSCOHADA account (question to the chartered accountant)."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     moment = timezone.now().replace(day=1) - timedelta(days=15)
     sejour(CAS[0], moment=moment)
-    finance.enregistrer([finance.Ligne(nature='G01', offre='STRUCTURE', montant=1_750, sens=finance.SORTIE,
+    NatureModel.objects.create(code='D99', famille_id='D', libelle='Charge sans compte', compte_syscohada=None,
+                               sens_attendu='sortie', actif=True)
+    finance.enregistrer([finance.Ligne(nature='D99', offre='STRUCTURE', montant=1_750, sens=finance.SORTIE,
                                        compte_argent='FEDAPAY', date_evenement=moment)], origine='calcul')
     _mois_rapproche(mois)
 

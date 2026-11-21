@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 import LegalPage, { AC } from "@/components/legal/LegalPage";
 
@@ -17,12 +18,12 @@ export default function ContenuFr() {
           titre: "Éditeur du site",
           contenu: (
             <ul>
-              <li>Dénomination : <strong>KWA-BA</strong>, <FormeSociete /> au capital de 100 000 F CFA</li>
-              <li>Siège social : quartier Totsi Gblenkomé, rue 243, Lomé (Togo)</li>
+              <li>Dénomination : <strong>KWA-BA</strong>, <FormeSociete /> au capital de <CapitalSociete /></li>
+              <li>Siège social : <AdresseSociete /></li>
               <li>Immatriculation : RCCM de Lomé n° <MentionSociete cle="rccm" libelle="RCCM" /> ; NIF <MentionSociete cle="nif" libelle="NIF" /></li>
               <li>Commerce électronique : enregistrée comme prestataire de commerce électronique sous le n° <MentionSociete cle="commerce_electronique" libelle="numéro" /> (décret n° 2018-062/PR)</li>
               <li>Données personnelles : déclaration auprès de l&apos;Instance de protection des données à caractère personnel (IPDCP) n° <MentionSociete cle="ipdcp" libelle="numéro" /></li>
-              <li>Contact : <LienContact /> ; adresse postale : quartier Totsi Gblenkomé, rue 243, Lomé, Togo</li>
+              <li>Contact : <LienContact /> ; adresse postale : <AdresseSociete /></li>
               <li>Président : M. MENDE Fadel — Directeur général : M. KPOGLO Dzidoula Godwin Trésor — Directeur de la publication : M. MENDE Fadel.</li>
             </ul>
           ),

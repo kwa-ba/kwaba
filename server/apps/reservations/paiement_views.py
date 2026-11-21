@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from config.prelancement import verifier_ouverture
 from apps.paiements import api as paiements
-from apps.activity import api as activity
+from shared.activity import api as activity
 
 from . import paiement, tiers
 from .models import DemandePaiementModel, ReservationModel

@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from apps.securite import moderation
-from apps.securite.moderation import ALLOW, BLOCK, WARN, analyze, normalize
+from shared.securite import moderation
+from shared.securite.moderation import ALLOW, BLOCK, WARN, analyze, normalize
 
 NORMAL_MESSAGES = [
     "Bonjour, le logement est-il disponible du 12/10/2026 au 15/10/2026 ?",

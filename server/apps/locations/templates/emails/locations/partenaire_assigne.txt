@@ -5,7 +5,7 @@ Votre {% if chauffeur_seul %}chauffeur{% else %}véhicule{% endif %} du {{ debut
 {% if partenaire %}  Propriétaire du véhicule : {{ partenaire }}, {{ contact }}
   Téléphone / WhatsApp : {{ telephone_partenaire }}
 {% endif %}{% if vehicule %}  Véhicule : {{ vehicule }}{% if immatriculation %}, immatriculation {{ immatriculation }}{% endif %}
-{% endif %}{% if avec_chauffeur and chauffeur %}  Votre chauffeur : {{ chauffeur }}{% if telephone_chauffeur %}, {{ telephone_chauffeur }}{% endif %}
+{% endif %}{% if avec_chauffeur and chauffeur %}  Votre chauffeur : {{ chauffeur }}{% if niveau_chauffeur %}, chauffeur {{ niveau_chauffeur }}{% endif %}{% if telephone_chauffeur %}, {{ telephone_chauffeur }}{% endif %}
 {% endif %}
   {% if chauffeur_seul %}Rendez-vous{% else %}Prise{% endif %} : {{ prise }}
   {% if chauffeur_seul %}Fin de la mission{% else %}Retour{% endif %} : {{ fin }}, {{ retour }}
@@ -17,7 +17,7 @@ Votre {% if chauffeur_seul %}chauffeur{% else %}véhicule{% endif %} du {{ debut
 Tout se règle par Kwa-Ba : ne payez rien sur place, sauf un pourboire si vous le souhaitez.
 Un souci ? Assistance Kwa-Ba : {{ assistance }}
 
-Votre réservation : {{ url }}
+Votre réservation{% if niveau_chauffeur %}, avec la photo de votre chauffeur{% endif %} : {{ url }}
 
 Bonne route,
 L'équipe Kwa-Ba

@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 import type { TauxCgv } from "./taux";
 import LegalPage, { AC, VersionFrancaiseFaitFoi } from "@/components/legal/LegalPage";
@@ -16,18 +17,17 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Terms of sale"
-      miseAJour="4 November 2026"
+      miseAJour="19 November 2026"
       intro={
         <>
           <VersionFrancaiseFaitFoi />
           <p>
             The kwa-ba.com website and its applications (the “Platform”) are operated by <strong>KWA-BA</strong>, <FormeSociete /> with a
-            share capital of 100,000 F CFA, whose registered office is in the Totsi Gblenkomé district, street 243,
-            Lomé (Togo), registered with the Lomé RCCM under number <MentionSociete cle="rccm" libelle="RCCM" />, tax number (NIF) <MentionSociete cle="nif" libelle="NIF" />, registered as an
+            share capital of <CapitalSociete />, whose registered office is at <AdresseSociete />, registered with the Lomé RCCM under number <MentionSociete cle="rccm" libelle="RCCM" />, tax number (NIF) <MentionSociete cle="nif" libelle="NIF" />, registered as an
             e-commerce provider under number <MentionSociete cle="commerce_electronique" libelle="registration number" />, represented by its President, Mr MENDE Fadel, and its General Manager, Mr KPOGLO Dzidoula Godwin Trésor.
           </p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Contact: <LienContact sujet="Terms of sale" />; postal address: Totsi Gblenkomé district, street 243, Lomé, Togo.</li>
+            <li>Contact: <LienContact sujet="Terms of sale" />; postal address: <AdresseSociete />.</li>
             <li>President: Mr MENDE Fadel — General Manager: Mr KPOGLO Dzidoula Godwin Trésor — Publication director: Mr MENDE Fadel.</li>
           </ul>
           <p>
@@ -173,7 +173,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
           titre: "Payment to the provider",
           contenu: (
             <>
-              <N n="8.1">Accommodation: the price is held until <strong>24 hours after the customer’s arrival</strong>, then paid to the host.</N>
+              <N n="8.1">Accommodation: the price is held until <strong>48 hours after the customer’s arrival</strong>, then paid to the host.</N>
               <N n="8.2">Mobility: the price is paid to the provider after the mission or rental has started; for a rental with a security deposit, after the damage reporting period (article 14.3).</N>
               <N n="8.3">These periods allow the customer to report a problem before the provider is paid.</N>
             </>

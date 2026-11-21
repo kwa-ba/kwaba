@@ -8,7 +8,7 @@ from PIL import Image
 from rest_framework.test import APIClient
 
 from apps.experiences.models import ExperienceModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 PUBLIC = '/api/v1/experiences/'
 ADMIN = '/api/v1/admin/experiences/'

@@ -1,9 +1,12 @@
 import "next-auth";
 import "next-auth/jwt";
+import type { TwoFactorError } from "@/lib/api/auth/two-factor";
 
 declare module "next-auth" {
   interface Session {
     error?: "RefreshAccessTokenError";
+    /** Refusal of the last back-office second factor code (ADR-028), only in the answer to update(). */
+    twoFactorError?: TwoFactorError;
     user: {
       id: string;
       name: string;
@@ -28,5 +31,6 @@ declare module "next-auth/jwt" {
     role?: string;
     userId?: string;
     error?: "RefreshAccessTokenError";
+    twoFactorError?: TwoFactorError;
   }
 }

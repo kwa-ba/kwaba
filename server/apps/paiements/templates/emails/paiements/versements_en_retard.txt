@@ -1,0 +1,13 @@
+{% autoescape off %}Bonjour,
+
+Des versements aux partenaires demandent une intervention :
+  - en retard sur leur date prévue : {{ en_retard }}
+  - en échec, à relancer : {{ echoues }}
+
+Que faire : ouvrir la page des versements, lire la dernière erreur de chacun (numéro manquant, compte désactivé, refus de FedaPay), corriger, puis relancer ceux en échec.
+{{ url }}
+
+Cet email ne contient ni montant ni nom de personne.
+
+Kwa-Ba, module finance
+{% endautoescape %}

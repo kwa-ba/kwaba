@@ -30,7 +30,7 @@ from apps.hebergements import api as hebergements
 from apps.locations import api as locations
 from apps.paiements import api as paiements
 from apps.transferts import api as transferts
-from apps.notifications.api import send_mail
+from shared.notifications.api import send_mail
 from apps.users import api as users
 
 from .models import ContratModel, ModeleContratModel, PreinscriptionModel, hacher_jeton

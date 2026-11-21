@@ -33,6 +33,26 @@ def mentions_legales() -> dict[str, str]:
     return mentions
 
 
+def identite_societe() -> dict:
+    """Registered office and share capital of KWA-BA, from their single sources: the company sheet of the back-office
+    (the same address as invoices and contracts) and the finance parameter `capital_social`. Empty or 0 while not
+    known: the site then shows "to be completed", never a sample value."""
+    from apps.documents.models import ParametresSocieteModel
+    from apps.finance import api as finance
+
+    societe = ParametresSocieteModel.objects.filter(pk=1).first()
+    lignes = (societe.adresse if societe else '').splitlines()
+    adresse = ', '.join(ligne.strip() for ligne in lignes if ligne.strip())
+    pays = (societe.pays if societe else '').strip()
+    if adresse and pays and pays.lower() not in adresse.lower():
+        adresse = f'{adresse} ({pays})'
+    try:
+        capital = int(finance.parametre('capital_social'))
+    except ValueError:
+        capital = 0
+    return {'adresse': adresse, 'capital': capital}
+
+
 def mesure_audience() -> str:
     """The website puts this value in the address of a script: anything else than a measurement ID counts as empty."""
     identifiant = settings.GOOGLE_ANALYTICS_ID
@@ -43,6 +63,7 @@ def site(request):
     return JsonResponse({
         'modules': {nom: bool(actif) for nom, actif in settings.MODULES.items()},
         'mentions': mentions_legales(),
+        'societe': identite_societe(),
         'en_formation': settings.SOCIETE_EN_FORMATION,
         'contact_email': settings.ASSISTANCE_CONTACT,
         'mesure_audience': mesure_audience(),

@@ -45,6 +45,8 @@ export interface AdminUser {
   admin_permissions: string[];
   /** Temporary admin: end of the rights, then back to the previous role. */
   admin_expire_le: string | null;
+  /** Finance role (GL-10): sees their sections, every change is refused. */
+  admin_lecture_seule: boolean;
 }
 
 export interface DroitsAdmin {
@@ -53,6 +55,24 @@ export interface DroitsAdmin {
   sections_disponibles: { code: string; libelle: string }[];
   permissions: string[];
   permissions_disponibles: { code: string; libelle: string }[];
+  /** Read-only account (Finance role): the screens hide their actions, the API refuses them anyway. */
+  lecture_seule: boolean;
+}
+
+/** Back-office second factor of the signed-in admin (ADR-028). */
+export interface TwoFactorStatus {
+  enabled: boolean;
+  enabled_at: string | null;
+  /** Last verification carried by the session's token, null if none. */
+  verified_at: string | null;
+  /** verified_at + 12 h: the code is asked again afterwards. */
+  expires_at: string | null;
+  backup_codes_left: number;
+}
+
+export interface TwoFactorSetup {
+  otpauth_uri: string;
+  secret: string;
 }
 
 export interface ConditionsHote {
@@ -306,8 +326,14 @@ export interface ChauffeurAdmin {
   vehicule: string;
   immatriculation: string;
   actif: boolean;
-  /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000. */
+  /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000; follows the level, set by the quarterly review. */
   excellence: boolean;
+  niveau?: "standard" | "confirme" | "excellence";
+  niveau_libelle?: string;
+  niveau_depuis?: string | null;
+  /** Profile photo; without a photo validated by the team, the driver receives no ride */
+  photo?: string | null;
+  photo_validee?: boolean;
   pays_versement: string;
   operateur_versement: string;
   numero_versement: string;

@@ -1,0 +1,10 @@
+{% autoescape off %}Bonjour,
+
+Le fonds de garantie de Kwa-Ba est passé sous sa cible, après la dotation d'un mois ou la couverture d'un sinistre.
+
+Que faire : regarder son solde et ses derniers sinistres dans le back-office (Finance, Fonds de garantie), puis en parler aux associés : relever le taux de dotation, ou revoir la cible.
+
+Cet email ne contient ni montant ni nom de personne.
+
+Kwa-Ba, module finance
+{% endautoescape %}

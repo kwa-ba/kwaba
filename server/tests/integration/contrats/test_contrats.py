@@ -16,7 +16,7 @@ from apps.contrats.models import ContratModel, ModeleContratModel
 from apps.documents.models import ParametresSocieteModel
 from apps.give.models import OrganisationModel
 from apps.locations.models import PartenaireLocationModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import ChauffeurModel
 from apps.verifications.models import PieceIdentiteModel
 
@@ -54,7 +54,7 @@ def _signature(vide=False) -> str:
 
 
 def _chauffeur(**extra):
-    return ChauffeurModel.objects.create(prenom='Komi', nom='Adjo', telephone='+22890000001', categorie='berline',
+    return ChauffeurModel.objects.create(photo_validee=True, prenom='Komi', nom='Adjo', telephone='+22890000001', categorie='berline',
                                          email='komi@exemple.tg', vehicule='Corolla grise', immatriculation='TG 1234 AB',
                                          pays_versement='TG', operateur_versement='togocel', numero_versement='90000001', **extra)
 

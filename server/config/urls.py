@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.securite.admin_site import connexion_admin
+from shared.securite.admin_site import connexion_admin
 from config.health import health
 from config.reclamation import ReclamationView
 from config.site import site
@@ -36,7 +36,7 @@ urlpatterns = [
     path('api/v1/experiences/', include('apps.experiences.urls')),
     path('api/v1/correcteur/', include('apps.correcteur.urls')),
     path('api/v1/admin/agenda/', include('apps.agenda.infrastructure.http.admin_urls')),
-    path('api/v1/admin/activity/', include('apps.activity.infrastructure.http.admin_urls')),
+    path('api/v1/admin/activity/', include('shared.activity.infrastructure.http.admin_urls')),
     path('api/v1/admin/paiements/', include('apps.paiements.admin_urls')),
     path('api/v1/admin/finance/', include('apps.finance.infrastructure.http.admin_urls')),
     path('api/v1/admin/documents/', include('apps.documents.admin_urls')),

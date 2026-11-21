@@ -14,7 +14,7 @@ from google.genai import types
 # Errors of the Interactions API: not re-exported publicly by the SDK (version pinned in requirements.txt)
 from google.genai._gaos.lib import compat_errors as erreurs_gemini
 
-from apps.securite.limites import incrementer
+from shared.securite.limites import incrementer
 from config.site import module_actif
 
 from . import outils

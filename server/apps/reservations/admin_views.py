@@ -4,11 +4,12 @@ from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.response import Response
 
+from apps.finance import api as finance
 from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
-from apps.activity import api as activity
+from shared.activity import api as activity
 from apps.users import api as users
-from apps.securite.backoffice import VueAdmin, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import VueAdmin, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
 
 from . import paiement
 from .models import ReservationModel
@@ -47,7 +48,7 @@ class ReservationListView(VueAdmin):
         params = request.query_params
         if q := params.get('q', '').strip():
             filtre = Q(hebergement_id__in=hebergements.ids_par_nom(q)) | Q(guest_id__in=users.ids_par_recherche(q))
-            # Reference RES-AF2026-3A43: the last 4 characters are the start of the id
+            # Reference RES-KB2026-3A43: the last 4 characters are the start of the id
             if q.upper().startswith('RES-'):
                 fin = q.rsplit('-', 1)[-1]
                 if len(fin) >= 2:
@@ -100,6 +101,23 @@ class ReservationAnnulerView(VueAdmin):
         reservation = _reservations().filter(pk=pk).first()
         if not reservation:
             return _introuvable('Réservation')
+        # A full refund from the threshold waits for a second person (GL-10), like in Finance → Remboursements
+        apercu = paiements.apercu_annulation_sejour(reservation) if reservation.status != 'cancelled' else None
+        if apercu and finance.validation_requise(apercu['plateforme']):
+            try:
+                v = finance.demander_validation(
+                    'remboursement_sejour', objet_type='reservation', objet_id=reservation.pk,
+                    montant=apercu['plateforme'], motif=motif, par_id=request.user.pk,
+                    donnees={'reservation_id': str(reservation.pk), 'par': 'plateforme',
+                             'reference': reservation.reference})
+            except finance.ValidationRefusee as exc:
+                return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
+            activity.record('remboursement_traite', request, actor=request.user, operation='remboursement_plateforme',
+                            reference=reservation.reference, montant=apercu['plateforme'], motif=motif,
+                            validation=v['id'])
+            return Response({'detail': f"Remboursement de {apercu['plateforme']} F CFA : une deuxième personne doit "
+                                       "le valider (Finance → Validations) ; la réservation sera annulée alors.",
+                             'validation': v['id']}, status=status.HTTP_202_ACCEPTED)
         try:
             # Cancellation by Kwa-Ba: the traveller is fully refunded if they paid (even for a stay already started)
             rembourse = paiement.annuler(reservation, par='plateforme')

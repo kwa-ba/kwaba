@@ -18,6 +18,8 @@ class Produit:
     prefixe_recu: str = 'recu'
     bon: Callable[[object], bytes] | None = None
     facture: Callable[[object], dict] | None = None  # {'client_nom', 'client_email', 'lignes'}
+    # Money given back to the client for this object (refunds decided, in FCFA): what credit notes must neutralise
+    rembourse: Callable[[object], int] | None = None
 
     @property
     def documents(self) -> tuple[str, ...]:

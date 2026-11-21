@@ -54,8 +54,15 @@ def chauffeur_au_voyageur(t: TransfertModel):
     paiements.envoyer_email('emails/transferts/chauffeur_assigne.txt', f"Votre chauffeur à {t.aeroport.ville}", [t.voyageur.email], {
         **_course(t), 'prenom': t.voyageur.first_name, 'chauffeur': f"{c.prenom} {c.nom}",
         'telephone_chauffeur': c.telephone, 'vehicule': c.vehicule, 'immatriculation': c.immatriculation,
-        'assistance': settings.ASSISTANCE_CONTACT,
+        'assistance': settings.ASSISTANCE_CONTACT, 'niveau': c.get_niveau_display(), 'photo': bool(c.photo_validee),
     })
+
+
+def avis_au_voyageur(t: TransfertModel):
+    """The ride is done: the traveller is asked once how their driver was (seen by the team only)."""
+    paiements.envoyer_email('emails/transferts/avis_chauffeur.txt', f"Votre chauffeur à {t.aeroport.ville} : votre avis",
+                            [t.voyageur.email], {**_course(t), 'prenom': t.voyageur.first_name,
+                                                 'chauffeur': t.chauffeur.prenom})
 
 
 def course_au_chauffeur(t: TransfertModel):
@@ -106,6 +113,8 @@ def envoyer_notifications() -> int:
     total += _traiter(assignes.filter(chauffeur_notifie=False), chauffeur_au_voyageur, 'chauffeur_notifie')
     total += _traiter(assignes.filter(course_envoyee_chauffeur=False), course_au_chauffeur, 'course_envoyee_chauffeur')
 
+    total += _traiter(qs.filter(statut='termine', chauffeur__isnull=False, avis_chauffeur_demande=False),
+                      avis_au_voyageur, 'avis_chauffeur_demande')
     versements = VersementChauffeurModel.objects.select_related('chauffeur', 'transfert__aeroport')
     total += _traiter(versements.filter(statut='envoye', notifie=False), versement_au_chauffeur, 'notifie')
     total += _traiter(

@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 import type { TauxCgv } from "./taux";
 import LegalPage, { AC } from "@/components/legal/LegalPage";
@@ -10,23 +11,23 @@ function N({ n, children }: { n: string; children: React.ReactNode }) {
   return <p><strong>{n}.</strong> {children}</p>;
 }
 
-/** French version (authoritative). Terms of sale version 2.4 of 18 October 2026, adapted to the open services. */
+/** French version (authoritative). Terms of sale version 2.5 of 19 November 2026 (payout to the host 48 h after the arrival), adapted to the open services. */
 /** `taux`: the traveller's fee rates set in the back-office ("6 %", "3 %"). */
 export default function ContenuFr({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Conditions générales de vente"
-      miseAJour="4 novembre 2026"
+      miseAJour="19 novembre 2026"
       intro={
         <>
           <p>
             Le site kwa-ba.com et ses applications (la « Plateforme ») sont exploités par <strong>KWA-BA</strong>, <FormeSociete /> au
-            capital de 100 000 F CFA, dont le siège est situé quartier Totsi Gblenkomé, rue 243, Lomé (Togo),
+            capital de <CapitalSociete />, dont le siège est situé <AdresseSociete />,
             immatriculée au RCCM de Lomé sous le numéro <MentionSociete cle="rccm" libelle="RCCM" />, NIF <MentionSociete cle="nif" libelle="NIF" />, enregistrée comme prestataire de commerce
             électronique sous le numéro <MentionSociete cle="commerce_electronique" libelle="numéro d&apos;enregistrement" />, représentée par son Président, M. MENDE Fadel, et son Directeur général, M. KPOGLO Dzidoula Godwin Trésor.
           </p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Contact : <LienContact sujet="Conditions générales de vente" /> ; adresse postale : quartier Totsi Gblenkomé, rue 243, Lomé, Togo.</li>
+            <li>Contact : <LienContact sujet="Conditions générales de vente" /> ; adresse postale : <AdresseSociete />.</li>
             <li>Président : M. MENDE Fadel — Directeur général : M. KPOGLO Dzidoula Godwin Trésor — Directeur de la publication : M. MENDE Fadel.</li>
           </ul>
           <p>
@@ -172,7 +173,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
           titre: "Versement au prestataire",
           contenu: (
             <>
-              <N n="8.1">Hébergement : le prix est conservé jusqu’à <strong>24 heures après l’arrivée</strong> du client, puis versé à l’hôte.</N>
+              <N n="8.1">Hébergement : le prix est conservé jusqu’à <strong>48 heures après l’arrivée</strong> du client, puis versé à l’hôte.</N>
               <N n="8.2">Mobilité : le prix est versé au prestataire après le début de la mission ou de la location ; pour une location avec dépôt de garantie, après le délai de signalement des dommages (article 14.3).</N>
               <N n="8.3">Ces délais permettent au client de signaler un problème avant que le prestataire ne soit payé.</N>
             </>

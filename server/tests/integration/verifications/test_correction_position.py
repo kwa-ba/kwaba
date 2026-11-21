@@ -6,7 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.hebergements.models import HebergementModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 POSITIONS = '/api/v1/verifications/positions/'
 POINT_HOTE = (Decimal('6.130000'), Decimal('1.220000'))

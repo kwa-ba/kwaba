@@ -1,7 +1,8 @@
 """Contract templates, installed by the migration then editable in the back-office.
 
-Drafts (contracts B1, B2, B4, B5 and B6, charter of the Kwa-Ba Partners Network B14, version 1 of
-18 October 2026): to be reviewed by a lawyer before the first signature.
+Contracts B1, B2, B4, B5 and B6, charter of the Kwa-Ba Partners Network B14, version 1 of 18 October 2026, read by
+the lawyer; changed on 19 November 2026 (payout 48 h after the arrival, offset of a stay cancelled after its payout:
+migration 0010).
 Available variables: see services.VARIABLES.
 """
 
@@ -107,7 +108,8 @@ L'Hôte confie à KWA-BA la publication et la commercialisation de son logement 
 – Programme Fondateurs (50 premiers hôtes) : {{ tarifs.commission_fondateur }} pendant 6 mois ; {{ partie.fondateur }}.
 – Lien Kwa-Ba Direct (propres clients de l'Hôte, dès son ouverture) : 5 %, sans frais de service pour le client.
 – Frais de service du client ({{ tarifs.frais_voyageur }}, {{ tarifs.frais_reduits }} en Pack Séjour ou en Client fidèle, 4 % entreprises) : payés par le client, ils ne réduisent pas le revenu de l'Hôte.
-– Versement : 24 heures après l'arrivée du client, par Mobile Money, commission déduite, sur le compte au nom de l'Hôte indiqué dans son espace hôte.
+– Versement : 48 heures après l'arrivée du client, par Mobile Money, commission déduite, sur le compte au nom de l'Hôte indiqué dans son espace hôte. Le délai applicable est celui en vigueur à la date de la réservation.
+– Séjour annulé après le versement : si un séjour déjà versé est annulé et remboursé au client, la part que l'Hôte a reçue au-delà de ce que la politique d'annulation lui laisse est compensée sur ses versements suivants ; à défaut de versement à venir, l'Hôte la rembourse à KWA-BA dans les 30 jours de la demande.
 – Forfaits facultatifs commandés par l'Hôte : photos de l'annonce, 5 000 F CFA ; accueil des voyageurs, 3 000 F CFA par arrivée ; déduits des versements.
 La part reversée au démarcheur qui a apporté l'Hôte (20 % du revenu de KWA-BA pendant 12 mois) est payée par KWA-BA et ne coûte rien à l'Hôte.
 
@@ -152,7 +154,8 @@ L'Établissement confie à KWA-BA la commercialisation de ses chambres ou appart
 – Commission de KWA-BA : {{ tarifs.commission_hotel }} du prix de l'hébergement, hors taxe de séjour éventuelle.
 – Lien Kwa-Ba Direct (réservations apportées par l'Établissement, dès son ouverture) : 6 %.
 – Frais de service du client ({{ tarifs.frais_voyageur }}, {{ tarifs.frais_reduits }} en Pack Séjour ou en Client fidèle, 4 % entreprises) : payés par le client, ils ne réduisent pas le revenu de l'Établissement.
-– Versement : 24 heures après l'arrivée du client, commission déduite, sur le compte de l'Établissement indiqué dans son espace ; relevé et facture de commission mensuels.
+– Versement : 48 heures après l'arrivée du client, commission déduite, sur le compte de l'Établissement indiqué dans son espace ; relevé et facture de commission mensuels. Le délai applicable est celui en vigueur à la date de la réservation.
+– Séjour annulé après le versement : si un séjour déjà versé est annulé et remboursé au client, la part que l'Établissement a reçue au-delà de ce que la politique d'annulation lui laisse est compensée sur ses versements suivants ; à défaut de versement à venir, l'Établissement la rembourse à KWA-BA dans les 30 jours de la demande.
 – Taxe de séjour ou taxe locale éventuelle : indiquée sur l'annonce, incluse dans le prix total, collectée et déclarée par l'Établissement.
 
 ## Article 3 – Tarifs, disponibilités et conditions

@@ -6,18 +6,18 @@ Qui a fait quoi, sur quoi, quand et d'où. Décision : [ADR-025](../ADR/ADR-025-
 
 | Partie | Emplacement |
 |---|---|
-| Catalogue des actions (catégorie, niveau, libellé, cible, résumé, détails lisibles) | `server/apps/activity/domain/catalogue.py` |
-| Durée de conservation | `server/apps/activity/domain/retention.py` |
-| Enregistrer, rechercher, compter, purger | `server/apps/activity/application/service.py` |
-| Tables `activity_entry` et `activity_hold` | `server/apps/activity/infrastructure/persistence/models.py` |
-| API du back-office | `server/apps/activity/infrastructure/http/`, sous `api/v1/admin/activity/` |
-| Interface pour les autres modules | `server/apps/activity/api.py` |
+| Catalogue des actions (catégorie, niveau, libellé, cible, résumé, détails lisibles) | `server/shared/activity/domain/catalogue.py` |
+| Durée de conservation | `server/shared/activity/domain/retention.py` |
+| Enregistrer, rechercher, compter, purger | `server/shared/activity/application/service.py` |
+| Tables `activity_entry` et `activity_hold` | `server/shared/activity/infrastructure/persistence/models.py` |
+| API du back-office | `server/shared/activity/infrastructure/http/`, sous `api/v1/admin/activity/` |
+| Interface pour les autres modules | `server/shared/activity/api.py` |
 | Écran | `client/src/features/activity`, page `/backoffice/activity` |
 
 ## Écrire dans le journal
 
 ```python
-from apps.activity import api as activity
+from shared.activity import api as activity
 
 activity.record('annonce_supprimee', request, actor=request.user, annonce_id=str(annonce.pk), annonce=annonce.name,
                 motif=motif)

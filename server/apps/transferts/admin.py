@@ -36,7 +36,7 @@ class TransfertAdmin(admin.ModelAdmin):
         'expire_le', 'annule_par', 'annule_le', 'cree_le',
     ]
     exclude = ['confirmation_notifiee', 'admins_notifies', 'alerte_sans_chauffeur', 'chauffeur_notifie',
-               'course_envoyee_chauffeur']
+               'course_envoyee_chauffeur', 'avis_chauffeur_demande']
     actions = ['annuler_et_rembourser']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):

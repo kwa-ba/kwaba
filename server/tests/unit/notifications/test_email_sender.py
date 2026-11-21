@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from apps.notifications.application.service.NotificationService import NotificationService
-from apps.notifications.infrastructure.email.DjangoEmailSender import DjangoEmailSender
+from shared.notifications.application.service.NotificationService import NotificationService
+from shared.notifications.infrastructure.email.DjangoEmailSender import DjangoEmailSender
 
 APPS_DIR = Path(__file__).resolve().parents[3] / 'apps'
 

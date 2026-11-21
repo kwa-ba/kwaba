@@ -3,6 +3,7 @@ import type { JWT } from "next-auth/jwt";
 import { getApiBaseUrl } from "@/lib/api-url";
 import { fetchBackendUser } from "@/lib/api/auth/me";
 import { renouvelerUneFois } from "@/lib/api/auth/renouvellement";
+import { verifyTwoFactor } from "@/lib/api/auth/two-factor";
 import { credentialsProvider } from "@/lib/providers/auth/credentials";
 import { emailCodeProvider } from "@/lib/providers/auth/email-code";
 import { googleProvider } from "@/lib/providers/auth/google";
@@ -76,6 +77,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token = await renouvelerUneFois(token.refreshToken, () => refreshAccessToken(avant), (t) => t !== avant);
       }
 
+      // Back-office second factor (ADR-028): useSession().update({ twoFactorCode }) sends the code with the session's
+      // tokens; the marked pair is kept here, in the encrypted cookie, and only the refusal goes back to the browser
+      if (trigger === "update" && typeof session?.twoFactorCode === "string" && token.accessToken && token.refreshToken
+          && !token.error) {
+        const result = await verifyTwoFactor(token.accessToken, token.refreshToken, session.twoFactorCode);
+        if ("error" in result) return { ...token, twoFactorError: result.error };
+        return {
+          ...token,
+          accessToken: result.access,
+          refreshToken: result.refresh,
+          accessTokenExpires: decodeExpiry(result.access),
+          twoFactorError: undefined,
+        };
+      }
+      // A refusal is shown once, in the answer to the update() that sent the code
+      token.twoFactorError = undefined;
+
       // useSession().update() (new name): the profile is read again from the API instead of trusting
       // the values sent by the browser, which could otherwise give itself the "admin" role
       if (trigger === "update" && session && token.accessToken && !token.error) {
@@ -93,6 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.userId ?? "";
       session.user.role = token.role ?? "voyageur";
       session.error = token.error;
+      session.twoFactorError = token.twoFactorError;
       return session;
     },
   },

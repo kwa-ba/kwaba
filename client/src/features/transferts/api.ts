@@ -71,3 +71,57 @@ export async function attribuerChauffeur(transfertId: string, chauffeur: number)
 export async function annulerTransfertAdmin(transfertId: string, motif: string) {
   await api.post(`${ADMIN}/transferts/${transfertId}/annuler/`, { motif });
 }
+
+export async function noterChauffeurTransfert(id: string, avis: unknown) {
+  return (await api.post(`${TRANSFERTS}/${id}/avis-chauffeur/`, avis)).data;
+}
+
+// --- Back-office: photo, levels, incidents and ratings of the drivers
+
+export interface LigneRevueNiveaux {
+  chauffeur_id: number;
+  nom: string;
+  niveau: "standard" | "confirme" | "excellence";
+  propose: "standard" | "confirme" | "excellence";
+  photo_validee: boolean;
+  chiffres: { courses: number; avis: number; note: number | string | null; graves: number; retards: number; absences: number };
+}
+
+export interface RevueNiveaux {
+  depuis: string;
+  seuils: Record<string, number>;
+  libelles: Record<string, string>;
+  chauffeurs: LigneRevueNiveaux[];
+}
+
+export interface SuiviChauffeur {
+  avis: { objet_type: string; note: number; ponctualite: number; conduite: number; amabilite: number; commentaire: string; cree_le: string }[];
+  incidents: { id: number; type: "grave" | "retard" | "absence" | "autre"; date: string; description: string; reference: string }[];
+  niveaux: { avant: string; apres: string; propose: string; motif: string; le: string }[];
+}
+
+export async function envoyerPhotoChauffeur(id: number, image: File) {
+  const corps = new FormData();
+  corps.append("image", image);
+  return (await api.post(`${ADMIN}/chauffeurs/${id}/photo/`, corps)).data;
+}
+
+export async function validerPhotoChauffeur(id: number) {
+  return (await api.post(`${ADMIN}/chauffeurs/${id}/photo/valider/`, {})).data;
+}
+
+export async function lireRevueNiveaux() {
+  return (await api.get<RevueNiveaux>(`${ADMIN}/chauffeurs/niveaux/`)).data;
+}
+
+export async function validerNiveau(chauffeur: number, niveau: string, motif = "") {
+  return (await api.post(`${ADMIN}/chauffeurs/niveaux/`, { chauffeur, niveau, motif })).data;
+}
+
+export async function lireSuiviChauffeur(id: number) {
+  return (await api.get<SuiviChauffeur>(`${ADMIN}/chauffeurs/${id}/suivi/`)).data;
+}
+
+export async function signalerIncident(id: number, incident: { type: string; date: string; description: string; reference: string }) {
+  return (await api.post(`${ADMIN}/chauffeurs/${id}/suivi/`, incident)).data;
+}

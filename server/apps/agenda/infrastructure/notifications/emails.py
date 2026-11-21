@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 
 from apps.agenda.application.ports import Notifier, PeopleLookup
 from apps.agenda.domain.settings import DEFAULT_TIMEZONE
-from apps.notifications.api import send_mail
+from shared.notifications.api import send_mail
 
 logger = logging.getLogger('apps.agenda')
 

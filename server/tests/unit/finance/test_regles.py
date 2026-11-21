@@ -6,7 +6,8 @@ import pytest
 
 from apps.finance.domain.entities import ENTREE, SORTIE, Ecrivain, Ligne, Mouvement, Nature, Referentiels
 from apps.finance.domain.exceptions import MouvementRefuse, RestitutionRefusee
-from apps.finance.domain.rules import ecarts_des_modules_ouverts, inverse, mois_de, preparer, premier_du_mois
+from apps.finance.domain.rules import (dotation_due, ecarts_des_modules_ouverts, inverse, mois_de, preparer,
+                                      premier_du_mois)
 
 MAINTENANT = datetime(2026, 12, 20, 10, 0, tzinfo=timezone.utc)
 HOTE = uuid.uuid4()
@@ -110,3 +111,12 @@ def test_partner_money_may_wait_for_its_person():
     """The driver of a transfer is assigned after the payment: the share is owed to « a driver » until then."""
     ecriture = preparer_(ligne(tiers_id=None))
     assert (ecriture.ligne.tiers_type, ecriture.ligne.tiers_id) == ('hote', None)
+
+
+@pytest.mark.parametrize('assiette, taux, attendu', [
+    (35_000, 10, 3_500), (45_005, 10, 4_501), (45_004, 10, 4_500), (12_345, '7.5', 926), (0, 10, 0), (-5_000, 10, 0),
+    (35_000, 0, 0),
+])
+def test_the_monthly_allocation_to_the_guarantee_fund(assiette, taux, attendu):
+    """Its rate of the month's net revenue, rounded half up like PostgreSQL; nothing without revenue."""
+    assert dotation_due(assiette, taux) == attendu

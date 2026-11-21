@@ -2,6 +2,7 @@ import { Link } from "@/i18n/navigation";
 import LienContact from "@/components/legal/LienContact";
 import LegalPage, { AC, VersionFrancaiseFaitFoi } from "@/components/legal/LegalPage";
 import FormeSociete from "@/components/legal/FormeSociete";
+import { AdresseSociete, CapitalSociete } from "@/components/legal/IdentiteSociete";
 import MentionSociete from "@/components/legal/MentionSociete";
 
 /** English version (the French version prevails). */
@@ -27,7 +28,7 @@ export default function ContenuEn() {
           titre: "Data controller",
           contenu: (
             <ul>
-              <li>Controller: <strong>KWA-BA</strong>, <FormeSociete /> with a share capital of 100,000 F CFA, Totsi Gblenkomé district, street 243, Lomé (Togo), RCCM <MentionSociete cle="rccm" libelle="RCCM" />.</li>
+              <li>Controller: <strong>KWA-BA</strong>, <FormeSociete /> with a share capital of <CapitalSociete />, <AdresseSociete />, RCCM <MentionSociete cle="rccm" libelle="RCCM" />.</li>
               <li>Declaration to the personal data protection authority (IPDCP): no. <MentionSociete cle="ipdcp" libelle="declaration number" />.</li>
               <li>Contact about your data: <LienContact sujet="Data protection" />.</li>
               <li>Data officer within KWA-BA: <AC>name or position</AC>.</li>

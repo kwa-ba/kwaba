@@ -51,7 +51,9 @@ def commission_chauffeur() -> Decimal:
 def _fiche(c: ChauffeurModel) -> dict:
     return {'id': c.pk, 'prenom': c.prenom, 'nom': c.nom, 'telephone': c.telephone, 'email': c.email,
             'excellence': c.excellence, 'actif': c.actif, 'pays_versement': c.pays_versement,
-            'operateur_versement': c.operateur_versement, 'numero_versement': c.numero_versement}
+            'operateur_versement': c.operateur_versement, 'numero_versement': c.numero_versement,
+            'niveau': c.niveau, 'niveau_libelle': c.get_niveau_display(), 'photo_validee': c.photo_validee,
+            'photo': c.photo.url if c.photo and c.photo_validee else None}
 
 
 def fiche_chauffeur(chauffeur_id) -> dict | None:
@@ -74,3 +76,27 @@ def chauffeurs_actifs() -> list[dict]:
 def chauffeurs_des_transferts_termines(voyageur_id) -> set[int]:
     return set(TransfertModel.objects.filter(voyageur_id=voyageur_id, statut='termine', chauffeur_id__isnull=False)
                .values_list('chauffeur_id', flat=True))
+
+
+class NoteRefusee(ValueError):
+    """A rating of a driver that cannot be saved (already given, a note out of 1 to 5), in French."""
+
+
+def noter_chauffeur(*, chauffeur_id, objet_type: str, objet_id, voyageur_id, note: int, ponctualite: int,
+                    conduite: int, amabilite: int, commentaire: str = '') -> None:
+    """The traveller's rating of the driver of a ride of another module (a rental with a driver): the caller checks
+    the ride is the traveller's and finished. Raises NoteRefusee."""
+    from . import niveaux
+
+    try:
+        niveaux.noter(chauffeur_id=chauffeur_id, objet_type=objet_type, objet_id=objet_id, voyageur_id=voyageur_id,
+                      note=note, ponctualite=ponctualite, conduite=conduite, amabilite=amabilite,
+                      commentaire=commentaire)
+    except niveaux.NiveauErreur as exc:
+        raise NoteRefusee(str(exc)) from exc
+
+
+def avis_donne(objet_type: str, objet_id) -> bool:
+    from .models import AvisChauffeurModel
+
+    return AvisChauffeurModel.objects.filter(objet_type=objet_type, objet_id=objet_id).exists()

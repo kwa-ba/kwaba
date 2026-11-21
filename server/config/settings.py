@@ -2,6 +2,7 @@
 Django settings for Kwa-Ba project.
 """
 
+import base64
 import hashlib
 import hmac
 import os
@@ -58,7 +59,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     # Local
     'apps.users',
-    'apps.notifications.apps.NotificationsConfig',
+    'shared.notifications.apps.NotificationsConfig',
     'apps.hebergements.apps.HebergementsConfig',
     'apps.reservations.apps.ReservationsConfig',
     'apps.favoris.apps.FavorisConfig',
@@ -69,8 +70,8 @@ INSTALLED_APPS = [
     'apps.voyages.apps.VoyagesConfig',
     'apps.concierge.apps.ConciergeConfig',
     'apps.give.apps.GiveConfig',
-    'apps.securite.apps.SecuriteConfig',
-    'apps.activity.apps.ActivityConfig',
+    'shared.securite.apps.SecuriteConfig',
+    'shared.activity.apps.ActivityConfig',
     'apps.verifications.apps.VerificationsConfig',
     'apps.locations.apps.LocationsConfig',
     'apps.documents.apps.DocumentsConfig',
@@ -78,7 +79,7 @@ INSTALLED_APPS = [
     'apps.experiences.apps.ExperiencesConfig',
     'apps.terrain.apps.TerrainConfig',
     'apps.correcteur.apps.CorrecteurConfig',
-    'apps.export.apps.ExportConfig',
+    'shared.export.apps.ExportConfig',
     'apps.agenda.apps.AgendaConfig',
     'apps.finance.apps.FinanceConfig',
 ]
@@ -411,6 +412,17 @@ CORS_EXPOSE_HEADERS = ['Content-Disposition']
 JWT_SIGNING_KEY = os.getenv('JWT_SIGNING_KEY') or hmac.new(
     SECRET_KEY.encode(), b'kwaba-jwt-signing-key', hashlib.sha256,
 ).hexdigest()
+
+# Back-office two-factor authentication (ADR-028): a verification is valid this many hours, then asked again
+TWO_FACTOR_VALIDITY_HOURS = int(os.getenv('TWO_FACTOR_VALIDITY_HOURS', '12'))
+# Name shown by the authenticator app: one per environment ("Kwa-Ba Prod", "Kwa-Ba Préprod"), so that an admin with
+# an account on each one tells their codes apart
+TWO_FACTOR_ISSUER = os.getenv('TWO_FACTOR_ISSUER', 'Kwa-Ba Dev')
+# Fernet key of the TOTP secrets stored in the database. Set it apart in production: derived from SECRET_KEY otherwise,
+# so changing SECRET_KEY would make every secret unreadable (each admin would then be reset).
+TWO_FACTOR_ENCRYPTION_KEY = os.getenv('TWO_FACTOR_ENCRYPTION_KEY') or base64.urlsafe_b64encode(hmac.new(
+    SECRET_KEY.encode(), b'kwaba-two-factor-key', hashlib.sha256,
+).digest()).decode()
 
 SIMPLE_JWT = {
     'SIGNING_KEY': JWT_SIGNING_KEY,
