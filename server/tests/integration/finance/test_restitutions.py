@@ -256,7 +256,7 @@ def _mois_rapproche(mois: date) -> None:
 
 
 def test_a_sound_month_can_be_closed():
-    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the ten checks are OK."""
+    """FH-17: last month, fully reconciled and its allocation to the guarantee fund written: the eleven checks are OK (the cut-off of ADR-034 included)."""
     mois = (mois_courant() - timedelta(days=1)).replace(day=1)
     sejour(CAS[0], moment=timezone.now().replace(day=1) - timedelta(days=15))
     _mois_rapproche(mois)
@@ -265,7 +265,7 @@ def test_a_sound_month_can_be_closed():
 
     finance.doter_fonds_garantie(mois)
 
-    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 10
+    assert [c['verdict'] for c in finance.peut_on_cloturer(mois)] == ['OK'] * 11
 
 
 def test_a_month_without_reconciliation_cannot_be_closed():
