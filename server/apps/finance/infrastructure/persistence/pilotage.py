@@ -119,6 +119,11 @@ class SqlPilotage(Pilotage):
             WHERE m.nature_code = 'D20' AND m.compte_argent_code = 'AMORTISSEMENTS' AND m.mois_comptable < %s""",
                        [date(annee, 1, 1)])[0]['s']
 
+    def amortisation_written_until(self, month) -> int:
+        return _lignes(f"""SELECT COALESCE(-SUM({SIGNE}), 0)::bigint AS s FROM finance_mouvement m
+            WHERE m.nature_code = 'D20' AND m.compte_argent_code = 'AMORTISSEMENTS' AND m.mois_comptable <= %s""",
+                       [month])[0]['s']
+
     def commentaire(self, mois) -> dict | None:
         return RapportAssociesModel.objects.filter(mois=mois).values('mois', 'commentaire', 'maj_par_id',
                                                                       'maj_le').first()
