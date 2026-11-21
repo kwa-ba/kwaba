@@ -2,6 +2,7 @@
 export type HebergementType = "chambre_privee" | "studio" | "appartement" | "maison_entiere" | "villa" | "chambre_hotel"
   | "residence" | "auberge";
 export type PolitiqueAnnulation = "souple" | "moderee" | "ferme";
+export type DepositOption = "none" | "enhanced_guarantee" | "escrow";
 export type EspaceLogement = "entier" | "chambre_privee";
 /** The one status shown to the host (HebergementModel.statut_annonce on the API). */
 export type StatutAnnonce = "en_verification" | "refusee" | "validee" | "publiee" | "masquee";
@@ -71,6 +72,10 @@ export interface Hebergement {
   depart_avant: string | null;
   /** Cancellation policy chosen by the host (terms of sale, appendix 1). */
   politique_annulation: PolitiqueAnnulation;
+  /** Deposit chosen by the host (ADR-036). */
+  deposit_option?: DepositOption;
+  deposit_rate?: string | null;
+  guarantee_fee?: number | null;
   /** Service fee rate for this visitor: 0.06, or 0.03 if they come back to this host (loyal customer). */
   frais_voyageur: number;
   /** Verification by a field agent: only "verifiee" listings are public */

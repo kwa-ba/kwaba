@@ -37,6 +37,23 @@ export interface ConfigPaiement {
   frais_menage: Record<string, number>;
   delai_paiement_minutes: number;
   pays: PaysPaiement[];
+  /** Deposit of the short stays chosen by the host (ADR-036), read in the finance referential. */
+  deposit: DepositRules;
+}
+
+export interface DepositRules {
+  /** Escrowed deposit: rate of the nights' price, at most, proposed, and above which the host is warned (%). */
+  rate_max: number;
+  rate_proposed: number;
+  rate_warning: number;
+  /** Below `minimum` (FCFA) no deposit; above `ceiling`, capped; rounded to `rounding`. */
+  minimum: number;
+  ceiling: number;
+  rounding: number;
+  /** The enhanced guarantee covers damages up to this multiple of its fee. */
+  guarantee_multiple: number;
+  /** Option c open to the hosts (off until FedaPay confirms an escrow without fees). */
+  escrow_open: boolean;
 }
 
 export type StatutPaiement = "en_attente" | "reussi" | "echoue" | "annule";

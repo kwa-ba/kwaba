@@ -2546,5 +2546,30 @@
     "envoi": "Envoi…",
     "merci": "Merci pour votre avis.",
     "erreur": "Votre avis n’a pas pu être envoyé."
+  },
+  "deposit": {
+    "titre": "Caution",
+    "aide": "Kwa-Ba garde seule la caution ou le forfait : vous ne percevez jamais d'argent du voyageur en dehors de la plateforme. Le montant est affiché au voyageur avant le paiement.",
+    "none": {
+      "nom": "Sans caution",
+      "regle": "La Garantie Kwa-Ba standard s'applique."
+    },
+    "enhanced_guarantee": {
+      "nom": "Garantie Kwa-Ba renforcée",
+      "regle": "Un forfait non remboursable payé avec le séjour, qui couvre les petits dommages."
+    },
+    "escrow": {
+      "nom": "Caution séquestrée",
+      "regle": "Un pourcentage du prix des nuitées, gardé par Kwa-Ba et rendu après le départ."
+    },
+    "sequestreFerme": "La caution séquestrée ouvrira bientôt : en attendant, choisissez la garantie renforcée ou aucune caution.",
+    "forfait": "Forfait de la garantie (FCFA)",
+    "forfaitAide": "Entre 1 000 et 10 000 F CFA en général : un montant modeste rassure les voyageurs.",
+    "couverture": "Couvre les dommages jusqu'à {montant}.",
+    "taux": "Taux de la caution (% du prix des nuitées, {max} % au plus)",
+    "alerte": "Au-delà de {seuil} %, une caution élevée fait baisser vos réservations.",
+    "exemple": "Pour {nuits} nuits : caution de {montant}.",
+    "exempleSous": "Pour {nuits} nuits : pas de caution (moins de {minimum}).",
+    "sequestreAide": "Rendue automatiquement 72 h après le départ s'il n'y a pas de dommage, et en entier en cas d'annulation. Jamais plus de {plafond}."
   }
 }

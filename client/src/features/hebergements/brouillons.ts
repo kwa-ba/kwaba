@@ -5,7 +5,8 @@ export type DonneesAnnonce = Partial<Pick<Hebergement,
   "name" | "type" | "city" | "location" | "point_repere" | "max_guests" | "description" | "image_url" | "images" | "legendes_photos"
   | "amenities"
   | "chambres" | "salles_de_bain" | "lits_doubles" | "lits_simples" | "canapes_lits"
-  | "petit_dejeuner" | "petit_dejeuner_prix" | "arrivee_a_partir" | "depart_avant" | "politique_annulation">> & {
+  | "petit_dejeuner" | "petit_dejeuner_prix" | "arrivee_a_partir" | "depart_avant" | "politique_annulation"
+  | "deposit_option" | "deposit_rate" | "guarantee_fee">> & {
   latitude?: number | string | null;
   longitude?: number | string | null;
   price_per_night?: number | null;
