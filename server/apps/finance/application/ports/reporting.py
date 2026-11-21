@@ -179,6 +179,10 @@ class Pilotage(ABC):
         pass
 
     @abstractmethod
+    def amortisation_written_until(self, month: date) -> int:
+        """Amortisation of the Solution written up to the end of `month` included (ADR-037)."""
+
+    @abstractmethod
     def commentaire(self, mois: date) -> dict | None:
         pass
 

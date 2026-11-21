@@ -37,6 +37,7 @@ def cloture_service() -> ClotureService:
     def avant_cloture(mois, par_id):
         fonds_garantie_service().doter(mois, par_id=par_id)
         cut_off_service().regulariser(mois, par_id=par_id)
+        pilotage_service().amortisation.amortise(mois, par_id=par_id)
 
     return ClotureService(restitutions=SqlRestitutions(), periodes=DjangoPeriodes(), journal=AuditJournal(),
                           tx=DjangoTransactionManager(), clock=DjangoClock(), avant_cloture=avant_cloture)

@@ -226,6 +226,8 @@ ACTIONS: dict[str, ActionSpec] = {
                                               summary=lambda d, t: str(d.get('compte', ''))),
     'tresorerie_rapport_commente': ActionSpec('Rapport aux associés commenté', MONEY, IMPORTANT,
                                               summary=lambda d, t: str(d.get('mois', ''))),
+    'tresorerie_amortissement_ecrit': ActionSpec('Amortissement mensuel de la Solution', MONEY, IMPORTANT,
+                                                 summary=lambda d, t: _join(d.get('mois', ''), d.get('montant', ''))),
     'tresorerie_inventaire_ecrit': ActionSpec("Écritures d'inventaire passées", MONEY, SENSITIVE,
                                               summary=lambda d, t: _join(d.get('annee', ''), d.get('montant', ''))),
     'parametre_modifie': ActionSpec('Paramètre financier modifié', MONEY, SENSITIVE,

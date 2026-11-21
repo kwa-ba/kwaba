@@ -11,11 +11,11 @@ from datetime import date, datetime, time, timedelta
 from datetime import timezone as dt_timezone
 from decimal import ROUND_HALF_UP, Decimal
 
+from apps.finance.application.amortisation import COMPTE_AMORTISSEMENTS, AmortisationService
 from apps.finance.application.ports import Clock, Journal, Parametres, Periodes, Pilotage, TransactionManager
 from apps.finance.domain.entities import PERIODE_VERROUILLEE, SORTIE, Ligne
 from apps.finance.domain.exceptions import RestitutionRefusee
 
-COMPTE_AMORTISSEMENTS = 'AMORTISSEMENTS'
 
 
 def fin_du_mois(mois: date) -> date:
@@ -36,6 +36,9 @@ class PilotageService:
         self.journal = journal
         self.tx = tx
         self.clock = clock
+        # One rule for the month, the year and the inventory (ADR-037)
+        self.amortisation = AmortisationService(pilotage=pilotage, parametres=parametres, grand_livre=grand_livre,
+                                                periodes=periodes, journal=journal, tx=tx, clock=clock)
 
     def _p(self, cle: str) -> Decimal:
         """A steered value; 0 (inert) when unknown or inactive."""
@@ -121,24 +124,12 @@ class PilotageService:
     # --- Inventory of the financial year (GL-23) -------------------------------------------------------------------
 
     def amortissement_du(self, annee: int) -> dict:
-        """Amortisation of the Solution for the year: straight line over its duration from its putting into service
-        (parameters solution_valeur, solution_duree_mois, solution_mise_en_service as YYYYMM; 0: inert)."""
-        valeur, duree = int(self._p('solution_valeur')), int(self._p('solution_duree_mois'))
-        service = int(self._p('solution_mise_en_service'))
-        vide = {'annee': annee, 'valeur': valeur, 'duree_mois': duree, 'mois': 0, 'du': 0,
+        """Amortisation of the Solution for the year: the sum of its monthly allocations (ADR-037), from the
+        parameters solution_valeur, solution_duree_mois and solution_mise_en_service (YYYYMM; 0: inert)."""
+        valeur, duree, _ = self.amortisation.settings()
+        return {'annee': annee, 'valeur': valeur, 'duree_mois': duree,
+                'mois': self.amortisation.months_in_year(annee), 'du': self.amortisation.due_in_year(annee),
                 'ecrit': self.pilotage.amortissement_ecrit(annee)}
-        if not (valeur and duree and service):
-            return vide
-        debut = date(service // 100, service % 100, 1)
-        if debut.year > annee:
-            return vide
-        mois_avant = max(0, (annee - debut.year) * 12 - (debut.month - 1))
-        mois = max(0, min(12 - (debut.month - 1 if debut.year == annee else 0), duree - mois_avant))
-        cumul_avant = self.pilotage.amortissement_cumule_avant(annee)
-        du = int((Decimal(valeur) * mois / duree).quantize(Decimal(1), rounding=ROUND_HALF_UP))
-        if mois_avant + mois >= duree:
-            du = valeur - cumul_avant  # the last year takes what is left
-        return {**vide, 'mois': mois, 'du': max(du, 0)}
 
     def ecrire_inventaire(self, annee: int, *, par_id: uuid.UUID | None) -> dict:
         """Writes what the amortisation of a finished year still lacks, dated 31 December (its month must be open)."""
