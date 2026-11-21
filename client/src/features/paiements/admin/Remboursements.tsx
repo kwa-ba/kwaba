@@ -65,7 +65,7 @@ function RembourserUnSejour() {
         <p className="text-sm text-muted">Le montant vient des tarifs figés au paiement. La réservation est annulée, l&apos;avoir est émis si elle était facturée.</p>
       </div>
       <form className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => { e.preventDefault(); setReference(saisie.trim()); setBareme(""); }}>
-        <input className={cn(CHAMP, "flex-1")} value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Référence (RES-AF2026-3A43) ou identifiant de la réservation" aria-label="Référence de la réservation" />
+        <input className={cn(CHAMP, "flex-1")} value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Référence (RES-KB2026-3A43) ou identifiant de la réservation" aria-label="Référence de la réservation" />
         <button type="submit" disabled={!saisie.trim()} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold disabled:opacity-50">
           <Search size={16} aria-hidden /> Chercher
         </button>
