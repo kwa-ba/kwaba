@@ -1,5 +1,5 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (TresorerieService, VirementService,
+from apps.finance.application.service import (TresorerieService, VirementService, CutOffService,
                                               CautionService, ClotureService, ComptesCourantsService, DepenseService,
                                               FondsGarantieService, GrandLivreService, LivresService,
                                               ParametreService, RapportService,
@@ -8,6 +8,7 @@ from apps.finance.infrastructure.clock import DjangoClock
 from apps.finance.infrastructure.journal import AuditJournal
 from apps.finance.infrastructure.notifications.alertes import EmailAlertes
 from apps.finance.infrastructure.persistence.repositories import (DjangoComptesArgent, DjangoReleves, DjangoVirements,
+                                                                  DjangoCutOff,
                                                                   DjangoAnnuaire, DjangoCautions, DjangoComptesCourants,
                                                                   DjangoDepenses, DjangoFondsGarantie,
                                                                   DjangoGrandLivre, DjangoParametres,
@@ -32,10 +33,18 @@ def livres_service() -> LivresService:
 
 
 def cloture_service() -> ClotureService:
-    # The closing writes the allocation of the month to the guarantee fund first (GL-17)
+    # The closing writes the allocation of the month to the guarantee fund (GL-17) and its cut-off (ADR-034) first
+    def avant_cloture(mois, par_id):
+        fonds_garantie_service().doter(mois, par_id=par_id)
+        cut_off_service().regulariser(mois, par_id=par_id)
+
     return ClotureService(restitutions=SqlRestitutions(), periodes=DjangoPeriodes(), journal=AuditJournal(),
-                          tx=DjangoTransactionManager(), clock=DjangoClock(),
-                          avant_cloture=lambda mois, par_id: fonds_garantie_service().doter(mois, par_id=par_id))
+                          tx=DjangoTransactionManager(), clock=DjangoClock(), avant_cloture=avant_cloture)
+
+
+def cut_off_service() -> CutOffService:
+    return CutOffService(cut_off=DjangoCutOff(), grand_livre=grand_livre_service(), tx=DjangoTransactionManager(),
+                         clock=DjangoClock())
 
 
 def rapport_service() -> RapportService:
