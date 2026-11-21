@@ -24,7 +24,7 @@ from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, Depe
                                             MouvementRefuse, ParametreRefuse, RapprochementRefuse,
                                             RestitutionRefusee, ValidationRefusee, VirementRefuse)
 from apps.finance.domain.rules import mois_de
-from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service,
+from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service, cut_off_service,
                                                    depense_service, fonds_garantie_service, grand_livre_service,
                                                    livres_service, parametre_service, rapport_service,
                                                    tresorerie_service, virement_service,
@@ -548,6 +548,22 @@ def doter_fonds_garantie_si_du() -> int:
     if not cache.add('finance:dotation_garantie', 1, timeout=3600):
         return 0
     return sum(1 for d in fonds_garantie_service().doter_mois_termines() if d['ajoute'])
+
+
+def regulariser_cut_off(mois: date | None = None, *, par_id: uuid.UUID | None = None) -> int:
+    """Cut-off of the service fees (ADR-034): writes what 477 lacks at the end of a finished month (every finished
+    open month if `mois` is None). Returns the number of lines written."""
+    service = cut_off_service()
+    return service.regulariser_mois_termines(par_id=par_id) if mois is None else service.regulariser(mois, par_id=par_id)
+
+
+def regulariser_cut_off_si_du() -> int:
+    """Worker: once an hour at most, the cut-off of the finished months still open. Returns the lines written."""
+    from django.core.cache import cache  # local import: only the worker paces itself
+
+    if not cache.add('finance:cut_off', 1, timeout=3600):
+        return 0
+    return cut_off_service().regulariser_mois_termines()
 
 
 def imputer_sinistre(depense_id, *, montant: int, decision_reference: str, motif: str,

@@ -619,6 +619,11 @@ def passe() -> dict:
         stats['dotations_fonds_garantie'] = finance.doter_fonds_garantie_si_du()
     except Exception:
         logger.exception('Dotation du fonds de garantie en échec')
+    try:
+        # Service fees of the stays not started yet, outside the result of the finished months (ADR-034)
+        stats['cut_off'] = finance.regulariser_cut_off_si_du()
+    except Exception:
+        logger.exception('Cut-off des frais de service en échec')
     return {k: v for k, v in stats.items() if v}
 
 

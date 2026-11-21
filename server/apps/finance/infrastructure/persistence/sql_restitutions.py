@@ -332,7 +332,7 @@ VUES = [
         FROM finance_compte_argent c
         CROSS JOIN generate_series((SELECT min(date_evenement)::date FROM finance_mouvement)::timestamp,
                                    (current_date - 1)::timestamp, interval '1 day') AS j(jour)
-        WHERE c.actif AND c.type NOT IN ('avance_associe', 'reserve', 'amortissement')
+        WHERE c.actif AND c.type NOT IN ('avance_associe', 'reserve', 'amortissement', 'regularisation')
           AND j.jour::date >= COALESCE(c.actif_depuis, '-infinity'::date)
           AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                           WHERE r.jour = j.jour::date AND r.compte_argent_code = c.code
@@ -438,6 +438,35 @@ VUES = [
 FONCTIONS = [
     # « Can I close this month? »: one row per check, OK or REFUSE, and what to do. One REFUSE forbids the locking.
     """
+    -- Cut-off of the service fees (ADR-034): per booking, the gap between what is in 477 at the end of the month and
+    -- what should be: its net service fees (R01) while the stay has neither started nor been cancelled, 0 afterwards
+    CREATE FUNCTION finance_ecarts_cut_off(p_mois date)
+    RETURNS TABLE (reservation_id uuid, offre_code text, frais bigint, en_attente bigint, commence_le timestamptz)
+    LANGUAGE sql STABLE AS $$
+    WITH frais AS (
+        SELECT m.reservation_id, max(m.offre_code) AS offre_code,
+               SUM(CASE WHEN m.nature_code = 'R01'
+                        THEN CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END ELSE 0 END) AS frais,
+               SUM(CASE WHEN m.nature_code = 'R01' THEN 0 WHEN m.sens = 'sortie' THEN m.montant
+                        ELSE -m.montant END) AS en_attente
+        FROM finance_mouvement m
+        WHERE m.nature_code IN ('R01', 'R19', 'R20') AND m.reservation_id IS NOT NULL
+          AND m.mois_comptable <= p_mois
+        GROUP BY m.reservation_id
+    ), debut AS (
+        -- The stay started (commission of the arrival) or was cancelled before the end of the month
+        SELECT m.reservation_id, min(m.date_evenement) AS le
+        FROM finance_mouvement m
+        WHERE m.reservation_id IS NOT NULL AND m.mois_comptable <= p_mois
+          AND m.origine IN ('arrivee', 'annulation')
+        GROUP BY m.reservation_id
+    )
+    SELECT f.reservation_id, f.offre_code, f.frais::bigint, f.en_attente::bigint, d.le
+    FROM frais f LEFT JOIN debut d ON d.reservation_id = f.reservation_id
+    WHERE CASE WHEN d.le IS NULL THEN f.frais ELSE 0 END <> f.en_attente;
+    $$
+    """,
+    """
     CREATE FUNCTION finance_peut_on_cloturer(p_mois date)
     RETURNS TABLE (controle text, resultat text, verdict text, que_faire text)
     LANGUAGE sql STABLE AS $$
@@ -461,7 +490,7 @@ FONCTIONS = [
                 FROM generate_series(p_mois::timestamp, (p_mois + interval '1 month' - interval '1 day'),
                                      interval '1 day') AS j(jour)
                 CROSS JOIN finance_compte_argent ca
-                WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'reserve', 'amortissement')
+                WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'reserve', 'amortissement', 'regularisation')
                   AND j.jour::date >= COALESCE(ca.actif_depuis, '-infinity'::date)
                   AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                                   WHERE r.jour = j.jour::date AND r.compte_argent_code = ca.code
@@ -499,6 +528,9 @@ FONCTIONS = [
                     WHERE m.nature_code = 'V01' AND m.mois_comptable <= p_mois
                     GROUP BY 1 HAVING SUM(CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END) <> 0) x),
                'Un virement sans sa ligne d''arrivee ou de depart : le reprendre dans Finance, Virements'
+        UNION ALL SELECT 11, 'Aucun frais de service d''une arrivee posterieure au mois dans le resultat (477)',
+               (SELECT count(*) FROM finance_ecarts_cut_off(p_mois)),
+               'Regulariser le cut-off (Finance) : il est aussi ecrit chaque heure et a la cloture'
     )
     SELECT controle,
            CASE WHEN rang = 1 THEN 'ecart de ' || valeur::text || ' F'
@@ -553,6 +585,7 @@ FONCTIONS = [
 SUPPRESSION = [
     'DROP FUNCTION IF EXISTS finance_synthese(date, date, text, text, text[], text[])',
     'DROP FUNCTION IF EXISTS finance_peut_on_cloturer(date)',
+    'DROP FUNCTION IF EXISTS finance_ecarts_cut_off(date)',
     'DROP VIEW IF EXISTS finance_pivot CASCADE',
     'DROP VIEW IF EXISTS finance_controle_invariants CASCADE',
     'DROP VIEW IF EXISTS finance_ecritures_sans_compte CASCADE',

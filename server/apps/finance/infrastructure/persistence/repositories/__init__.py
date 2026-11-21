@@ -18,3 +18,4 @@ from .reconciliation import (  # noqa: F401
 from .reports import DjangoRapports  # noqa: F401
 from .treasury import DjangoComptesArgent, DjangoReleves, DjangoVirements  # noqa: F401
 from .validations import DjangoValidations  # noqa: F401
+from .cut_off import DjangoCutOff  # noqa: F401

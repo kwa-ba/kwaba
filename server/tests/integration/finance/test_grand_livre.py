@@ -54,8 +54,9 @@ def executer(sql: str, params=()):
 # --- Reference data -----------------------------------------------------------------------------------------------
 
 def test_reference_data_of_the_schema_is_loaded():
-    assert NatureModel.objects.count() == 54
-    assert NatureModel.objects.filter(actif=True).count() == 40
+    # 54 of the file, plus the two natures of the cut-off of the service fees (R19, R20: migration 0021)
+    assert NatureModel.objects.count() == 56
+    assert NatureModel.objects.filter(actif=True).count() == 42
     # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
     # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
     # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),
@@ -65,9 +66,10 @@ def test_reference_data_of_the_schema_is_loaded():
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
-    # amortisation of the Solution (GL-23); the bank opens in the app the day it exists (GL-22)
+    # amortisation of the Solution (GL-23), the prepaid income of the cut-off (ADR-034); the bank opens in the app the
+    # day it exists (GL-22)
     assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == [
-        'AMORTISSEMENTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE']
+        'AMORTISSEMENTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE', 'PCA']
     # The guarantee fund is a reserve (ADR-031): its natures leave the result, with the history of every change
     assert dict(NatureModel.objects.filter(famille_id='G').values_list('code', 'compte_syscohada')) == {
         'G01': '1301', 'G02': '1301'}
