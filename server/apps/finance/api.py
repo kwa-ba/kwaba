@@ -24,7 +24,8 @@ from apps.finance.domain.exceptions import (CautionRefusee, ClotureRefusee, Depe
                                             MouvementRefuse, ParametreRefuse, RapprochementRefuse,
                                             RestitutionRefusee, ValidationRefusee, VirementRefuse)
 from apps.finance.domain.rules import mois_de
-from apps.finance.infrastructure.container import (caution_service, cloture_service, comptes_courants_service, cut_off_service,
+from apps.finance.infrastructure.container import (capital_service, caution_service, cloture_service,
+                                                   comptes_courants_service, cut_off_service,
                                                    depense_service, fonds_garantie_service, grand_livre_service,
                                                    livres_service, parametre_service, rapport_service,
                                                    tresorerie_service, virement_service,
@@ -548,6 +549,12 @@ def doter_fonds_garantie_si_du() -> int:
     if not cache.add('finance:dotation_garantie', 1, timeout=3600):
         return 0
     return sum(1 for d in fonds_garantie_service().doter_mois_termines() if d['ajoute'])
+
+
+def souscrire_capital(jour: date, *, par_id: uuid.UUID | None = None) -> int:
+    """Share capital subscribed on the day of the articles of association (ADR-035), once. Returns the capital
+    written. Raises MouvementRefuse."""
+    return capital_service().souscrire(jour, par_id=par_id)
 
 
 def regulariser_cut_off(mois: date | None = None, *, par_id: uuid.UUID | None = None) -> int:

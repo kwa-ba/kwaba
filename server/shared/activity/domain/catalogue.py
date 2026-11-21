@@ -205,6 +205,8 @@ ACTIONS: dict[str, ActionSpec] = {
                                                              d.get('motif', ''))),
     'fournisseur_enregistre': ActionSpec('Fournisseur enregistré', MONEY, IMPORTANT,
                                          summary=lambda d, t: str(d.get('nom', ''))),
+    'capital_souscrit': ActionSpec('Capital social souscrit', MONEY, SENSITIVE,
+                                   summary=lambda d, t: _join(d.get('capital', ''), d.get('date', ''))),
     'associe_enregistre': ActionSpec('Associé enregistré', MONEY, IMPORTANT,
                                      summary=lambda d, t: str(d.get('nom', ''))),
     'virement_demande': ActionSpec('Virement interne demandé, en attente de validation', MONEY, SENSITIVE,

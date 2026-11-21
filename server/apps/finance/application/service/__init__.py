@@ -26,3 +26,4 @@ from .transfers import OPERATION_VIREMENT, VirementService  # noqa: F401
 from .treasury import TresorerieService  # noqa: F401
 from .validations import SEUIL_DOUBLE_VALIDATION, ValidationService  # noqa: F401
 from .cut_off import CutOffService  # noqa: F401
+from .capital import CapitalService  # noqa: F401
