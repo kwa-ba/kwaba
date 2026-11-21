@@ -143,6 +143,8 @@ Webhook à déclarer dans le tableau de bord FedaPay : `https://<domaine-api>/ap
 
 ## Tarifs (back-office → Tarifs)
 
+**Caution des séjours** ([ADR-036](../ADR/ADR-036-caution-des-sejours.md), décision v3 du 18 novembre 2026) : chaque annonce d'un hôte particulier porte son option (`deposit_option` : `none`, `enhanced_guarantee`, `escrow`), son forfait (`guarantee_fee`, option b) ou son taux (`deposit_rate`, option c), réglés dans le formulaire de l'annonce. Le serveur (`hebergements/deposit.py`) refuse une caution sur une annonce d'hôtel, un taux au-delà de `caution_pct_plafond` et l'option c tant que `caution_sequestre_active` vaut 0 (en attente de FedaPay). Les montants (`paiements/deposit.py`) : taux du prix des nuitées, arrondi à `caution_arrondi_fcfa`, plafonné à `caution_plafond_fcfa`, nul sous `caution_min_fcfa` ; la garantie couvre `garantie_renforcee_multiple` fois son forfait. Règles exposées au site dans `/api/v1/paiements/config/` (`deposit`). La réservation, le paiement et la restitution viennent dans les étapes 2 et 3 de l'ADR.
+
 Les taux ne sont plus écrits dans le code : `paiements.ReglagesTarifsModel` (une seule ligne) garde les frais de service voyageur (6 %), les frais réduits (3 %, client fidèle et Pack Séjour), les commissions hôte particulier (8 %), hôtel ou résidence (12 %), Programme Fondateurs (5 %) et transferts (15 %). La grille des frais de ménage est dans `FraisMenageModel`. La commission de la location de véhicules reste dans « Location → Règles ».
 
 - **Back-office → Tarifs** (`GET` et `PUT /api/v1/admin/paiements/tarifs/`, en %) : entre 0 et 30 %, frais réduits jamais au-dessus des frais normaux ; chaque changement va au journal d'audit (`tarifs_modifies`, avant et après).
