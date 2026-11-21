@@ -1,5 +1,5 @@
 from apps.finance.application.registre import ECRIVAINS, OPERATIONS
-from apps.finance.application.service import (TresorerieService, VirementService, CutOffService,
+from apps.finance.application.service import (TresorerieService, VirementService, CutOffService, CapitalService,
                                               CautionService, ClotureService, ComptesCourantsService, DepenseService,
                                               FondsGarantieService, GrandLivreService, LivresService,
                                               ParametreService, RapportService,
@@ -40,6 +40,10 @@ def cloture_service() -> ClotureService:
 
     return ClotureService(restitutions=SqlRestitutions(), periodes=DjangoPeriodes(), journal=AuditJournal(),
                           tx=DjangoTransactionManager(), clock=DjangoClock(), avant_cloture=avant_cloture)
+
+
+def capital_service() -> CapitalService:
+    return CapitalService(annuaire=DjangoAnnuaire(), parametres=DjangoParametres(), grand_livre=grand_livre_service())
 
 
 def cut_off_service() -> CutOffService:
