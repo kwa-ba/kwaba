@@ -140,6 +140,15 @@ Décisions du 19 novembre 2026 : **pas de plafond** sur les dépenses d'un assoc
 - **Jamais débiteur** (statuts, art. 19) : `GrandLivreService` refuse toute ligne, écrite ou inverse, qui rendrait un compte courant débiteur (un remboursement au-delà du solde, l'annulation d'une dépense déjà remboursée), avec un verrou consultatif par associé. Invariant **I15** et contrôle **8** de la clôture.
 - **Capital** : `finance_associe.capital_souscrit` (migration `0013`) ; les parts des associés actifs ne dépassent jamais `capital_social`. Une modification (PATCH) ne change que les champs envoyés.
 
+## Cut-off des frais de service (DEV-C2)
+
+[ADR-034](../ADR/ADR-034-cut-off-des-frais-de-service-et-parametres-fiscaux.md). La commission d'un séjour entre déjà au résultat à l'arrivée (R02, R03) ; seuls les **frais de service du voyageur** (R01, 7061) entrent au paiement. À la fin de chaque mois terminé et ouvert, ceux d'un séjour ni commencé ni annulé passent en **produits constatés d'avance** : nature **R19**, sortie, sur le compte d'argent technique `PCA` (type `regularisation`, compte **477**, sans relevé, exclu du rapprochement), donc D 7061 / C 477, datée du dernier jour du mois. Le mois de l'arrivée ou de l'annulation, **R20** les rend au résultat (D 477 / C 7061), à la date de l'événement. Seul l'écart est écrit (fonction SQL `finance_ecarts_cut_off`), ce qui suit aussi les frais réduits et les annulations.
+
+- Écrit chaque heure par le worker des paiements (`regulariser_cut_off_si_du`), et avant la clôture du mois.
+- Contrôle de clôture 11 : « aucun frais de service d'une arrivée postérieure au mois dans le résultat (477) ».
+- Les invariants de l'encaissement (I1 à I3, origine `paiement`) ne sont pas touchés ; I7 reste juste.
+- Paramètres fiscaux (règle 4 du doc 37) : `tva_seuil` actif (alerte du tableau de bord), `impot_minimum` inactif jusqu'à la confirmation de l'OTR (l'impôt estimé ne retient que l'IS).
+
 ## Fonds de garantie (GL-17)
 
 Décisions des 18 et 19 novembre 2026 : dotation de **10 % du revenu net du mois** (famille R : frais de service et commissions, moins les remises) ; le fonds est distinct de la caution du voyageur.
