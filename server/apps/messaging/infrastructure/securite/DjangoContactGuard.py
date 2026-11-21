@@ -1,11 +1,11 @@
 import uuid
 
 from apps.messaging.application.ports.ContactGuard import ContactGuard, Screening
-from apps.securite import coordonnees, fraude
+from shared.securite import coordonnees, fraude
 
 
 class DjangoContactGuard(ContactGuard):
-    """Filtering shared by messages and listings (apps.securite.coordonnees), alerts for the back-office."""
+    """Filtering shared by messages and listings (shared.securite.coordonnees), alerts for the back-office."""
 
     def screen(self, text: str) -> Screening:
         content, findings = coordonnees.analyser(text)

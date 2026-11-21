@@ -1,5 +1,7 @@
 [importlinter]
-root_package = apps
+root_packages =
+    apps
+    shared
 
 [importlinter:contract:modules-metier]
 name = Les modules métier ne dépendent pas les uns des autres
@@ -29,13 +31,10 @@ ignore_imports =
     apps.** -> apps.*.api
 
 [importlinter:contract:noyau-partage]
-name = securite, notifications, export et activity ne dépendent d'aucun module métier
+name = Le noyau partagé (shared : securite, notifications, export, activity) ne dépend d'aucun module métier
 type = forbidden
 source_modules =
-    apps.securite
-    apps.notifications
-    apps.export
-    apps.activity
+    shared
 forbidden_modules =
     apps.agenda
     apps.avis
@@ -59,7 +58,7 @@ forbidden_modules =
     apps.voyages
 
 [importlinter:contract:emails]
-name = Les emails passent par apps.notifications.api
+name = Les emails passent par shared.notifications.api
 type = forbidden
 source_modules =
     apps.agenda
@@ -83,9 +82,9 @@ source_modules =
     apps.verifications
     apps.voyages
 forbidden_modules =
-    apps.notifications.application
-    apps.notifications.infrastructure
-    apps.notifications.management
+    shared.notifications.application
+    shared.notifications.infrastructure
+    shared.notifications.management
 allow_indirect_imports = True
 
 [importlinter:contract:finance-couches]

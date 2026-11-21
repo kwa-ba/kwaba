@@ -5,6 +5,11 @@ from django.db import models
 
 
 
+
+# Reference of a booking (Kwa-Ba identity, decision D6 / DEV-F2): RES-KB2026-3A43. Computed, never stored: the
+# documents and emails sent before carry RES-AF, still found by reservations.api.par_reference
+REFERENCE_PREFIX = 'RES-KB'
+
 class ReservationModel(models.Model):
     STATUS_CHOICES = [
         ('pending', 'En attente de paiement'),
@@ -92,7 +97,7 @@ class ReservationModel(models.Model):
 
     @property
     def reference(self):
-        return f"RES-AF{self.created_at.year}-{str(self.id)[:4].upper()}"
+        return f"{REFERENCE_PREFIX}{self.created_at.year}-{str(self.id)[:4].upper()}"
 
 
 class DemandePaiementModel(models.Model):

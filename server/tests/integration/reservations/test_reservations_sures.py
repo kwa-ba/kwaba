@@ -10,7 +10,7 @@ from apps.hebergements.serializers import RechercheSerializer
 from apps.paiements import tarifs
 from apps.reservations import documents
 from apps.reservations.models import ReservationModel
-from apps.securite.models import AlerteFraudeModel
+from shared.securite.models import AlerteFraudeModel
 
 RESERVATIONS = '/api/v1/reservations/'
 FEDAPAY_TEST = {'SECRET_KEY': 'sk_sandbox_test', 'ENV': 'sandbox', 'WEBHOOK_SECRET': '', 'EXPIRATION_MINUTES': 30}

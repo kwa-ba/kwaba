@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.transferts.models import ChauffeurModel, TransfertModel
+from tests.integration.sessions import session_token
 
 TRANSFERTS = '/api/v1/transferts/'
 
@@ -20,7 +21,7 @@ def sans_paiement(settings):
 
 def _client(user):
     c = APIClient()
-    c.force_authenticate(user=user)
+    c.force_authenticate(user=user, token=session_token(user))
     return c
 
 

@@ -7,8 +7,8 @@ Le frontend est déjà construit sur ce contrat : les noms de champs, les codes 
 
 - **Préfixe** : toutes les routes sont sous `/api/v1/admin/`.
 - **Accès** : utilisateur authentifié (JWT) **et** `role == "admin"`. Sinon : `401` (non connecté) ou `403` `{"detail": "Accès réservé aux administrateurs."}`.
-  Utiliser `permission_classes = [EstAdministrateur]` (`apps/securite/permissions.py`) sur **chaque** vue : le rôle est lu en base à chaque requête. Ne jamais se fier au rôle de la session NextAuth ni à un rôle envoyé par le client ; la redirection du middleware Next.js n'est qu'un confort d'affichage, pas une protection.
-- **Droits des admins** : un super admin (`is_superuser`, les deux directeurs) a tous les droits. Un admin peut être limité à des sections (`admin_sections`, `null` : toutes) : `EstAdministrateur` retrouve la section d'après l'URL (`SECTIONS_ADMIN` et `_ROUTES_SECTIONS` dans `apps/securite/permissions.py`) et répond `403` `{"detail": "Cette section ne vous est pas ouverte."}`. Une nouvelle route doit y être rattachée : un test échoue sinon, et elle est refusée aux admins limités. La section `verifications` couvre aussi l'espace agent.
+  Utiliser `permission_classes = [EstAdministrateur]` (`shared/securite/permissions.py`) sur **chaque** vue : le rôle est lu en base à chaque requête. Ne jamais se fier au rôle de la session NextAuth ni à un rôle envoyé par le client ; la redirection du middleware Next.js n'est qu'un confort d'affichage, pas une protection.
+- **Droits des admins** : un super admin (`is_superuser`, les deux directeurs) a tous les droits. Un admin peut être limité à des sections (`admin_sections`, `null` : toutes) : `EstAdministrateur` retrouve la section d'après l'URL (`SECTIONS_ADMIN` et `_ROUTES_SECTIONS` dans `shared/securite/permissions.py`) et répond `403` `{"detail": "Cette section ne vous est pas ouverte."}`. Une nouvelle route doit y être rattachée : un test échoue sinon, et elle est refusée aux admins limités. La section `verifications` couvre aussi l'espace agent. Avant les sections, `EstAdministrateur` exige la double authentification vérifiée depuis moins de 12 h : sinon `403` `{"detail": "Double authentification requise.", "code": "two_factor_required"}` (ADR-028).
 - **Admin temporaire** : à `admin_expire_le`, le compte retrouve `role_avant_admin` (`voyageur` s'il est vide), dès sa première requête (`AuthentificationJWT`) ou par la tâche quotidienne (`retirer_admins_expires`).
 - **Super admins** : jamais gérés par l'API. Ils se nomment et se retirent sur le serveur : `manage.py super_admin <email> [--retirer]` (sur un compte existant ; le dernier ne peut pas être retiré).
 - **Pagination** des listes : paramètres `page` (défaut 1) et `page_size` (défaut 20, maximum 100). Réponse :
@@ -19,7 +19,7 @@ Le frontend est déjà construit sur ce contrat : les noms de champs, les codes 
 - **Tri** : du plus récent au plus ancien, sauf mention contraire.
 - **Erreurs** : format DRF habituel, `{"detail": "..."}` ou `{"champ": ["message"]}`. Messages en français, affichés tels quels à l'admin.
 - **Dates** : ISO 8601 (`2026-10-06` pour les dates, `2026-10-06T14:03:00Z` pour les horodatages). **Montants** : nombres (pas de chaînes), en FCFA.
-- **Journal** : chaque action d'écriture (PATCH, POST, DELETE) est tracée dans le journal d'audit (`apps.securite`, `JournalAuditModel` : admin, action, cible et motif dans `details`, date), consultable dans l'administration Django.
+- **Journal** : chaque action d'écriture (PATCH, POST, DELETE) est tracée dans le journal d'audit (`shared.securite`, `JournalAuditModel` : admin, action, cible et motif dans `details`, date), consultable dans l'administration Django.
 - **Implémentation** : `server/apps/backoffice/` ; tests : `server/tests/integration/backoffice/`.
 
 ## 1. Tableau de bord
@@ -118,7 +118,7 @@ Filtres : `q` (référence, nom de l'annonce, email du voyageur), `statut` (`pen
 Élément :
 ```json
 {
-  "id": "uuid", "reference": "RES-AF2026-3A43",
+  "id": "uuid", "reference": "RES-KB2026-3A43",
   "hebergement": { "id": "uuid", "name": "Suite Océan", "city": "Dakar" },
   "voyageur": { "id": "uuid", "nom": "Kofi Test", "email": "kofi@exemple.com" },
   "hote": { "id": "uuid", "nom": "Kossi Mensah" },

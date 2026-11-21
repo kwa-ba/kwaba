@@ -11,7 +11,7 @@ from PIL import Image
 from apps.locations.models import (
     CategorieVehiculeModel, LieuRemiseModel, LocationModel, PartenaireLocationModel, PhotoVehiculeModel,
 )
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import ChauffeurModel
 
 B = '/api/v1/admin/location/'

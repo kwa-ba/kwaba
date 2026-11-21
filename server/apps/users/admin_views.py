@@ -9,9 +9,9 @@ from rest_framework.response import Response
 from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from apps.reservations import api as reservations
-from apps.activity import api as activity
-from apps.securite.backoffice import VueAdmin, booleen as _booleen, introuvable as _introuvable, paginer as _paginer
-from apps.securite.permissions import SECTIONS_ADMIN, SPECIAL_PERMISSIONS, est_en_lecture_seule
+from shared.activity import api as activity
+from shared.backoffice_kit.views import VueAdmin, booleen as _booleen, introuvable as _introuvable, paginer as _paginer
+from shared.securite.permissions import SECTIONS_ADMIN, SPECIAL_PERMISSIONS, est_en_lecture_seule
 
 from .api import ROLES, hote_ou_candidat, revoquer_jetons
 from .infrastructure.persistence.models import UserModel

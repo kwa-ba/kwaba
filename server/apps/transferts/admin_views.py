@@ -7,12 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.paiements.api import operateurs_du_pays
-from apps.activity import api as activity
-from apps.securite.backoffice import ChampPhoto, FicheAdmin, ListeAdmin
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.backoffice_kit.views import ChampPhoto, FicheAdmin, ListeAdmin
+from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 
-from apps.securite.backoffice import motif as _motif, nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import motif as _motif, nom as _nom, paginer as _paginer
 
 from . import services
 from .models import AeroportModel, ChauffeurModel, TarifTransfertModel, TransfertModel

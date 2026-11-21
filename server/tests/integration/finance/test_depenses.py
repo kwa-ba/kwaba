@@ -7,7 +7,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.documents.models import JustificatifCautionModel
 from apps.finance import api as finance
 from apps.finance.models import DepenseModel, MouvementModel, ValidationModel

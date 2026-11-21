@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from apps.activity import api as activity
-from apps.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
+from shared.activity import api as activity
+from shared.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
 from apps.users.application.dto.dto import UpdateProfileDTO
 from apps.users.application.service.UserService import UserService
 from apps.users.domain.exceptions import UserNotFoundException

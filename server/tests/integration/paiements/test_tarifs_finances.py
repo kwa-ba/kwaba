@@ -9,7 +9,7 @@ from apps.contrats import services as contrats
 from apps.contrats.models import ModeleContratModel
 from apps.paiements.models import FraisMenageModel, PaiementModel, ReglagesTarifsModel, RemboursementModel, VersementModel
 from apps.reservations.models import ReservationModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 TARIFS = '/api/v1/admin/paiements/tarifs/'
 FINANCES = '/api/v1/admin/paiements/finances/'

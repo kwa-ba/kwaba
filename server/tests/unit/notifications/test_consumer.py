@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from apps.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
+from shared.notifications.infrastructure.messaging.RabbitMQConsumer import RabbitMQConsumer
 
 
 class FakeChannel:

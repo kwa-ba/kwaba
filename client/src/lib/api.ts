@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
 import { CheminRefuse, getApiBaseUrl, PROXY_API, sansSlashFinal, sortDuChemin } from "@/lib/api-url";
+import { signalTwoFactorRequired, TWO_FACTOR_REQUIRED } from "@/lib/two-factor-signal";
 import { langue, selon } from "@/lib/utils";
 
 const navigateur = typeof window !== "undefined";
@@ -46,6 +47,10 @@ api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
+
+    // Back-office second factor missing or expired (12 h): the guard shows the code screen again, the page stays
+    const code = (error.response?.data as { code?: unknown } | undefined)?.code;
+    if (navigateur && error.response?.status === 403 && code === TWO_FACTOR_REQUIRED) signalTwoFactorRequired();
 
     if (navigateur && error.response?.status === 401 && config) {
       // Token expired: it is renewed, then the request is replayed once

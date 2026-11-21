@@ -1,7 +1,7 @@
 from datetime import datetime, timezone as dt_timezone
 from zoneinfo import ZoneInfo
 
-from apps.export import api as export
+from shared.export import api as export
 
 
 def _unfold(content: str) -> list[str]:

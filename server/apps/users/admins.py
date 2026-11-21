@@ -2,7 +2,7 @@
 from django.db.models import Case, F, Value, When
 from django.utils import timezone
 
-from apps.activity import api as activity
+from shared.activity import api as activity
 
 from .infrastructure.persistence.models import UserModel
 

@@ -1,6 +1,7 @@
 [run]
 source =
     apps
+    shared
     config
 branch = True
 omit =

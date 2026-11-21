@@ -6,7 +6,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from apps.finance.application.ports import Alertes
-from apps.notifications.api import send_mail
+from shared.notifications.api import send_mail
 from apps.users import api as users
 
 logger = logging.getLogger('apps.finance')

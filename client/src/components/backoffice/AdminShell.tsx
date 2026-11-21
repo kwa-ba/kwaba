@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Activity, ArrowLeft, CalendarCheck, CalendarCog, CalendarRange, Car, ClipboardCheck, Compass, FileText, HandHeart, Home, Landmark, LayoutDashboard, Menu, Percent, Plane, ShieldAlert, Star, Users } from "lucide-react";
+import { Activity, ArrowLeft, CalendarCheck, CalendarCog, CalendarRange, Car, ClipboardCheck, Compass, FileText, HandHeart, Home, Landmark, LayoutDashboard, Menu, Percent, Plane, ShieldAlert, ShieldCheck, Star, Users } from "lucide-react";
 import Logo from "@/components/layout/Logo";
 import MobileDrawer, { DrawerItem } from "@/components/layout/MobileDrawer";
 import ThemeSelector from "@/components/layout/ThemeSelector";
@@ -58,6 +58,8 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
   ] },
   { href: "/backoffice/tarifs", label: "Tarifs", icon: Percent, section: "tarifs" },
   { href: "/backoffice/agenda", label: "Réglages agenda", icon: CalendarCog, section: "verifications", permission: "agenda_settings" },
+  // Every admin: their own second factor (ADR-028)
+  { href: "/backoffice/securite", label: "Sécurité du compte", icon: ShieldCheck, section: "" },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {

@@ -7,7 +7,7 @@ from django.core.management import call_command
 
 from apps.contrats.models import PreinscriptionModel
 from apps.hebergements.models import BrouillonAnnonceModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.infrastructure.persistence.models import UserModel
 from apps.verifications import services
 from apps.verifications.models import PieceIdentiteModel

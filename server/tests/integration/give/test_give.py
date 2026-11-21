@@ -16,6 +16,7 @@ from apps.give.models import DonModel, OrganisationModel, ProjetModel, Reverseme
 from apps.paiements import fedapay, paypal
 from apps.paiements import services as paiements
 from apps.paiements.models import PaiementModel
+from tests.integration.sessions import session_token
 
 GIVE = '/api/v1/give/'
 
@@ -63,7 +64,7 @@ def ong():
 
 def _client(user):
     c = APIClient()
-    c.force_authenticate(user=user)
+    c.force_authenticate(user=user, token=session_token(user))
     return c
 
 

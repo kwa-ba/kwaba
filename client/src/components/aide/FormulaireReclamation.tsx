@@ -72,7 +72,7 @@ export default function FormulaireReclamation() {
         <Select label={t("objet")} value={objet} onChange={setObjet} options={OBJETS.map((o) => ({ value: o, label: t(`objets.${o}`) }))} />
       </div>
       <FormField label={t("reservation")} name="reservation" value={reservation} onChange={(e) => setReservation(e.target.value)}
-        placeholder="RES-AF2026-…" hint={t("reservationAide")} maxLength={40} />
+        placeholder="RES-KB2026-…" hint={t("reservationAide")} maxLength={40} />
       {!connecte && (
         <FormField label={t("email")} name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
       )}

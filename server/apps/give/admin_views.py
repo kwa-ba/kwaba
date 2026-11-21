@@ -10,13 +10,13 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
-from apps.securite.backoffice import ChampPhoto, FicheAdmin, ListeAdmin
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.backoffice_kit.views import ChampPhoto, FicheAdmin, ListeAdmin
+from shared.securite.permissions import EstAdministrateur
 from apps.users import api as users
 from apps.verifications.api import FichierInvalide, piece_identite
 
-from apps.securite.backoffice import nom as _nom, paginer as _paginer
+from shared.backoffice_kit.views import nom as _nom, paginer as _paginer
 
 from . import services
 from .models import DonModel, OrganisationModel, ProjetModel, ReversementModel

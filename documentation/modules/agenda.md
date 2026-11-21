@@ -15,7 +15,7 @@ Décision : [ADR-022](../ADR/ADR-022-agenda-des-agents.md). Complète la vérifi
 | API de l'agent et de l'admin, flux .ics | `server/apps/agenda/infrastructure/http/`, sous `api/v1/agenda/` |
 | Interface pour les autres modules | `server/apps/agenda/api.py` |
 | Réservation par l'hôte, mission, relances | `server/apps/verifications/appointments.py`, routes `api/v1/verifications/visit/` et `appointments/` |
-| Briques .ics partagées | `server/apps/export/api.py` |
+| Briques .ics partagées | `server/shared/export/api.py` |
 | Front | `client/src/features/agenda` : `admin/` pour l'espace agent (`/agent/agenda`), `HostVisit.tsx` pour l'hôte (`/hote/espace/visite`) |
 
 ## Parcours

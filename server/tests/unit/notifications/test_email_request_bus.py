@@ -1,6 +1,6 @@
 import pytest
 
-from apps.notifications.infrastructure.messaging.EmailRequestBus import EmailRequestBus
+from shared.notifications.infrastructure.messaging.EmailRequestBus import EmailRequestBus
 
 ROUTING_KEY = 'hebergements.booking_cancelled_listing_removed'
 DATA = {'reservation_id': 'r-1', 'email': 'ama@example.tg', 'first_name': 'Ama', 'hebergement_name': 'Villa Océane',

@@ -10,10 +10,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config import prelancement
-from apps.notifications.api import send_mail
-from apps.activity import api as activity
-from apps.securite.limites import limite_ip
-from apps.securite.permissions import EstAdministrateur
+from shared.notifications.api import send_mail
+from shared.activity import api as activity
+from shared.securite.limites import limite_ip
+from shared.securite.permissions import EstAdministrateur
 
 from .models import HebergementModel, InscriptionLancementModel
 
