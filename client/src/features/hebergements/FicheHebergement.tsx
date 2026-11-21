@@ -29,7 +29,7 @@ import Stepper from "@/components/ui/Stepper";
 import Chargement from "@/components/ui/Chargement";
 import Visionneuse from "@/components/ui/Visionneuse";
 import { CONTOUR_FOCUS_PHOTO } from "@/components/ui/visionneuse-photos";
-import { useDevisSejour, useTaux } from "@/features/paiements";
+import { StayDepositLines, useDevisSejour, useTaux } from "@/features/paiements";
 import { contacterHote } from "@/features/messaging";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
@@ -458,6 +458,8 @@ function HebergementContent() {
                       <span className="text-dark">{formatPrice(devis.frais_menage)}</span>
                     </div>
                   )}
+                  {devis && <StayDepositLines deposit={devis.deposit} guaranteeFee={devis.guarantee_fee}
+                    guaranteeCover={devis.guarantee_cover} />}
                   <div className="flex justify-between font-heading font-bold pt-3 border-t border-gray-100 text-lg">
                     <span className="text-dark">{t("total")}</span>
                     <span className="text-brand">{devis ? formatPrice(devis.total) : <Chargement />}</span>

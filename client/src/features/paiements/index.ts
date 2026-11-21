@@ -5,4 +5,5 @@ export {
   useRevenus, versPagePaiement,
 } from "./paiement";
 export { default as RevenusHote, ProfilVersementForm } from "./RevenusHote";
+export { default as StayDepositLines } from "./StayDepositLines";
 export { formatPourcent, useTaux } from "./taux";

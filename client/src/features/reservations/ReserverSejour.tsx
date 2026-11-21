@@ -10,7 +10,7 @@ import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, Info, Smartphone, CreditCard, Wallet, MapPin, Lock } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api";
-import { allerPayer, enEuros, useConfigPaiement, useDevisSejour, useOperateursMobileMoney, useTaux } from "@/features/paiements";
+import { allerPayer, enEuros, StayDepositLines, useConfigPaiement, useDevisSejour, useOperateursMobileMoney, useTaux } from "@/features/paiements";
 import RatingBadge from "@/components/ui/RatingBadge";
 import Chargement from "@/components/ui/Chargement";
 import { MontantDebite } from "@/components/layout/Devise";
@@ -267,6 +267,8 @@ function ReservationContent() {
                         <span className="font-medium text-dark">{formatPrice(devis.frais_menage)}</span>
                       </div>
                     )}
+                    {devis && <StayDepositLines deposit={devis.deposit} guaranteeFee={devis.guarantee_fee}
+                      guaranteeCover={devis.guarantee_cover} amountClassName="font-medium text-dark" />}
                   </div>
 
                   <div className="pt-5 flex justify-between items-center mb-5">

@@ -2570,6 +2570,12 @@
     "alerte": "Au-delà de {seuil} %, une caution élevée fait baisser vos réservations.",
     "exemple": "Pour {nuits} nuits : caution de {montant}.",
     "exempleSous": "Pour {nuits} nuits : pas de caution (moins de {minimum}).",
-    "sequestreAide": "Rendue automatiquement 72 h après le départ s'il n'y a pas de dommage, et en entier en cas d'annulation. Jamais plus de {plafond}."
+    "sequestreAide": "Rendue automatiquement 72 h après le départ s'il n'y a pas de dommage, et en entier en cas d'annulation. Jamais plus de {plafond}.",
+    "stay": {
+      "guarantee": "Garantie Kwa-Ba renforcée",
+      "guaranteeHelp": "Non remboursable, sauf annulation par l'hôte. Couvre les petits dommages jusqu'à {montant}.",
+      "escrow": "Caution",
+      "escrowHelp": "Gardée par Kwa-Ba, rendue après votre départ s'il n'y a pas de dommage, et en entier si le séjour est annulé."
+    }
   }
 }
