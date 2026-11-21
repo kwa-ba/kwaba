@@ -325,7 +325,14 @@ COMPTE_FONDS_GARANTIE = 'GARANTIE'
 TYPE_COMPTE_RESERVE = 'reserve'
 # Money accounts without a provider's statement: never reconciled (I5, closing check 4)
 TYPE_COMPTE_AMORTISSEMENT = 'amortissement'
-TYPES_SANS_RELEVE = (TYPE_COMPTE_AVANCES, TYPE_COMPTE_RESERVE, TYPE_COMPTE_AMORTISSEMENT)
+# Prepaid income (ADR-034): the service fees of a stay not started yet wait in 477, outside the result
+TYPE_COMPTE_REGULARISATION = 'regularisation'
+COMPTE_PCA = 'PCA'
+NATURE_FRAIS_SERVICE = 'R01'
+# Out of the result into 477 at the end of a month (R19), back to it when the stay starts or is cancelled (R20)
+NATURE_CUT_OFF_ATTENTE, NATURE_CUT_OFF_RETOUR = 'R19', 'R20'
+PREFIXE_CUT_OFF = 'PCA-'
+TYPES_SANS_RELEVE = (TYPE_COMPTE_AVANCES, TYPE_COMPTE_RESERVE, TYPE_COMPTE_AMORTISSEMENT, TYPE_COMPTE_REGULARISATION)
 NATURE_DOTATION_GARANTIE, NATURE_UTILISATION_GARANTIE = 'G01', 'G02'
 NATURE_SINISTRE = 'D04'
 PREFIXE_DOTATION = 'garantie:dotation:'
