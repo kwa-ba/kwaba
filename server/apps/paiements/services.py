@@ -286,7 +286,7 @@ def annuler_paiement_reservation(reservation, par: str) -> int:
         bareme = tarifs.bareme_voyageur(montants, reservation)
         motif = "Annulation par le voyageur"
     else:
-        bareme = tarifs.Annulation(rembourse_voyageur=montants.total, nuits_retenues=0)
+        bareme = tarifs.full_refund(montants)
         motif = "Annulation par l'hôte" if par == 'hote' else "Annulation par Kwa-Ba"
 
     versement = VersementModel.objects.select_for_update().filter(reservation_id=reservation.id).first()

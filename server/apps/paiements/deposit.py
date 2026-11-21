@@ -57,3 +57,29 @@ def rules_json(regles: DepositRules | None = None) -> dict:
             'rate_warning': float(regles.rate_warning), 'minimum': regles.minimum, 'ceiling': regles.ceiling,
             'rounding': regles.rounding, 'guarantee_multiple': regles.guarantee_multiple,
             'escrow_open': regles.escrow_open}
+
+
+@dataclass(frozen=True)
+class StayDeposit:
+    """What a booking freezes of its listing's deposit: the escrowed deposit (given back) or the guarantee fee (kept)."""
+    option: str = NONE
+    deposit: int = 0
+    guarantee_fee: int = 0
+    guarantee_cover: int = 0
+
+
+def for_stay(settings: dict | None, nights_price: int, hotel: bool, regles: DepositRules | None = None) -> StayDeposit:
+    """Deposit of a stay from the listing's settings {deposit_option, deposit_rate, guarantee_fee}. Nothing for a hotel
+    or a residence, nor for the escrowed deposit while it is closed or below its minimum."""
+    option = (settings or {}).get('deposit_option') or NONE
+    if hotel or option == NONE:
+        return StayDeposit()
+    regles = regles or rules()
+    if option == ENHANCED_GUARANTEE:
+        fee = int(settings.get('guarantee_fee') or 0)
+        return StayDeposit(option, guarantee_fee=fee, guarantee_cover=guarantee_cover(fee, regles)) if fee else StayDeposit()
+    rate = settings.get('deposit_rate')
+    if option != ESCROW or not regles.escrow_open or not rate:
+        return StayDeposit()
+    amount = escrow_amount(nights_price, rate, regles)
+    return StayDeposit(option, deposit=amount) if amount else StayDeposit()
