@@ -2570,6 +2570,12 @@
     "alerte": "Above {seuil} %, a high deposit lowers your bookings.",
     "exemple": "For {nuits} nights: deposit of {montant}.",
     "exempleSous": "For {nuits} nights: no deposit (under {minimum}).",
-    "sequestreAide": "Returned automatically 72 h after departure if there is no damage, and in full if the stay is cancelled. Never more than {plafond}."
+    "sequestreAide": "Returned automatically 72 h after departure if there is no damage, and in full if the stay is cancelled. Never more than {plafond}.",
+    "stay": {
+      "guarantee": "Kwa-Ba Enhanced Guarantee",
+      "guaranteeHelp": "Non-refundable, unless the host cancels. Covers minor damage up to {montant}.",
+      "escrow": "Security deposit",
+      "escrowHelp": "Held by Kwa-Ba and returned after you leave if there is no damage, and in full if the stay is cancelled."
+    }
   }
 }

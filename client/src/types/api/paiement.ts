@@ -18,6 +18,11 @@ export interface DevisSejour {
   frais_service: number;
   /** Cleaning fee of the listing type, once per stay (0 for a hotel room) */
   frais_menage: number;
+  /** Escrowed deposit (ADR-036), given back after the stay */
+  deposit: number;
+  /** Enhanced guarantee fee, and the damages it covers */
+  guarantee_fee: number;
+  guarantee_cover: number;
   total: number;
 }
 

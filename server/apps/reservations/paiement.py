@@ -14,6 +14,7 @@ from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from apps.paiements.api import ProduitPaye, Relance
 
+from . import deposit
 from .models import ReservationModel
 
 
@@ -77,6 +78,8 @@ def paiement_recu(paiement):
     paiements.planifier_versement_hote(reservation)
     # Ledger: nights and cleaning owed to the host, service fees to Kwa-Ba (same transaction, FIN-01.6)
     paiements.encaisser_sejour(paiement, reservation)
+    # The escrowed deposit paid with it is the traveller's money: in the register of the deposits (GL-13)
+    deposit.register(reservation)
 
 
 def annuler(reservation, par: str) -> int:
@@ -86,6 +89,8 @@ def annuler(reservation, par: str) -> int:
         if reservation.status == 'cancelled':
             raise paiements.PaiementErreur("Cette réservation est déjà annulée.")
         rembourse = paiements.annuler_paiement_reservation(reservation, par)
+        # Every cancellation gives the escrowed deposit back in full (ADR-036)
+        deposit.give_back_on_cancellation(reservation)
         reservation.status = 'cancelled'
         reservation.annule_par = par
         reservation.annule_le = timezone.now()
@@ -171,8 +176,9 @@ def _decrire_relance(r) -> dict:
 
 
 def _revenu(ids) -> dict:
-    return {r.id: (r.frais_service or 0) + (r.commission_hote or 0)
-            for r in ReservationModel.objects.filter(pk__in=list(ids)).only('frais_service', 'commission_hote')}
+    return {r.id: (r.frais_service or 0) + (r.commission_hote or 0) + r.guarantee_fee
+            for r in ReservationModel.objects.filter(pk__in=list(ids)).only('frais_service', 'commission_hote',
+                                                                           'guarantee_fee')}
 
 
 def _offre(reservation_id) -> str:

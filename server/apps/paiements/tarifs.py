@@ -6,15 +6,20 @@ Example for 2.5 nights at 25,000 FCFA (62,500 FCFA) with an individual host:
     host commission 8 % = 5,000 → the host receives 57,500; Kwa-Ba keeps 8,750 (before FedaPay fees).
 The cleaning fee of the listing type (a studio: 5,000) is added to what the traveller pays and to what the host
 receives, with no fee nor commission on it.
+The deposit chosen by the host (ADR-036, deposit.py) is paid with the stay too: the escrowed deposit stays the
+traveller's money and is always given back; the guarantee fee is Kwa-Ba's revenue, given back only when the host
+cancels.
 """
 import threading
 import time as horloge
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.signals import request_finished, request_started
 from django.utils import timezone
+
+from . import deposit
 
 # Rates of the price grid of 18 October 2026: the defaults. The rates in force are set by the team in the back-office
 # (ReglagesTarifsModel, reglages() below).
@@ -83,10 +88,12 @@ class Montants:
     frais_service: int
     commission_hote: int
     frais_menage: int = 0
+    deposit: int = 0        # escrowed deposit (option c), the traveller's money
+    guarantee_fee: int = 0  # enhanced guarantee fee (option b), Kwa-Ba's revenue
 
     @property
     def total(self) -> int:
-        return self.prix_nuits + self.frais_service + self.frais_menage
+        return self.prix_nuits + self.frais_service + self.frais_menage + self.deposit + self.guarantee_fee
 
     @property
     def montant_hote(self) -> int:
@@ -95,8 +102,9 @@ class Montants:
 
     @property
     def revenu_kwaba(self) -> int:
-        """Kwa-Ba's gross revenue: traveller's fees + host's commission (before payment provider fees)."""
-        return self.frais_service + self.commission_hote
+        """Kwa-Ba's gross revenue: traveller's fees + host's commission + guarantee fee (before payment provider
+        fees)."""
+        return self.frais_service + self.commission_hote + self.guarantee_fee
 
     @property
     def taux_frais(self) -> int:
@@ -172,11 +180,21 @@ def taux_frais(voyageur, hote_id) -> Decimal:
 
 
 def devis(prix_par_nuit, hote_id, nuits: int, voyageur=None, jour=None, nb_unites: int = 1,
-          type_annonce: str | None = None) -> Montants:
+          type_annonce: str | None = None, deposit_settings: dict | None = None) -> Montants:
     """Amounts of a stay with the rates of this host and this traveller: `nb_unites` units at `prix_par_nuit`, each
-    with the cleaning fee of the listing's type."""
-    return calculer(prix_par_nuit * nb_unites, nuits, frais=taux_frais(voyageur, hote_id),
-                    commission=taux_commission(hote_id, jour), menage=frais_menage(type_annonce) * nb_unites)
+    with the cleaning fee of the listing's type, and the deposit of the listing's `deposit_settings`."""
+    montants = calculer(prix_par_nuit * nb_unites, nuits, frais=taux_frais(voyageur, hote_id),
+                        commission=taux_commission(hote_id, jour), menage=frais_menage(type_annonce) * nb_unites)
+    frozen = stay_deposit(deposit_settings, montants.prix_nuits, hote_id)
+    return replace(montants, deposit=frozen.deposit, guarantee_fee=frozen.guarantee_fee)
+
+
+def stay_deposit(deposit_settings: dict | None, prix_nuits: int, hote_id) -> deposit.StayDeposit:
+    """Deposit of a stay with this listing's settings: none for a hotel (ADR-036)."""
+    if not deposit_settings or (deposit_settings.get('deposit_option') or deposit.NONE) == deposit.NONE:
+        return deposit.StayDeposit()
+    c = conditions(hote_id)
+    return deposit.for_stay(deposit_settings, prix_nuits, hotel=bool(c and c.categorie == 'hotel'))
 
 
 def _annonce(reservation) -> dict:
@@ -190,7 +208,9 @@ def montants_de(reservation, prix_par_nuit=None) -> Montants:
     the listing's current price)."""
     if reservation.prix_nuits is not None:
         return Montants(reservation.prix_nuits, reservation.frais_service, reservation.commission_hote,
-                        getattr(reservation, 'frais_menage', None) or 0)
+                        getattr(reservation, 'frais_menage', None) or 0,
+                        deposit=getattr(reservation, 'deposit_amount', None) or 0,
+                        guarantee_fee=getattr(reservation, 'guarantee_fee', None) or 0)
     return calculer(prix_par_nuit if prix_par_nuit is not None else _annonce(reservation)['price_per_night'],
                     reservation.nights)
 
@@ -222,6 +242,8 @@ class Annulation:
     rembourse_voyageur: int  # amount given back to the traveller
     nuits_retenues: int      # share of the price of the nights kept (goes to the host, minus the commission)
     commission_hote: int = 0  # commission on the kept nights, at the booking's rate
+    deposit_returned: int = 0  # escrowed deposit given back (always all of it)
+    guarantee_returned: int = 0  # guarantee fee given back (only when the host or Kwa-Ba cancels)
 
     @property
     def montant_hote(self) -> int:
@@ -229,12 +251,21 @@ class Annulation:
 
 
 def _retenue(montants: Montants, nuits_retenues: int, frais_rendus: bool = False) -> Annulation:
-    """The traveller loses `nuits_retenues` (and the service fees, unless `frais_rendus`). The cleaning fee is always
-    given back: the traveller has not come (terms of sale, appendix 1)."""
+    """The traveller loses `nuits_retenues` (and the service fees, unless `frais_rendus`). The cleaning fee and the
+    escrowed deposit are always given back: the traveller has not come (terms of sale, appendix 1). The guarantee fee
+    is kept (ADR-036)."""
     nuits_retenues = max(0, min(nuits_retenues, montants.prix_nuits))
     commission = arrondi(Decimal(nuits_retenues) * montants.commission_hote / montants.prix_nuits) if montants.prix_nuits else 0
-    rendu = montants.prix_nuits - nuits_retenues + (montants.frais_service if frais_rendus else 0) + montants.frais_menage
-    return Annulation(rembourse_voyageur=rendu, nuits_retenues=nuits_retenues, commission_hote=commission)
+    rendu = (montants.prix_nuits - nuits_retenues + (montants.frais_service if frais_rendus else 0)
+             + montants.frais_menage + montants.deposit)
+    return Annulation(rembourse_voyageur=rendu, nuits_retenues=nuits_retenues, commission_hote=commission,
+                      deposit_returned=montants.deposit)
+
+
+def full_refund(montants: Montants) -> Annulation:
+    """Cancellation by the host or by Kwa-Ba: everything is given back, the guarantee fee too."""
+    return Annulation(rembourse_voyageur=montants.total, nuits_retenues=0, deposit_returned=montants.deposit,
+                      guarantee_returned=montants.guarantee_fee)
 
 
 def politique(reservation) -> str:
@@ -255,9 +286,14 @@ REGLES_POLITIQUES = {
 def texte_politique(reservation) -> str:
     """Cancellation conditions of the booking, in one sentence (booking voucher, confirmation email)."""
     code = politique(reservation)
-    return (f"Politique {dict(POLITIQUES)[code]} : {REGLES_POLITIQUES[code]}. Les frais de service ne sont rendus qu'avec un "
-            "remboursement intégral. Annulation gratuite dans les 48 heures suivant la réservation si l'arrivée est dans "
-            "7 jours ou plus.")
+    texte = (f"Politique {dict(POLITIQUES)[code]} : {REGLES_POLITIQUES[code]}. Les frais de service ne sont rendus qu'avec un "
+             "remboursement intégral. Annulation gratuite dans les 48 heures suivant la réservation si l'arrivée est dans "
+             "7 jours ou plus.")
+    if getattr(reservation, 'deposit_amount', 0):
+        texte += " La caution est toujours rendue en entier en cas d'annulation."
+    if getattr(reservation, 'guarantee_fee', 0):
+        texte += " Le forfait de la garantie renforcée reste acquis, sauf annulation par l'hôte."
+    return texte
 
 
 def bareme_voyageur(montants: Montants, reservation, maintenant: datetime | None = None) -> Annulation:
@@ -270,11 +306,12 @@ def bareme_voyageur(montants: Montants, reservation, maintenant: datetime | None
       Flexible: full refund until 24 h before; afterwards, the first night is kept;
       Moderate: full refund until 5 days before; 50 % of the nights until 24 h before; nothing afterwards;
       Strict: full refund until 30 days before; 50 % of the nights until 7 days before; nothing afterwards.
-    Service fees are only given back with a full refund.
+    Service fees are only given back with a full refund. The escrowed deposit is always given back, the guarantee fee
+    never (ADR-036).
     """
     maintenant = maintenant or timezone.now()
     delai = arrivee(reservation) - maintenant
-    integral = Annulation(rembourse_voyageur=montants.total, nuits_retenues=0)
+    integral = _retenue(montants, 0, frais_rendus=True)
     if maintenant - reservation.created_at <= REFLEXION and delai >= REFLEXION_AVANT_ARRIVEE:
         return integral
 

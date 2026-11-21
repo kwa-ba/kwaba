@@ -76,6 +76,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         return {
             'prix_nuits': m.prix_nuits, 'frais_service': m.frais_service, 'taux_frais': m.taux_frais, 'total': m.total,
             'commission_hote': m.commission_hote, 'montant_hote': m.montant_hote, 'frais_menage': m.frais_menage,
+            'deposit': m.deposit, 'guarantee_fee': m.guarantee_fee, 'guarantee_cover': obj.guarantee_cover,
         }
 
     def get_paiement(self, obj):
@@ -194,7 +195,8 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         if total_attendu is not None:
             voyageur = request.user if request else None
             total = paiements.devis_sejour(type_logement['prix_nuit'], hebergement['host_id'], (check_out - check_in).days,
-                                           voyageur=voyageur, nb_unites=nb_unites, type_annonce=hebergement['type']).total
+                                           voyageur=voyageur, nb_unites=nb_unites, type_annonce=hebergement['type'],
+                                           deposit_settings=hebergement['deposit']).total
             if total != total_attendu:
                 raise serializers.ValidationError({'total_attendu': [
                     f"Le prix a changé : le total est maintenant de {total:,} FCFA. Vérifiez le récapitulatif avant de payer."
@@ -206,7 +208,9 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         type_logement = hebergements.fiche_type(validated_data['type_logement_id'])
         nights = (validated_data['check_out'] - validated_data['check_in']).days
         montants = paiements.devis_sejour(type_logement['prix_nuit'], hebergement['host_id'], nights, voyageur=users.compte(validated_data.get('guest_id')),
-                                          nb_unites=validated_data['nb_unites'], type_annonce=hebergement['type'])
+                                          nb_unites=validated_data['nb_unites'], type_annonce=hebergement['type'],
+                                          deposit_settings=hebergement['deposit'])
+        caution = paiements.stay_deposit(hebergement['deposit'], montants.prix_nuits, hebergement['host_id'])
         if paiements.paiement_actif():
             # Dates held while paying; confirmed by the FedaPay webhook
             etat = {'status': 'pending', 'expire_le': timezone.now() + paiements.delai_paiement()}
@@ -218,6 +222,11 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
             frais_service=montants.frais_service,
             commission_hote=montants.commission_hote,
             frais_menage=montants.frais_menage,
+            # Deposit of the listing as the traveller sees it before paying (ADR-036)
+            deposit_option=caution.option,
+            deposit_amount=montants.deposit,
+            guarantee_fee=montants.guarantee_fee,
+            guarantee_cover=caution.guarantee_cover,
             # Terms of the listing as the traveller accepts them now
             politique_annulation=hebergement['politique_annulation'] or '',
             arrivee_a_partir=hebergement['arrivee_a_partir'],

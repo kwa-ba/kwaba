@@ -19,7 +19,7 @@ from .versements import VersementErreur, remettre_en_route
 from .views import CompteRemboursementSerializer
 
 __all__ = [
-    'DEPOSIT_ENHANCED_GUARANTEE', 'DEPOSIT_ESCROW', 'DEPOSIT_NONE', 'DEPOSIT_OPTIONS', 'a_profil_versement', 'deposit_rules', 'escrow_amount', 'guarantee_cover', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
+    'DEPOSIT_ENHANCED_GUARANTEE', 'DEPOSIT_ESCROW', 'DEPOSIT_NONE', 'DEPOSIT_OPTIONS', 'a_profil_versement', 'deposit_rules', 'escrow_amount', 'guarantee_cover', 'stay_deposit', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
     'ids_paiements_echoues', 'numero_remboursement_requis', 'synchroniser_dernier_paiement',
     'synchroniser_paiements_en_attente', 'CompteRemboursementSerializer', 'annuler_paiement_reservation', 'planifier_versement_hote', 'FCFA_PAR_EURO', 'INDISPONIBLE', 'OPERATEUR_CHOICES', 'PAYS_CHOICES',
     'PaiementErreur', 'alerte_admin', 'date_fr', 'commission_hote', 'conditions_hote', 'creer_paiement', 'delai_paiement',
@@ -172,9 +172,16 @@ def hotes_deja_visites(voyageur) -> set:
 
 
 def devis_sejour(prix_par_nuit, hote_id, nuits: int, voyageur=None, nb_unites: int = 1,
-                 type_annonce: str | None = None) -> tarifs.Montants:
-    """Amounts of a stay with the rates of this host and this traveller, and the cleaning fee of the listing's type."""
-    return tarifs.devis(prix_par_nuit, hote_id, nuits, voyageur=voyageur, nb_unites=nb_unites, type_annonce=type_annonce)
+                 type_annonce: str | None = None, deposit_settings: dict | None = None) -> tarifs.Montants:
+    """Amounts of a stay with the rates of this host and this traveller, the cleaning fee of the listing's type and
+    the deposit of the listing's `deposit_settings` {deposit_option, deposit_rate, guarantee_fee}."""
+    return tarifs.devis(prix_par_nuit, hote_id, nuits, voyageur=voyageur, nb_unites=nb_unites, type_annonce=type_annonce,
+                        deposit_settings=deposit_settings)
+
+
+def stay_deposit(deposit_settings: dict | None, nights_price: int, host_id) -> deposit.StayDeposit:
+    """What a booking freezes of its listing's deposit: option, escrowed deposit, guarantee fee and its cover."""
+    return tarifs.stay_deposit(deposit_settings, nights_price, host_id)
 
 
 def frais_menage(type_annonce: str | None) -> int:

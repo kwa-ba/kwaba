@@ -37,3 +37,9 @@ def valider(data: dict, instance, host_id) -> dict:
         raise serializers.ValidationError(
             {'deposit_rate': f'Choisissez un taux de caution entre 1 et {regles.rate_max:g} % du prix des nuitées.'})
     return {**champs, 'deposit_rate': rate}
+
+
+def settings(listing) -> dict:
+    """The deposit chosen by the host, as apps.paiements reads it for a quote and a booking."""
+    return {'deposit_option': listing.deposit_option, 'deposit_rate': listing.deposit_rate,
+            'guarantee_fee': listing.guarantee_fee}
