@@ -56,13 +56,15 @@ def executer(sql: str, params=()):
 def test_reference_data_of_the_schema_is_loaded():
     # 54 of the file, plus the two natures of the cut-off of the service fees (R19, R20: migration 0021)
     assert NatureModel.objects.count() == 56
-    assert NatureModel.objects.filter(actif=True).count() == 42
+    # R07, the fee of the enhanced guarantee, active since the deposit decision v3 (migration 0023)
+    assert NatureModel.objects.filter(actif=True).count() == 43
     # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
     # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
     # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),
     # the thresholds of the drivers' levels (0018), the places and duration of the Founders Programme (0020)
-    assert ParametreModel.objects.count() == 111
-    assert ParametreModel.objects.filter(actif=True).count() == 69
+    # the deposit of the stays, decision v3 (0023): seven parameters, the cap in nights switched off
+    assert ParametreModel.objects.count() == 118
+    assert ParametreModel.objects.filter(actif=True).count() == 75
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
@@ -81,8 +83,9 @@ def test_reference_data_of_the_schema_is_loaded():
     assert (fonds.type, fonds.compte_syscohada) == ('reserve', '118')
     assert finance.parametre('fonds_garantie_cible') == 0
     # Values waiting for a decision of the partners are at zero: the rule produces no amount
-    for cle in ('garantie_renforcee_beneficiaire', 'prime_verification'):
-        assert finance.parametre(cle) == 0
+    assert finance.parametre('prime_verification') == 0
+    # The beneficiary of the enhanced guarantee fee is Kwa-Ba (deposit decision v3, migration 0023)
+    assert finance.parametre('garantie_renforcee_beneficiaire') == 1
     # Decided on 18 November 2026, each with its dated history
     assert (finance.parametre('double_validation_seuil'), finance.parametre('fonds_garantie_taux'),
             finance.parametre('capital_social')) == (250_000, 10, 500_000)

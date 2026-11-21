@@ -12,6 +12,7 @@ import { useEquipements } from "./AmenityBadge";
 import PhotoUploader from "./PhotoUploader";
 import EstimateurRevenus from "./EstimateurRevenus";
 import FraisMenageType from "./FraisMenageType";
+import DepositSettings, { type DepositValue } from "./DepositSettings";
 import { ChoixPosition, type PointCarte } from "@/features/carte";
 import { ChampCorrige } from "@/features/correcteur";
 import Select from "@/components/ui/Select";
@@ -43,6 +44,7 @@ export default function HebergementForm({ initial, brouillon, onSaved, onCancel 
   const { TYPE_LABELS } = useFormat();
   const t = useTranslations("annonce");
   const tp = useTranslations("politiqueAnnulation");
+  const td = useTranslations("deposit");
   // Partner type set by the team (individual, hotel, founder): the preview's commission is theirs
   const { data: revenus } = useRevenus();
   const queryClient = useQueryClient();
@@ -69,6 +71,12 @@ export default function HebergementForm({ initial, brouillon, onSaved, onCancel 
     depart_avant: source?.depart_avant?.slice(0, 5) ?? "11:00",
     politique_annulation: source?.politique_annulation ?? "moderee",
   });
+  // Deposit chosen by the host (ADR-036)
+  const [deposit, setDeposit] = useState<DepositValue>(() => ({
+    option: source?.deposit_option ?? "none",
+    rate: source?.deposit_rate ? String(Number(source.deposit_rate)) : "",
+    fee: source?.guarantee_fee ? String(source.guarantee_fee) : "",
+  }));
   // Photos in display order: the first one is the cover
   const [photos, setPhotos] = useState<string[]>(() => {
     const all = [source?.image_url, ...(source?.images ?? [])].filter((u): u is string => !!u);
@@ -129,6 +137,9 @@ export default function HebergementForm({ initial, brouillon, onSaved, onCancel 
     arrivee_a_partir: form.arrivee_a_partir || null,
     depart_avant: form.depart_avant || null,
     politique_annulation: form.politique_annulation,
+    deposit_option: deposit.option,
+    deposit_rate: deposit.option === "escrow" && deposit.rate ? deposit.rate : null,
+    guarantee_fee: deposit.option === "enhanced_guarantee" && deposit.fee ? Number(deposit.fee) : null,
   });
 
   const submit = async (e: React.FormEvent) => {
@@ -328,6 +339,14 @@ export default function HebergementForm({ initial, brouillon, onSaved, onCancel 
           <p className="text-xs text-gray-500 mt-1.5">{t("politiqueAide")}</p>
           {err("politique_annulation")}
         </div>
+        {!estEtablissement(form.type) && (
+          <div>
+            <span className={labelClass}>{td("titre")}</span>
+            <p className="text-xs text-gray-500 mb-2">{td("aide")}</p>
+            <DepositSettings value={deposit} onChange={setDeposit} nightPrice={Number(form.price_per_night) || 0}
+              inputClass={inputClass} error={<>{err("deposit_option")}{err("deposit_rate")}{err("guarantee_fee")}</>} />
+          </div>
+        )}
       </fieldset>
 
       <div>

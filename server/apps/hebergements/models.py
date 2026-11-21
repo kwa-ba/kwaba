@@ -108,6 +108,15 @@ class HebergementModel(models.Model):
     # Cancellation policy chosen by the host (terms of sale, appendix 1): see apps/paiements/tarifs.py
     POLITIQUES_ANNULATION = [('souple', 'Souple'), ('moderee', 'Modérée'), ('ferme', 'Ferme')]
     politique_annulation = models.CharField(max_length=10, choices=POLITIQUES_ANNULATION, default='moderee', db_default='moderee')
+    # Deposit chosen by the host (ADR-036): none, enhanced guarantee (a fee, option b) or escrowed deposit (a rate of
+    # the nights' price, option c). Rules and amounts: apps/paiements/deposit.py. A booking keeps its own snapshot
+    deposit_option = models.CharField(max_length=20, default='none', db_default='none', choices=[
+        ('none', 'Sans caution'), ('enhanced_guarantee', 'Garantie Kwa-Ba renforcée'),
+        ('escrow', 'Caution séquestrée')])
+    deposit_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                       help_text="Caution séquestrée : % du prix des nuitées")
+    guarantee_fee = models.PositiveIntegerField(null=True, blank=True,
+                                                help_text='Garantie renforcée : forfait non remboursable (FCFA)')
     amenities = models.JSONField(default=list)
     is_available = models.BooleanField(default=True)
     # Published only after the visit of a field agent (apps.verifications)

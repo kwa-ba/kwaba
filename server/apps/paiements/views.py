@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from shared.activity import api as activity
 from apps.users import api as users
 
-from . import fedapay, paypal, services, tarifs
+from . import deposit, fedapay, paypal, services, tarifs
 from .models import ProfilVersementModel, VersementModel
 from .operateurs import PAYS, operateurs_ouverts, pays_ouverts
 
@@ -41,6 +41,8 @@ class ConfigView(APIView):
             'commissions': {'particulier': float(taux.commission_particulier), 'hotel': float(taux.commission_hotel),
                             'fondateur': float(taux.commission_fondateur)},
             'commission_transfert': float(taux.commission_transfert),
+            # Deposit of the short stays chosen by the host (ADR-036)
+            'deposit': deposit.rules_json(),
             # Cleaning fee by listing type, paid back to the host in full
             'frais_menage': tarifs.grille_menage(),
             'delai_paiement_minutes': settings.FEDAPAY['EXPIRATION_MINUTES'],
