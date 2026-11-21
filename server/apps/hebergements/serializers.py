@@ -10,6 +10,7 @@ from shared.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
 from apps.users import api as users
 
 from . import positions
+from .deposit import valider as valider_caution
 from .models import BlocageModel, HebergementModel, TypeLogementModel
 
 # Amenities a host can tick, by category (labels and icons: client/src/components/hebergement/AmenityBadge.tsx).
@@ -74,7 +75,7 @@ class HebergementSerializer(serializers.ModelSerializer):
             'is_favorite', 'created_at', 'statut_verification', 'verifiee_le', 'motif_refus', 'en_ligne', 'statut_annonce',
             'chambres', 'salles_de_bain', 'lits_doubles', 'lits_simples', 'canapes_lits', 'point_repere',
             'petit_dejeuner', 'petit_dejeuner_prix', 'arrivee_a_partir', 'depart_avant',
-            'politique_annulation', 'frais_voyageur', 'types',
+            'politique_annulation', 'deposit_option', 'deposit_rate', 'guarantee_fee', 'frais_voyageur', 'types',
         ]
         read_only_fields = ['id', 'rating', 'review_count', 'host_id', 'created_at', 'statut_verification', 'verifiee_le']
 
@@ -172,7 +173,7 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
             'amenities', 'is_available',
             'chambres', 'salles_de_bain', 'lits_doubles', 'lits_simples', 'canapes_lits',
             'petit_dejeuner', 'petit_dejeuner_prix', 'arrivee_a_partir', 'depart_avant', 'politique_annulation',
-            'declarations',
+            'deposit_option', 'deposit_rate', 'guarantee_fee', 'declarations',
         ]
         extra_kwargs = {
             'latitude': {'min_value': -85, 'max_value': 85},
@@ -229,6 +230,10 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
         if formule != 'option' and 'petit_dejeuner' in data:
             data['petit_dejeuner_prix'] = None
         self._legendes(data)
+        # Deposit chosen by the host (ADR-036): checked against the referential, other options' fields emptied
+        if {'deposit_option', 'deposit_rate', 'guarantee_fee'} & data.keys():
+            hote = getattr(self.instance, 'host_id', None) or self.context['request'].user.pk
+            data.update(valider_caution(data, self.instance, hote))
         return data
 
     def _legendes(self, data):

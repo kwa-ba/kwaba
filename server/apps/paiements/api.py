@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from apps.users import api as users
 
-from . import grand_livre, notifications, tarifs
+from . import deposit, grand_livre, notifications, tarifs
 from .documents import recu_paiement
 from .models import ConditionsHoteModel, PaiementModel, ProfilVersementModel, RemboursementModel
 from .operateurs import OPERATEUR_CHOICES, PAYS_CHOICES, operateurs_du_pays
@@ -19,7 +19,7 @@ from .versements import VersementErreur, remettre_en_route
 from .views import CompteRemboursementSerializer
 
 __all__ = [
-    'a_profil_versement', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
+    'DEPOSIT_ENHANCED_GUARANTEE', 'DEPOSIT_ESCROW', 'DEPOSIT_NONE', 'DEPOSIT_OPTIONS', 'a_profil_versement', 'deposit_rules', 'escrow_amount', 'guarantee_cover', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
     'ids_paiements_echoues', 'numero_remboursement_requis', 'synchroniser_dernier_paiement',
     'synchroniser_paiements_en_attente', 'CompteRemboursementSerializer', 'annuler_paiement_reservation', 'planifier_versement_hote', 'FCFA_PAR_EURO', 'INDISPONIBLE', 'OPERATEUR_CHOICES', 'PAYS_CHOICES',
     'PaiementErreur', 'alerte_admin', 'date_fr', 'commission_hote', 'conditions_hote', 'creer_paiement', 'delai_paiement',
@@ -363,3 +363,23 @@ def a_profil_versement(hote_id) -> bool:
 def titulaire_versement(hote_id) -> str:
     """Name on the host's Mobile Money account: the agent compares it with the identity document."""
     return ProfilVersementModel.objects.filter(hote_id=hote_id).values_list('titulaire', flat=True).first() or ''
+
+
+# --- Deposit of the short stays (ADR-036) ---------------------------------------------------------------------------
+
+DEPOSIT_OPTIONS = deposit.OPTIONS
+DEPOSIT_NONE, DEPOSIT_ENHANCED_GUARANTEE, DEPOSIT_ESCROW = deposit.NONE, deposit.ENHANCED_GUARANTEE, deposit.ESCROW
+
+
+def deposit_rules() -> deposit.DepositRules:
+    """Rates and amounts of the deposit, read in the finance referential."""
+    return deposit.rules()
+
+
+def escrow_amount(nights_price: int, rate) -> int:
+    return deposit.escrow_amount(nights_price, rate)
+
+
+def guarantee_cover(fee: int) -> int:
+    return deposit.guarantee_cover(fee)
+
