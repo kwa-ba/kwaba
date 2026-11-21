@@ -196,6 +196,16 @@ def annulation_sejour(reservation, paiement, bareme, *, commission_constatee: bo
                           reservation_id=reservation.pk)
 
 
+def stay_deposit_returned(reservation, paiement, montant: int) -> None:
+    """The escrowed deposit given back after the stay: it leaves the deposits (C02), then is owed to the traveller
+    (du_au_voyageur)."""
+    if not dans_le_grand_livre('reservation', reservation.pk):
+        return
+    ecrire(paiement, offre_sejour(reservation),
+           [Part('C02', montant, 'voyageur', reservation.guest_id, finance.SORTIE)],
+           origine='caution', cle=f'caution-rendue:{reservation.pk}')
+
+
 def versement_hote_envoye(versement, paiement) -> None:
     """The payout to the host left: T09 settles what Kwa-Ba owed them."""
     from apps.reservations import api as reservations  # local import: reservations depends on paiements
