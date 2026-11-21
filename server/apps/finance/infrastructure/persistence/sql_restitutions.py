@@ -23,8 +23,8 @@ Changes from the file, found by running its cases over two months:
 - invariant I17 and closing check 10: every internal transfer brings the transit account 585 back to zero (GL-22);
 - invariants I1 to I4, I6 and I7 of the developers' brief (03_Prompt, « les dix invariants ») are named on the control
   screen too (recette of 19 November 2026, DEV-L5), read from the ledger: I2 and I3 compare what Kwa-Ba recorded
-  for each reconciled operation (GL-12) with its lines, I7 the R, D and G lines with the classes 6 to 8 of the
-  balance;
+  for each reconciled operation (GL-12) with its lines, I7 the R and D lines with the classes 6 to 8 of the
+  balance (the guarantee fund, family G, is a reserve outside the result: ADR-031);
 - finance_sequence_piece and finance_prochain_numero are not created here: invoice numbers already come from the
   documents module (SequenceFactureModel, one lock per issue), which lot F3 extends to the other series.
 """
@@ -178,6 +178,8 @@ VUES = [
                 WHEN 'I' THEN 'OD'
                 WHEN 'F' THEN 'OD'
                 WHEN 'V' THEN 'TR'
+                -- Allocation to and use of the reserve of the guarantee fund (ADR-031)
+                WHEN 'G' THEN 'OD'
                 ELSE 'TR' END                                   AS journal,
            b.id                                                 AS mouvement_id,
            l.ligne                                              AS ligne_ecriture,
@@ -312,12 +314,12 @@ VUES = [
             GROUP BY mois_comptable, journal HAVING SUM(debit) <> SUM(credit)
         ) x
     ), i7 AS (
-        -- Sum R - sum D (and the allocations to the guarantee fund, family G) = result of the trial balance
-        -- (accounts of classes 6, 7 and 8), month by month
+        -- Sum R - sum D = result of the trial balance (accounts of classes 6, 7 and 8), month by month. The guarantee
+        -- fund (family G) is a reserve, outside the result (ADR-031)
         SELECT count(*) AS n FROM (
             SELECT mois_comptable FROM (
                 SELECT mois_comptable, SUM(montant_signe) AS livre, 0 AS balance
-                FROM finance_mouvement_signe WHERE famille IN ('R', 'D', 'G') GROUP BY mois_comptable
+                FROM finance_mouvement_signe WHERE famille IN ('R', 'D') GROUP BY mois_comptable
                 UNION ALL
                 SELECT mois_comptable, 0, SUM(credit - debit)
                 FROM finance_ecriture WHERE compte_general ~ '^[678]' GROUP BY mois_comptable
@@ -330,7 +332,7 @@ VUES = [
         FROM finance_compte_argent c
         CROSS JOIN generate_series((SELECT min(date_evenement)::date FROM finance_mouvement)::timestamp,
                                    (current_date - 1)::timestamp, interval '1 day') AS j(jour)
-        WHERE c.actif AND c.type NOT IN ('avance_associe', 'provision', 'amortissement')
+        WHERE c.actif AND c.type NOT IN ('avance_associe', 'reserve', 'amortissement')
           AND j.jour::date >= COALESCE(c.actif_depuis, '-infinity'::date)
           AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                           WHERE r.jour = j.jour::date AND r.compte_argent_code = c.code
@@ -459,7 +461,7 @@ FONCTIONS = [
                 FROM generate_series(p_mois::timestamp, (p_mois + interval '1 month' - interval '1 day'),
                                      interval '1 day') AS j(jour)
                 CROSS JOIN finance_compte_argent ca
-                WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'provision', 'amortissement')
+                WHERE ca.actif AND ca.type NOT IN ('avance_associe', 'reserve', 'amortissement')
                   AND j.jour::date >= COALESCE(ca.actif_depuis, '-infinity'::date)
                   AND NOT EXISTS (SELECT 1 FROM finance_rapprochement_jour r
                                   WHERE r.jour = j.jour::date AND r.compte_argent_code = ca.code
