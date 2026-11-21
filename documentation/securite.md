@@ -43,6 +43,8 @@ Ce que fait le code, et ce qu'il reste à régler au déploiement. Fait suite à
 
 ### À ne jamais déployer
 
+- La simulation des paiements (`PAIEMENT_HORS_LIGNE=True`) : elle confirme une réservation sans argent. Le contrôle `paiements.E001` arrête le déploiement si elle est active hors développement (ADR-033).
+
 pgAdmin et la console de gestion RabbitMQ (`compose.yaml` sert au développement). En production, le broker n'est joignable que par les services, avec un utilisateur et un mot de passe dédiés (jamais `guest`).
 
 ## Sauvegardes
