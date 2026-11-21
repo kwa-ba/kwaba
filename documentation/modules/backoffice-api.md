@@ -118,7 +118,7 @@ Filtres : `q` (référence, nom de l'annonce, email du voyageur), `statut` (`pen
 Élément :
 ```json
 {
-  "id": "uuid", "reference": "RES-AF2026-3A43",
+  "id": "uuid", "reference": "RES-KB2026-3A43",
   "hebergement": { "id": "uuid", "name": "Suite Océan", "city": "Dakar" },
   "voyageur": { "id": "uuid", "nom": "Kofi Test", "email": "kofi@exemple.com" },
   "hote": { "id": "uuid", "nom": "Kossi Mensah" },

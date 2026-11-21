@@ -61,8 +61,8 @@ describe("remboursements au back-office (GL-9)", () => {
     vi.mocked(api.get).mockResolvedValue({ data: {} });
     await p.lireRemboursements("a_traiter", 2);
     expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/", { params: { statut: "a_traiter", page: 2 } });
-    await p.lireApercuRemboursement("RES-AF2026-3A43");
-    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/apercu/", { params: { reference: "RES-AF2026-3A43" } });
+    await p.lireApercuRemboursement("RES-KB2026-3A43");
+    expect(api.get).toHaveBeenLastCalledWith("/v1/admin/paiements/finances/remboursements/apercu/", { params: { reference: "RES-KB2026-3A43" } });
 
     vi.mocked(api.post).mockResolvedValueOnce({ status: 202, data: { detail: "Deuxième personne", validation: "v1" } });
     await expect(p.rembourserSejour("r1", "plateforme", "Hôte injoignable")).resolves.toEqual({ attenteValidation: true, message: "Deuxième personne" });

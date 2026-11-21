@@ -12,12 +12,12 @@ def test_reclamation_d_un_client_connecte_avec_piece_jointe(make_user, settings)
     client = APIClient()
     client.force_authenticate(make_user(email='ama@test.kwaba', first_name='Ama', last_name='Mensah'))
     photo = SimpleUploadedFile('douche.jpg', b'\xff\xd8\xff' + b'0' * 100, content_type='image/jpeg')
-    r = client.post(URL, {'objet': 'logement', 'reservation': 'RES-AF2026-AB12', 'description': DESCRIPTION,
+    r = client.post(URL, {'objet': 'logement', 'reservation': 'RES-KB2026-AB12', 'description': DESCRIPTION,
                           'piece_jointe': photo}, format='multipart')
     assert r.status_code == 201, r.data
     (email,) = mail.outbox
     assert email.to == ['info@kwa-ba.com'] and email.reply_to == ['ama@test.kwaba']
-    assert email.subject == 'Réclamation : Logement (RES-AF2026-AB12)'
+    assert email.subject == 'Réclamation : Logement (RES-KB2026-AB12)'
     assert 'Ama Mensah <ama@test.kwaba> (compte Kwa-Ba)' in email.body and DESCRIPTION in email.body
     assert email.attachments[0][0] == 'douche.jpg'
 

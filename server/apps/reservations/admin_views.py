@@ -48,7 +48,7 @@ class ReservationListView(VueAdmin):
         params = request.query_params
         if q := params.get('q', '').strip():
             filtre = Q(hebergement_id__in=hebergements.ids_par_nom(q)) | Q(guest_id__in=users.ids_par_recherche(q))
-            # Reference RES-AF2026-3A43: the last 4 characters are the start of the id
+            # Reference RES-KB2026-3A43: the last 4 characters are the start of the id
             if q.upper().startswith('RES-'):
                 fin = q.rsplit('-', 1)[-1]
                 if len(fin) >= 2:
