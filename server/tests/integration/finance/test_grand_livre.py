@@ -66,10 +66,10 @@ def test_reference_data_of_the_schema_is_loaded():
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
-    # amortisation of the Solution (GL-23), the prepaid income of the cut-off (ADR-034); the bank opens in the app the
-    # day it exists (GL-22)
+    # amortisation of the Solution (GL-23), the prepaid income of the cut-off (ADR-034), the capital subscribed not paid
+    # (ADR-035); the bank opens in the app the day it exists (GL-22)
     assert list(CompteArgentModel.objects.filter(actif=True).values_list('code', flat=True)) == [
-        'AMORTISSEMENTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE', 'PCA']
+        'AMORTISSEMENTS', 'APPORTS', 'ASSOCIES', 'FEDAPAY', 'GARANTIE', 'PCA']
     # The guarantee fund is a reserve (ADR-031): its natures leave the result, with the history of every change
     assert dict(NatureModel.objects.filter(famille_id='G').values_list('code', 'compte_syscohada')) == {
         'G01': '1301', 'G02': '1301'}
