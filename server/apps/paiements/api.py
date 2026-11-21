@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from apps.users import api as users
@@ -18,7 +19,7 @@ from .versements import VersementErreur, remettre_en_route
 from .views import CompteRemboursementSerializer
 
 __all__ = [
-    'a_profil_versement', 'titulaire_versement', 'FONDATEURS_MAX', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
+    'a_profil_versement', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
     'ids_paiements_echoues', 'numero_remboursement_requis', 'synchroniser_dernier_paiement',
     'synchroniser_paiements_en_attente', 'CompteRemboursementSerializer', 'annuler_paiement_reservation', 'planifier_versement_hote', 'FCFA_PAR_EURO', 'INDISPONIBLE', 'OPERATEUR_CHOICES', 'PAYS_CHOICES',
     'PaiementErreur', 'alerte_admin', 'date_fr', 'commission_hote', 'conditions_hote', 'creer_paiement', 'delai_paiement',
@@ -297,7 +298,20 @@ def ids_paiements_echoues(type_objet: str) -> set:
     return echoues - actifs
 
 
-FONDATEURS_MAX = 50
+def _fondateurs_limites() -> tuple[int, int]:
+    """Places and maximum months of the Founders Programme, read in the finance referential (DEV-F3)."""
+    from apps.finance import api as finance
+
+    return int(finance.parametre('fondateurs_places')), int(finance.parametre('fondateurs_duree_mois'))
+
+
+def _plus_mois(jour, mois: int):
+    """Same day `mois` months later, or the last day of that month when it is shorter."""
+    import calendar
+
+    annee, rang = divmod(jour.month - 1 + mois, 12)
+    annee, mois_cible = jour.year + annee, rang + 1
+    return jour.replace(year=annee, month=mois_cible, day=min(jour.day, calendar.monthrange(annee, mois_cible)[1]))
 
 
 def conditions_commission(hote) -> dict:
@@ -328,9 +342,15 @@ def modifier_conditions_hote(hote, valeurs, par) -> str | None:
         return "La fin du Programme Fondateurs doit être après son début."
     if debut and categorie == 'hotel':
         return "Le Programme Fondateurs concerne les hôtes particuliers."
-    if debut and not ConditionsHoteModel.objects.filter(hote_id=hote.pk, fondateur_debut__isnull=False).exists() \
-            and ConditionsHoteModel.objects.filter(fondateur_debut__isnull=False).count() >= FONDATEURS_MAX:
-        return f"Le Programme Fondateurs est limité aux {FONDATEURS_MAX} premiers hôtes."
+    if debut:
+        places, duree = _fondateurs_limites()
+        # N months from the 1st of November: up to the 30th of April included
+        dernier_jour = _plus_mois(debut, duree) - timedelta(days=1)
+        if fin > dernier_jour:
+            return f"Le Programme Fondateurs dure {duree} mois au plus : fin le {dernier_jour:%d/%m/%Y} au plus tard."
+        if not ConditionsHoteModel.objects.filter(hote_id=hote.pk, fondateur_debut__isnull=False).exists() \
+                and ConditionsHoteModel.objects.filter(fondateur_debut__isnull=False).count() >= places:
+            return f"Le Programme Fondateurs est limité aux {places} premiers hôtes."
     ConditionsHoteModel.objects.update_or_create(hote_id=hote.pk, defaults={
         'categorie': categorie, 'fondateur_debut': debut, 'fondateur_fin': fin, 'mis_a_jour_par_id': getattr(par, 'pk', None)})
     return None

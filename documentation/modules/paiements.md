@@ -24,7 +24,7 @@ Voyageur ──paie 64 800 FCFA──▶ Kwa-Ba (FedaPay ou PayPal)
 
 Grille du 18 octobre 2026 (CGV 2.4, art. 6.4). Les taux sont dans `server/apps/paiements/tarifs.py` :
 - **Client fidèle** : 3 % si le voyageur a déjà séjourné (réservation confirmée et terminée) chez le même hôte (`tarifs.taux_frais`). L'annonce renvoie le taux du visiteur (`frais_voyageur`), le site l'affiche.
-- **Commission** selon `ConditionsHoteModel`, réglée par l'équipe dans Back-office → Utilisateurs → Commission : catégorie (particulier, hôtel) et dates du Programme Fondateurs (limité à 50 hôtes). Sans ligne : particulier à 8 %. La catégorie choisit aussi le contrat à signer (hôte B1 ou hôtel B2).
+- **Commission** selon `ConditionsHoteModel`, réglée par l'équipe dans Back-office → Utilisateurs → Commission : catégorie (particulier, hôtel) et dates du Programme Fondateurs. Le périmètre est lu au référentiel de la finance (DEV-F3) : les 5 % ne valent que pour un hôte **particulier** inscrit au programme, dans la limite de `fondateurs_places` (50) et pendant `fondateurs_duree_mois` (6 mois au plus : du 1er novembre au 30 avril inclus) ; un hôte non fondateur paie 8 % (particulier) ou 12 % (hôtel). Sans ligne : particulier à 8 %. La catégorie choisit aussi le contrat à signer (hôte B1 ou hôtel B2).
 
 Les montants sont **figés sur la réservation** au moment où elle est créée (`prix_nuits`, `frais_service`, `commission_hote`) : changer un taux ne modifie pas les réservations existantes. Tous les montants sont des entiers en FCFA.
 

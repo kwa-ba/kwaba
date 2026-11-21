@@ -59,9 +59,9 @@ def test_reference_data_of_the_schema_is_loaded():
     # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
     # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
     # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),
-    # the thresholds of the drivers' levels (0018)
-    assert ParametreModel.objects.count() == 109
-    assert ParametreModel.objects.filter(actif=True).count() == 67
+    # the thresholds of the drivers' levels (0018), the places and duration of the Founders Programme (0020)
+    assert ParametreModel.objects.count() == 111
+    assert ParametreModel.objects.filter(actif=True).count() == 69
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
