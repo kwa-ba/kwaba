@@ -1,16 +1,19 @@
 """The escrowed deposit of a stay (ADR-036) in the register of the deposits (finance, GL-13) and its documents
-(documents, GL-14): received with the stay paid online, given back in full when the stay is cancelled, with a REC
-receipt. Called by paiement.py in its transactions; the ledger lines (C01, C02) are written by apps.paiements.
-
-The return 72 h after the departure and the withholding for damages come with step 3 of ADR-036."""
+(documents, GL-14): received with the stay paid online, given back in full when the stay is cancelled, and given back
+by the worker once the reporting period after the departure is over (`caution_restitution_heures`), each time with a
+REC receipt emailed to the traveller. The ledger lines (C01, C02) are written by apps.paiements."""
 import logging
 from datetime import datetime, time, timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from apps.documents import api as documents
 from apps.finance import api as finance
+from apps.paiements import api as paiements
+
+from .models import ReservationModel
 
 logger = logging.getLogger('apps.reservations')
 
@@ -37,19 +40,66 @@ def register(reservation) -> None:
 
 def give_back_on_cancellation(reservation) -> str | None:
     """The stay was cancelled and its refund includes the whole deposit: the REC receipt, then the register. Returns
-    the number of the document. A failure never stops the refund: it is logged, and the deposit stays « held » in the
-    register, past its date, for the team to settle."""
+    the number of the document."""
     if not reservation.deposit_amount or finance.caution(OBJECT_TYPE, reservation.pk) is None:
         return None
     reservation.deposit_returned_at = timezone.now()
     reservation.save(update_fields=['deposit_returned_at'])
+    return _settle_safely(reservation, mode='Remboursement en ligne (séjour annulé)')
+
+
+def return_due_deposits(now: datetime | None = None) -> int:
+    """Worker: the deposits whose reporting period after the departure is over, given back in full. Returns how
+    many."""
+    now = now or timezone.now()
+    due = (ReservationModel.objects.filter(status='confirmed', deposit_amount__gt=0, deposit_returned_at__isnull=True,
+                                           check_out__lte=timezone.localdate(now))
+           .order_by('check_out').values_list('pk', flat=True)[:50])
+    returned = 0
+    for pk in due:
+        with transaction.atomic():
+            reservation = ReservationModel.objects.select_for_update().get(pk=pk)
+            if reservation.deposit_returned_at or _deadline(reservation) > now:
+                continue
+            if not paiements.give_back_stay_deposit(reservation, reservation.deposit_amount,
+                                                    'Restitution de la caution'):
+                continue
+            reservation.deposit_returned_at = now
+            reservation.save(update_fields=['deposit_returned_at'])
+            _settle_safely(reservation, mode='Remboursement en ligne')
+        _email_traveller(reservation)
+        returned += 1
+    return returned
+
+
+def _settle_safely(reservation, *, mode: str) -> str | None:
+    """A failure never stops the money going back: it is logged, and the deposit stays « held » in the register, past
+    its date, for the team to settle."""
     try:
         with transaction.atomic():
-            return _settle(reservation, mode='Remboursement en ligne (séjour annulé)')
+            return _settle(reservation, mode=mode)
     except (documents.DocumentErreur, finance.CautionRefusee):
         logger.exception("Caution de %s non soldée au registre : à régulariser (Finance → Cautions)",
                          reservation.reference)
         return None
+
+
+def _email_traveller(reservation) -> None:
+    """The deposit given back, with its REC receipt attached. A failed email never undoes the return."""
+    piece = documents.piece_caution(OBJECT_TYPE, reservation.pk)
+    guest = reservation.guest
+    try:
+        paiements.envoyer_email(
+            'emails/reservations/deposit_returned.txt', f"Restitution de votre caution : {reservation.reference}",
+            [guest.email], {
+                'prenom': guest.first_name, 'reference': reservation.reference,
+                'caution': paiements.fcfa(reservation.deposit_amount),
+                'numero_requis': paiements.numero_remboursement_requis(OBJECT_TYPE, reservation.pk),
+                'url': f"{settings.FRONTEND_URL}/profil/reservations", 'assistance': settings.ASSISTANCE_CONTACT,
+                'document': piece[0].removesuffix('.pdf') if piece else '',
+            }, pieces_jointes=[piece] if piece else None)
+    except Exception:
+        logger.exception("Email de restitution de caution non envoyé pour %s", reservation.reference)
 
 
 def _settle(reservation, *, mode: str) -> str:

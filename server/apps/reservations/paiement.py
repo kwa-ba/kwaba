@@ -151,7 +151,7 @@ def constater_commissions(maintenant=None) -> int:
 def passe() -> dict:
     # After the expiries of this pass: the dates they freed are checked at once
     return {'reservations_expirees': expirer(), 'commissions_constatees': constater_commissions(),
-            **hebergements.passe_alertes()}
+            'cautions_restituees': deposit.return_due_deposits(), **hebergements.passe_alertes()}
 
 
 def decrire(reservation_id) -> dict | None:

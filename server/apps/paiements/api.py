@@ -27,7 +27,7 @@ __all__ = [
     'indiquer_numero_remboursement', 'moyens_actifs', 'paiement_actif', 'paiement_reussi', 'recu_pdf', 'rembourser',
     'reservation_possible', 'synchroniser_paiement', 'synchroniser_payout', 'texte_politique', 'total_sejour',
     'devis_sejour', 'frais_reduits', 'frais_reduits_sejour', 'montants_de', 'hotes_deja_visites', 'rembourser_en_partie',
-    'paye_par_un_tiers', 'statut_paiement_de',
+    'paye_par_un_tiers', 'statut_paiement_de', 'give_back_stay_deposit',
     # Payouts page (GL-11): a failed payout row of a product planned again
     'VersementErreur', 'remettre_en_route', 'ligne_a_verser',
     # Ledger of the finance module (grand_livre.py)
@@ -151,6 +151,16 @@ def apercu_annulation_sejour(reservation) -> dict | None:
     montants = tarifs.montants_de(reservation)
     return {'paye': paiement.montant, 'voyageur': tarifs.bareme_voyageur(montants, reservation).rembourse_voyageur,
             'plateforme': montants.total}
+
+
+def give_back_stay_deposit(reservation, montant: int, motif: str) -> bool:
+    """The escrowed deposit of a paid stay given back: C02 in the ledger, then the refund. False if never paid."""
+    paiement = _paiement_reussi('reservation', reservation.pk)
+    if not paiement:
+        return False
+    grand_livre.stay_deposit_returned(reservation, paiement, montant)
+    rembourser(paiement, montant, motif)
+    return True
 
 
 def rembourser_en_partie(type_objet: str, objet_id, montant: int, motif: str) -> bool:
