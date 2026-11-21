@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from . import disponibilites
+from .deposit import settings as deposit_settings
 from . import occupations
 from .occupations import FournisseurReservations as FournisseurReservations
 from . import types_logement
@@ -80,6 +81,7 @@ def _fiche(h: HebergementModel) -> dict:
         'politique_annulation': h.politique_annulation, 'arrivee_a_partir': h.arrivee_a_partir,
         'depart_avant': h.depart_avant, 'point_repere': h.point_repere,
         'petit_dejeuner': h.petit_dejeuner, 'petit_dejeuner_prix': h.petit_dejeuner_prix,
+        'deposit': deposit_settings(h),
     }
 
 

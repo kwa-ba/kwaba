@@ -47,6 +47,11 @@ def bon(r) -> bytes:
         if r.frais_menage:
             lignes.append(('Frais de ménage', '1', fcfa(r.frais_menage), fcfa(r.frais_menage)))
         lignes.append(('Frais de service Kwa-Ba', '1', fcfa(r.frais_service or 0), fcfa(r.frais_service or 0)))
+        if r.guarantee_fee:
+            lignes.append((f"Garantie Kwa-Ba renforcée (dommages jusqu'à {fcfa(r.guarantee_cover)})", '1',
+                           fcfa(r.guarantee_fee), fcfa(r.guarantee_fee)))
+        if r.deposit_amount:
+            lignes.append(('Caution, rendue après le séjour', '1', fcfa(r.deposit_amount), fcfa(r.deposit_amount)))
     else:
         lignes.append(('Séjour', '1', fcfa(r.total_price), fcfa(r.total_price)))
     doc.montants(lignes, [('Total payé', fcfa(r.total_price))])
@@ -69,6 +74,9 @@ def lignes_facture(r) -> list[dict]:
     if r.frais_menage:
         lignes.append({'libelle': 'Frais de ménage', 'quantite': 1, 'prix_unitaire': r.frais_menage})
     lignes.append({'libelle': 'Frais de service Kwa-Ba', 'quantite': 1, 'prix_unitaire': r.frais_service or 0})
+    if r.guarantee_fee:
+        # The escrowed deposit is not sold: it stays the traveller's money, out of the invoice
+        lignes.append({'libelle': 'Garantie Kwa-Ba renforcée', 'quantite': 1, 'prix_unitaire': r.guarantee_fee})
     return lignes
 
 

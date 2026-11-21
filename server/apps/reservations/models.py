@@ -54,6 +54,14 @@ class ReservationModel(models.Model):
     commission_hote = models.PositiveIntegerField(null=True, blank=True)
     # Cleaning fee of the listing type at booking time, for the host in full (null before it existed)
     frais_menage = models.PositiveIntegerField(null=True, blank=True)
+    # Deposit of the listing at booking (ADR-036, apps/paiements/deposit.py), paid with the stay: the escrowed deposit
+    # is the traveller's money, given back after the stay; the guarantee fee is Kwa-Ba's, covering minor damages up to
+    # guarantee_cover
+    deposit_option = models.CharField(max_length=20, default='none', db_default='none')
+    deposit_amount = models.PositiveIntegerField(default=0, db_default=0)
+    guarantee_fee = models.PositiveIntegerField(default=0, db_default=0)
+    guarantee_cover = models.PositiveIntegerField(default=0, db_default=0)
+    deposit_returned_at = models.DateTimeField(null=True, blank=True)
 
     # Stay terms frozen at booking, as the traveller accepted them: the host may change the listing afterwards.
     # The bookings made before were given the listing's values of the day (migration 0010).

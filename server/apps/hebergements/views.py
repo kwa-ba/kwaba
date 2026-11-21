@@ -14,6 +14,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from .alertes import signaler_liberation
 from .archivage import ArchivageImpossible, archiver
+from .deposit import settings as deposit_settings
 from . import stock
 from .disponibilites import a_des_reservations, periodes_indisponibles, verrouiller, verrouiller_types
 from .models import BlocageModel, BrouillonAnnonceModel, HebergementModel, HebergementPhotoModel, TypeLogementModel
@@ -427,7 +428,8 @@ def _parse_date(value, defaut):
 
 def _annonce_consultable(request, pk):
     """The listing, if this visitor can see it: not published yet (in verification, hidden), only its host and the team."""
-    hebergement = HebergementModel.objects.filter(pk=pk).only('id', 'host_id').first()
+    hebergement = (HebergementModel.objects.filter(pk=pk)
+                   .only('id', 'host_id', 'type', 'deposit_option', 'deposit_rate', 'guarantee_fee').first())
     utilisateur = request.user
     est_hote = utilisateur.is_authenticated and utilisateur.id == getattr(hebergement, 'host_id', None)
     equipe = utilisateur.is_authenticated and utilisateur.role in ('agent', 'admin')
@@ -456,10 +458,14 @@ class DevisView(APIView):
             return Response({'detail': 'Type de logement inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
         if nb_unites is None or not 1 <= nb_unites <= type_logement.quantite:
             return Response({'detail': "Nombre d'unités invalide."}, status=status.HTTP_400_BAD_REQUEST)
+        caution = deposit_settings(hebergement)
         montants = paiements.devis_sejour(type_logement.prix_nuit, hebergement.host_id, nuits, voyageur=request.user,
-                                          nb_unites=nb_unites, type_annonce=hebergement.type)
+                                          nb_unites=nb_unites, type_annonce=hebergement.type, deposit_settings=caution)
+        couverture = paiements.stay_deposit(caution, montants.prix_nuits, hebergement.host_id).guarantee_cover
         return Response({'prix_nuits': montants.prix_nuits, 'frais_service': montants.frais_service,
-                         'frais_menage': montants.frais_menage, 'total': montants.total})
+                         'frais_menage': montants.frais_menage, 'deposit': montants.deposit,
+                         'guarantee_fee': montants.guarantee_fee, 'guarantee_cover': couverture,
+                         'total': montants.total})
 
 
 class DisponibiliteView(APIView):
