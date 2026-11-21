@@ -6,9 +6,11 @@ A product is in the ledger once it declares `offre` in its ProduitPaye (registre
 money is not written (transfers and rentals come next, Give waits for its natures).
 
 Stays, line by line (documentation/modules/finance.md):
-- payment: T01 nights and T02 cleaning owed to the host, R01 service fees;
+- payment: T01 nights and T02 cleaning owed to the host, R01 service fees, C01 escrowed deposit held for the
+  traveller, R07 enhanced guarantee fee (ADR-036);
 - arrival of the traveller: the commission leaves T01 for R02 (individual) or R03 (hotel);
-- cancellation: what is refunded leaves T01, T02 and R01; Kwa-Ba's share of the kept nights goes to R08;
+- cancellation: what is refunded leaves T01, T02 and R01, the deposit leaves by C02 and the guarantee fee leaves
+  R07 when the host cancels; Kwa-Ba's share of the kept nights goes to R08;
 - refund decided: T05, owed to the traveller; refund sent: T05 leaves; payout to the host sent: T09.
 """
 import logging
@@ -142,12 +144,14 @@ def nature_commission(reservation) -> str:
 
 
 def parts_sejour(reservation) -> list[Part]:
-    """Split of a stay paid (FIN-03.1): the nights and the cleaning are the host's money, the service fees
-    Kwa-Ba's. The commission stays in the host's money until the arrival."""
+    """Split of a stay paid (FIN-03.1): the nights and the cleaning are the host's money, the service fees and the
+    guarantee fee Kwa-Ba's, the escrowed deposit the traveller's. The commission stays in the host's money until the
+    arrival."""
     montants = tarifs.montants_de(reservation)
     _, tiers_type, hote_id = _hote(reservation)
     return [Part('T01', montants.prix_nuits, tiers_type, hote_id), Part('T02', montants.frais_menage, tiers_type, hote_id),
-            Part('R01', montants.frais_service)]
+            Part('R01', montants.frais_service), Part('C01', montants.deposit, 'voyageur', reservation.guest_id),
+            Part('R07', montants.guarantee_fee)]
 
 
 def commission_a_l_arrivee(reservation, paiement) -> list[int]:
@@ -176,14 +180,19 @@ def annulation_sejour(reservation, paiement, bareme, *, commission_constatee: bo
                           reservation_id=reservation.pk)
     du_hote = montants.prix_nuits - (montants.commission_hote if commission_constatee else 0)
     garde_hote = bareme.nuits_retenues - bareme.commission_hote
-    frais_rendus = bareme.rembourse_voyageur - (montants.prix_nuits - bareme.nuits_retenues) - montants.frais_menage
+    frais_rendus = (bareme.rembourse_voyageur - (montants.prix_nuits - bareme.nuits_retenues) - montants.frais_menage
+                    - bareme.deposit_returned - bareme.guarantee_returned)
     ecrire(paiement, offre, [
         Part('T02', montants.frais_menage, tiers_type, hote_id, finance.SORTIE),
         Part('T01', du_hote - garde_hote, tiers_type, hote_id, finance.SORTIE),
         Part('R08', bareme.commission_hote),
+        Part('C02', bareme.deposit_returned, 'voyageur', reservation.guest_id, finance.SORTIE),
     ], origine='annulation', cle=f'annulation:{reservation.pk}')
     if frais_rendus > 0:
         finance.rectifier('R01', montants.frais_service - frais_rendus, motif=motif, origine='annulation',
+                          reservation_id=reservation.pk)
+    if bareme.guarantee_returned:
+        finance.rectifier('R07', montants.guarantee_fee - bareme.guarantee_returned, motif=motif, origine='annulation',
                           reservation_id=reservation.pk)
 
 
