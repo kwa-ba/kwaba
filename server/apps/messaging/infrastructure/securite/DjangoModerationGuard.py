@@ -1,7 +1,7 @@
 import uuid
 
 from apps.messaging.application.ports.ModerationGuard import ModerationGuard, ModerationVerdict
-from apps.securite import fraude, moderation
+from shared.securite import fraude, moderation
 
 
 class DjangoModerationGuard(ModerationGuard):

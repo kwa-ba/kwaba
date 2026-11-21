@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 
 from .two_factor_helpers import REFRESH, STATUS, VERIFY, Session, code_at, enable
 

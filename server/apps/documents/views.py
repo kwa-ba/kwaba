@@ -10,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.contrats import api as contrats
-from apps.activity import api as activity
-from apps.securite.backoffice import paginer
-from apps.securite.permissions import EstAdministrateur
+from shared.activity import api as activity
+from shared.backoffice_kit.views import paginer
+from shared.securite.permissions import EstAdministrateur
 
 from . import generateurs, services
 from .models import AvoirModel, DocumentCautionModel, FactureModel, JustificatifCautionModel, ParametresSocieteModel

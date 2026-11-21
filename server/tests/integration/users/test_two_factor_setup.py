@@ -1,4 +1,4 @@
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.models import BackupCodeModel, TwoFactorModel
 
 from .two_factor_helpers import CONFIRM, SETUP, STATUS, Session, code_at, enable
@@ -22,7 +22,7 @@ def test_setup_returns_the_uri_and_stores_the_secret_encrypted(admin):
     response = Session(admin).post(SETUP)
     assert response.status_code == 200
     secret = response.data['secret']
-    assert response.data['otpauth_uri'].startswith('otpauth://totp/Kwa-Ba:')
+    assert response.data['otpauth_uri'].startswith('otpauth://totp/Kwa-Ba%20Dev:')
     assert f'secret={secret}' in response.data['otpauth_uri']
     row = TwoFactorModel.objects.get(user=admin)
     assert row.pending_secret and secret not in row.pending_secret

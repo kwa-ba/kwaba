@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 
-from apps.export import api as export
+from shared.export import api as export
 
 # Hours of the listing when the booking has none (bookings made before the hours were frozen on them)
 ARRIVEE_PAR_DEFAUT = time(14, 0)

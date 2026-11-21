@@ -1,10 +1,10 @@
 import importlib
 from types import SimpleNamespace
 
-from apps.activity.domain import catalogue
-from apps.activity.domain.entities import Target
+from shared.activity.domain import catalogue
+from shared.activity.domain.entities import Target
 
-backfill = importlib.import_module('apps.activity.migrations.0003_backfill_actor_and_target')
+backfill = importlib.import_module('shared.activity.migrations.0003_backfill_actor_and_target')
 
 
 def test_every_action_has_a_known_category_and_level():

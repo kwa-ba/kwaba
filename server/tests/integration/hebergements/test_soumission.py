@@ -6,7 +6,7 @@ import pytest
 from apps.contrats.models import PreinscriptionModel
 from apps.hebergements.models import BrouillonAnnonceModel, HebergementModel, HebergementPhotoModel
 from apps.paiements.models import ProfilVersementModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.users.infrastructure.persistence.models import UserModel
 from apps.verifications.models import PieceIdentiteModel
 

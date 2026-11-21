@@ -39,6 +39,17 @@ updates:
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    # Major versions that need a migration of their own, proposed again once it is planned:
+    # - @types/node follows the Node of the client image (node:24, whose major is ignored below);
+    # - TypeScript 7 (native compiler) is not supported yet by typescript-eslint and Next.js;
+    # - Next.js 16 (async request APIs, middleware renamed proxy) is a migration of the whole client.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: next
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: docker
     directories: ['/server', '/client']

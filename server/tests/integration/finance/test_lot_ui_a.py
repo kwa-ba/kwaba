@@ -7,7 +7,7 @@ import pytest
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.documents import services as documents
 from apps.documents.models import AvoirModel, FactureModel, ParametresSocieteModel
 from apps.finance import api as finance

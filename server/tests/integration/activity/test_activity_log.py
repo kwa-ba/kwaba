@@ -4,8 +4,8 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.activity import api as activity
-from apps.activity.models import ActivityEntryModel, ActivityHoldModel
+from shared.activity import api as activity
+from shared.activity.models import ActivityEntryModel, ActivityHoldModel
 
 URL = '/api/v1/admin/activity/'
 

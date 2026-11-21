@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.finance import api as finance
 from apps.finance.models import ParametreHistoModel, ParametreModel
 from apps.locations import services as locations

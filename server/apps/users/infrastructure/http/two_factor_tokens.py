@@ -10,9 +10,9 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .refresh_lock import remember_replacing_pair
+from shared.securite.two_factor import CLAIM
 
-CLAIM = 'two_factor_verified_at'
+from .refresh_lock import remember_replacing_pair
 
 
 class InvalidSessionToken(Exception):

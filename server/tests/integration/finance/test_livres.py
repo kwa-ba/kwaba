@@ -10,7 +10,7 @@ import pytest
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.finance import api as finance
 from apps.finance.models import MouvementModel, PeriodeModel, RapprochementJourModel
 
@@ -28,7 +28,7 @@ def mois_precedent() -> date:
 def sejour(hote_id, moment=None, ref='TX-1', reservation=None):
     """A paid stay (280 000 F on FedaPay, 7 000 F of fees) then the arrival: six lines."""
     commun = dict(offre='COURTE_DUREE', compte_argent='FEDAPAY', moyen_paiement='MOOV',
-                  reservation_id=reservation or uuid.uuid4(), piece_reference='RES-AF2026-0001', date_evenement=moment)
+                  reservation_id=reservation or uuid.uuid4(), piece_reference='RES-KB2026-0001', date_evenement=moment)
     hote = dict(tiers_type='hote', tiers_id=str(hote_id))
     finance.enregistrer([
         finance.Ligne(nature='T01', montant=250_000, sens=finance.ENTREE, externe_reference=ref, **hote, **commun),
@@ -89,7 +89,7 @@ def test_ledger_lines_are_filtered_and_paginated(admin, hote):
     assert admin.get(f'{API}mouvements/?famille=R').json()['count'] == 2
     assert admin.get(f'{API}mouvements/?sens=sortie').json()['count'] == 2
     assert admin.get(f'{API}mouvements/?tiers_type=hote&tiers_id={hote.pk}').json()['count'] == 3
-    assert admin.get(f'{API}mouvements/?piece=af2026').json()['count'] == 6  # part of the reference, any case
+    assert admin.get(f'{API}mouvements/?piece=kb2026').json()['count'] == 6  # part of the reference, any case
     assert admin.get(f'{API}mouvements/?piece=%25').json()['count'] == 0  # « % » is a character, not a wildcard
     demain = timezone.localdate() + timedelta(days=1)
     assert admin.get(f'{API}mouvements/?du={demain}').json()['count'] == 0

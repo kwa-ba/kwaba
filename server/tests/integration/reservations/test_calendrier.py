@@ -3,7 +3,7 @@ from datetime import time
 
 import pytest
 
-from apps.export.api import fold
+from shared.export.api import fold
 
 
 def _url(reservation, langue=''):

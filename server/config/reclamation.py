@@ -14,9 +14,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from apps.securite import captcha
+from shared.securite import captcha
 
-logger = logging.getLogger('apps.securite')
+logger = logging.getLogger('shared.securite')
 
 TAILLE_MAX = 5 * 1024 * 1024  # 5 Mo
 TYPES_ACCEPTES = {'image/jpeg', 'image/png', 'image/webp', 'application/pdf'}

@@ -98,11 +98,12 @@ def objet(reservation_id: uuid.UUID) -> SimpleNamespace | None:
     return objets([reservation_id]).get(reservation_id)
 
 
-REFERENCE = re.compile(r'^RES-AF(\d{4})-([0-9A-F]{4})$')
+# RES-KB, and RES-AF on the documents and emails sent before the Kwa-Ba identity (DEV-F2)
+REFERENCE = re.compile(r'^RES-(?:KB|AF)(\d{4})-([0-9A-F]{4})$')
 
 
 def par_reference(reference: str) -> list[SimpleNamespace]:
-    """Bookings matching a reference (RES-AF2026-3A43, any case) or a full id. The reference is computed from the
+    """Bookings matching a reference (RES-KB2026-3A43, or RES-AF before the Kwa-Ba identity; any case) or a full id. The reference is computed from the
     year and the start of the id: two bookings of a year may share it (rare), hence a list."""
     texte = (reference or '').strip().upper()
     try:

@@ -16,7 +16,7 @@ from apps.contrats.models import ContratModel, ModeleContratModel
 from apps.documents.models import ParametresSocieteModel
 from apps.give.models import OrganisationModel
 from apps.locations.models import PartenaireLocationModel
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.transferts.models import ChauffeurModel
 from apps.verifications.models import PieceIdentiteModel
 

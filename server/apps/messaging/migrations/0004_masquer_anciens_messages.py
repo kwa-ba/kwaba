@@ -3,7 +3,7 @@ from django.db import migrations
 
 def masquer(apps, schema_editor):
     """Messages envoyés avant le filtrage : coordonnées masquées, comme pour les nouveaux."""
-    from apps.securite.coordonnees import analyser, masquees
+    from shared.securite.coordonnees import analyser, masquees
 
     Message = apps.get_model('messaging', 'MessageModel')
     for message in Message.objects.filter(masque=False).only('id', 'content').iterator(chunk_size=500):

@@ -2,7 +2,7 @@
 import pytest
 import requests
 
-from apps.securite import captcha
+from shared.securite import captcha
 
 LOGIN = '/api/v1/auth/login/'
 REGISTER = '/api/v1/auth/register/'

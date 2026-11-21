@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.messaging.infrastructure.persistence.models import MessageReportModel, SanctionModel
-from apps.securite import fraude
+from shared.securite import fraude
 
 
 def _days(key: str) -> datetime.timedelta:

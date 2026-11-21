@@ -20,7 +20,7 @@ function etatDotation(d: DotationFonds): { libelle: string; ton: "vert" | "orang
 const pourcent = (taux: number | string) => `${Number(taux).toLocaleString("fr-FR")} %`;
 
 /**
- * Guarantee fund (GL-17): a provision kept apart from the free money. Each finished month, its rate of the month's net
+ * Guarantee fund (GL-17): a reserve kept apart from the free money, outside the result (ADR-031). Each finished month, its rate of the month's net
  * revenue is allocated to it (each night, at the closing, or with the button); a loss Kwa-Ba pays under its guarantee
  * (a D04 expense) is covered by the fund with the reference of the decision. Below its target, the finance team is
  * alerted.
@@ -133,9 +133,9 @@ export default function FondsGarantie() {
       </section>
 
       <p className="text-xs text-muted">
-        Le fonds est une provision pour garanties données aux clients : dotation au compte 6911, fonds au 192, reprise au 7911 quand il couvre
-        un sinistre (choix arrêtés le 19 novembre 2026). À la clôture annuelle, la provision est ajustée au risque probable, et la
-        dotation forfaitaire est réintégrée au résultat fiscal.
+        Le fonds est une réserve, hors résultat : la dotation est une affectation (1301 / 118) et ne change pas le résultat du mois.
+        Quand il couvre un sinistre, la réserve est reprise (118 / 1301) ; seul le sinistre payé est une charge (658). Comptes à
+        confirmer par l&apos;expert-comptable (ADR-031).
       </p>
     </div>
   );

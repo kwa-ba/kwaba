@@ -8,7 +8,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.utils import timezone
 
-from apps.activity.models import ActivityEntryModel
+from shared.activity.models import ActivityEntryModel
 from apps.paiements import services, versements
 from apps.paiements.models import RetenueVersementModel, VersementModel
 from apps.paiements.registre import PRODUITS, ProduitPaye

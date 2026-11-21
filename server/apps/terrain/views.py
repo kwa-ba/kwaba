@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activity import api as activity
-from apps.securite.permissions import a_acces_section
+from shared.activity import api as activity
+from shared.securite.permissions import agent_space_access
 from apps.users import api as users
 
 from . import services
@@ -23,7 +23,7 @@ class EstAgent(IsAuthenticated):
     def has_permission(self, request, view):
         if not (super().has_permission(request, view) and request.user.role in services.ROLES_AGENTS):
             return False
-        return request.user.role != 'admin' or a_acces_section(request.user, 'verifications')
+        return agent_space_access(request)
 
 
 def _personne(utilisateur) -> dict | None:

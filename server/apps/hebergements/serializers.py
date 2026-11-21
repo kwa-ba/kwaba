@@ -5,8 +5,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 from apps.paiements import api as paiements
-from apps.securite import coordonnees
-from apps.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
+from shared.securite import coordonnees
+from shared.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
 from apps.users import api as users
 
 from . import positions

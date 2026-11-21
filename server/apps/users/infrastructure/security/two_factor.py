@@ -6,9 +6,6 @@ from django.conf import settings
 from apps.users.application.ports.TwoFactorPorts import OneTimePasswords, SecretCipher
 from apps.users.domain.two_factor.codes import STEP_SECONDS
 
-ISSUER = 'Kwa-Ba'
-
-
 class FernetSecretCipher(SecretCipher):
     def __init__(self, key: str | None = None):
         self._fernet = Fernet((key or settings.TWO_FACTOR_ENCRYPTION_KEY).encode())
@@ -25,7 +22,8 @@ class PyOtpPasswords(OneTimePasswords):
         return pyotp.random_base32()
 
     def setup_uri(self, secret: str, account: str) -> str:
-        return pyotp.TOTP(secret, interval=STEP_SECONDS).provisioning_uri(name=account, issuer_name=ISSUER)
+        totp = pyotp.TOTP(secret, interval=STEP_SECONDS)
+        return totp.provisioning_uri(name=account, issuer_name=settings.TWO_FACTOR_ISSUER)
 
     def code_at(self, secret: str, step: int) -> str:
         return pyotp.TOTP(secret, interval=STEP_SECONDS).at(step * STEP_SECONDS)

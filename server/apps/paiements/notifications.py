@@ -8,7 +8,7 @@ import time
 
 from django.conf import settings
 from django.db.models import Q
-from apps.notifications.api import send_mail
+from shared.notifications.api import send_mail
 from apps.users import api as users
 from django.template.loader import render_to_string
 from django.utils import formats
