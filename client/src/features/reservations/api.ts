@@ -1,7 +1,7 @@
 import api from "@/lib/api";
 import { urlProxy } from "@/lib/api-url";
 import type { Paginated, Reservation } from "@/types/api/models";
-import type { AdminReservationDetail } from "@/types/api/admin";
+import type { AdminReservationDetail, AdminStayDeposit } from "@/types/api/admin";
 
 const RESERVATIONS = "/v1/reservations";
 
@@ -29,6 +29,17 @@ export async function annulerReservation(id: string) {
 
 export async function lireReservationAdmin(id: string) {
   return (await api.get<AdminReservationDetail>(`/v1/admin/reservations/${id}/`)).data;
+}
+
+/** Withholding on the escrowed deposit of a stay for a damage (ADR-038): its reason, the article of the terms of sale
+ * and the evidence, sent as multipart. 0 cancels it. */
+export async function withholdStayDeposit(id: string, withholding: { montant: number; motif: string; cgv_article: string; justificatifs: File[] }) {
+  const body = new FormData();
+  body.append("montant", String(withholding.montant));
+  body.append("motif", withholding.motif);
+  body.append("cgv_article", withholding.cgv_article);
+  for (const f of withholding.justificatifs) body.append("justificatifs", f);
+  return (await api.post<AdminStayDeposit>(`/v1/admin/reservations/${id}/caution/`, body)).data;
 }
 
 /** Cancellation by Kwa-Ba. From the double validation threshold, the refund waits for a second person: the answer
