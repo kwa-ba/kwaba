@@ -1,0 +1,15 @@
+{% autoescape off %}Bonjour,
+
+Un avis vient d'être signalé sur « {{ listing }} ».
+
+Motif : {{ reason }}{% if details %}
+Précisions : {{ details }}{% endif %}
+
+Avis :
+{{ comment }}
+
+Décidez dans le back-office : supprimer l'avis, ou classer le signalement sans suite.
+{{ url }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}
