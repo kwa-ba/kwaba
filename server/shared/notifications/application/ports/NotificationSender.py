@@ -24,6 +24,14 @@ class NotificationSender(ABC):
         pass
 
     @abstractmethod
+    def send_account_deletion_code_email(self, to: str, first_name: str, code: str) -> None:
+        pass
+
+    @abstractmethod
+    def send_account_deleted_email(self, to: str, first_name: str) -> None:
+        pass
+
+    @abstractmethod
     def send_booking_cancelled_listing_removed_email(
         self, to: str, first_name: str, hebergement_name: str, city: str, check_in: date, check_out: date,
     ) -> None:

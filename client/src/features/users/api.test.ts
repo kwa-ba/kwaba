@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import {
-  confirmTwoFactorSetup, fermerMonCompte, lireDroitsAdmin, lireMoi, lireStatsAdmin, modifierMoi, modifierUtilisateurAdmin,
-  ouvrirCandidature, readTwoFactorStatus, resetTwoFactor, startTwoFactorSetup,
+  accountDeletionBlockers, confirmTwoFactorSetup, deleteMyAccount, lireDroitsAdmin, lireMoi, lireStatsAdmin, modifierMoi, modifierUtilisateurAdmin,
+  ouvrirCandidature, readTwoFactorStatus, requestAccountDeletionCode, resetTwoFactor, startTwoFactorSetup,
 } from "./api";
 
-vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
+vi.mock("@/lib/api", () => ({
+  default: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  estErreurApi: (err: unknown) => Boolean((err as { isAxiosError?: boolean } | null)?.isAxiosError),
+}));
 
 describe("users", () => {
   beforeEach(() => {
@@ -20,12 +23,25 @@ describe("users", () => {
     expect(api.patch).toHaveBeenLastCalledWith("/v1/users/me/", { first_name: "Ama", phone: null });
   });
 
-  it("ouvre une candidature et ferme son compte", async () => {
+  it("ouvre une candidature", async () => {
     vi.mocked(api.post).mockResolvedValueOnce({ data: {} });
     await ouvrirCandidature();
     expect(api.post).toHaveBeenLastCalledWith("/v1/users/me/candidature/");
-    await fermerMonCompte();
-    expect(api.delete).toHaveBeenCalledWith("/v1/users/me/");
+  });
+
+  it("deletes the account with the emailed code", async () => {
+    await requestAccountDeletionCode();
+    expect(api.post).toHaveBeenLastCalledWith("/v1/users/me/deletion-code/");
+    await deleteMyAccount("123456");
+    expect(api.delete).toHaveBeenCalledWith("/v1/users/me/", { data: { code: "123456" } });
+  });
+
+  it("reads why a deletion is refused", () => {
+    const blockers = [{ code: "upcoming_stays", detail: "Vous avez un séjour à venir." }];
+    const refus = { isAxiosError: true, response: { status: 409, data: { code: "account_deletion_blocked", blockers } } };
+    expect(accountDeletionBlockers(refus)).toEqual(blockers);
+    expect(accountDeletionBlockers({ isAxiosError: true, response: { status: 400, data: {} } })).toEqual([]);
+    expect(accountDeletionBlockers(new Error("réseau"))).toEqual([]);
   });
 
   it("gère les comptes depuis le back-office", async () => {

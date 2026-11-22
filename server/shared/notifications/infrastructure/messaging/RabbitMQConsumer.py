@@ -25,6 +25,8 @@ class RabbitMQConsumer:
         "users.email_verification_requested": "handle_verification_email",
         "users.welcome_email_requested": "handle_welcome_email",
         "users.password_reset_requested": "handle_password_reset_email",
+        "users.account_deletion_code_requested": "handle_account_deletion_code_email",
+        "users.account_deleted": "handle_account_deleted_email",
         "messaging.new_message_email_requested": "handle_new_message_email",
         "hebergements.booking_cancelled_listing_removed": "handle_booking_cancelled_listing_removed",
     }
@@ -148,6 +150,15 @@ class RabbitMQConsumer:
             code=data["code"],
         )
         logger.info("Email de réinitialisation envoyé (user_id=%s)", data.get("user_id"))
+
+    def handle_account_deletion_code_email(self, data: dict) -> None:
+        self._service.send_account_deletion_code_email(to=data["email"], first_name=data["first_name"],
+                                                       code=data["code"])
+        logger.info("Email du code de suppression envoyé (user_id=%s)", data.get("user_id"))
+
+    def handle_account_deleted_email(self, data: dict) -> None:
+        self._service.send_account_deleted_email(to=data["email"], first_name=data["first_name"])
+        logger.info("Email de suppression du compte envoyé (user_id=%s)", data.get("user_id"))
 
     def handle_booking_cancelled_listing_removed(self, data: dict) -> None:
         self._service.send_booking_cancelled_listing_removed_email(

@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ first_name }},
+
+Votre compte Kwa-Ba a été supprimé.
+
+Votre nom, votre adresse email, votre téléphone et vos documents ont été effacés. Les factures et les paiements sont
+conservés sans lien avec un profil, comme la loi l'exige.
+
+Vous pouvez créer un nouveau compte avec la même adresse quand vous le souhaitez.
+
+L'équipe Kwa-Ba
+{% endautoescape %}

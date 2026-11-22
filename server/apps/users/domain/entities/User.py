@@ -48,10 +48,6 @@ class User:
         self.is_verified = True
         self.updated_at = datetime.datetime.now(datetime.timezone.utc)
 
-    def deactivate(self) -> None:
-        self.is_active = False
-        self.updated_at = datetime.datetime.now(datetime.timezone.utc)
-
     def change_role(self, new_role: UserRole) -> None:
         self.role = new_role
         self.updated_at = datetime.datetime.now(datetime.timezone.utc)

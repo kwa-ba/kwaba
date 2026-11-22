@@ -98,6 +98,20 @@ def code_envoye():
     return _lire
 
 
+@pytest.fixture
+def delete_account(client_for, code_envoye):
+    """The account deletes itself (ADR-039): asks for the emailed code, then sends it. Returns the last response:
+    409 from the code request when the deletion is refused, the DELETE's response otherwise."""
+    def _delete(user):
+        client = client_for(user)
+        sent = client.post('/api/v1/users/me/deletion-code/')
+        if sent.status_code != 204:
+            return sent
+        return client.delete('/api/v1/users/me/', {'code': code_envoye(user.email)}, format='json')
+
+    return _delete
+
+
 @pytest.fixture(autouse=True)
 def tarifs_relus():
     """The rates kept in memory by a previous test (rolled back since) are read again."""

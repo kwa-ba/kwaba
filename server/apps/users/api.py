@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -7,11 +7,12 @@ from django.db.models import Count, Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
+from .account_deletion import DeletionParticipant, register
 from .infrastructure.persistence.models import UserModel
 
 __all__ = [
     'Compte', 'ROLES', 'attacher', 'candidatures_refusees', 'compte', 'comptes', 'comptes_actifs', 'comptes_de_role',
-    'compte_demo', 'condition_compte_actif', 'emails_actifs', 'emails_admins_section', 'hote_ou_candidat',
+    'compte_demo', 'condition_compte_actif', 'register_account_deletion', 'emails_actifs', 'emails_admins_section', 'hote_ou_candidat',
     'hotes_et_candidats', 'ids_actifs', 'ids_par_recherche', 'passer_hote', 'peut_gerer_annonces', 'retirer_role_hote',
     'revoquer_jetons', 'statistiques',
 ]
@@ -182,3 +183,13 @@ def revoquer_jetons(user_id) -> None:
     """
     for jeton in OutstandingToken.objects.filter(user_id=user_id).exclude(blacklistedtoken__isnull=False):
         BlacklistedToken.objects.get_or_create(token=jeton)
+
+
+def register_account_deletion(module: str, *, blockers: Callable[[uuid.UUID], dict[str, str]] | None = None,
+                              erase: Callable[[uuid.UUID], None] | None = None) -> None:
+    """Called by a module in its AppConfig.ready when it keeps data about an account (ADR-039).
+
+    `blockers(user_id)`: what must end before the account can be deleted, as {code: message shown to the person}.
+    `erase(user_id)`: erases or detaches what the module keeps, inside the deletion's transaction.
+    """
+    register(DeletionParticipant(module, blockers=blockers, erase=erase))

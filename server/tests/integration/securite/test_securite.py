@@ -152,14 +152,15 @@ class TestAdministration:
 
 
 class TestSessions:
-    def test_deactivation_closes_the_sessions(self, api_client, make_user, password):
+    def test_deleting_the_account_closes_the_sessions(self, api_client, make_user, password, code_envoye):
         user = make_user()
         jetons = api_client.post(LOGIN, {'email': user.email, 'password': password}, format='json').data
         session = APIClient()
         session.credentials(HTTP_AUTHORIZATION=f"Bearer {jetons['access']}")
-        assert session.delete(ME).status_code == 204
+        session.post(f'{ME}deletion-code/')
+        assert session.delete(ME, {'code': code_envoye(user.email)}, format='json').status_code == 204
         assert api_client.post(REFRESH, {'refresh': jetons['refresh']}, format='json').status_code == 401
-        assert 'compte_desactive' in _actions(actor_id=user.id)
+        assert 'account_deleted' in _actions(actor_id=user.id)
 
     def test_jwt_not_signed_with_the_django_secret_key(self, settings):
         assert settings.SIMPLE_JWT['SIGNING_KEY'] != settings.SECRET_KEY

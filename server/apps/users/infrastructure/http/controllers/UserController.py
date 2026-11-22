@@ -7,6 +7,7 @@ from rest_framework import status
 from shared.activity import api as activity
 from shared.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
 from apps.users.application.dto.dto import UpdateProfileDTO
+from apps.users.infrastructure.http.controllers.AccountDeletionController import delete_own_account
 from apps.users.application.service.UserService import UserService
 from apps.users.domain.exceptions import UserNotFoundException
 from apps.users.domain.value_objects import PhoneNumber
@@ -82,15 +83,7 @@ class MeView(APIView):
             return Response({'phone': ['Ce numéro est déjà utilisé par un autre compte.']}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        try:
-            _service().deactivate(request.user.id)
-            # No session must be able to renew its tokens anymore
-            from apps.users.infrastructure.http.controllers.AuthController import revoquer_jetons
-            revoquer_jetons(request.user.id)
-            activity.record('compte_desactive', request, actor=request.user)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except UserNotFoundException as e:
-            return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return delete_own_account(request)
 
 
 class CandidatureHoteView(APIView):

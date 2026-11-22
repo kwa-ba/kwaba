@@ -830,11 +830,16 @@
     "telephone": "Phone number",
     "enregistrement": "Saving…",
     "enregistrer": "Save",
-    "fermerCompte": "Close my account",
-    "fermerTexte": "Your account is deactivated straight away: you won't be able to log in and your profile will no longer appear. To have all your data permanently erased, follow the steps in the <lien>privacy policy</lien>.",
-    "fermerConfirmTitre": "Close your account?",
-    "fermerConfirmTexte": "You will be logged out and won't be able to log in with this account again. Upcoming bookings are not cancelled automatically: cancel them first if needed.",
-    "erreurFermeture": "Could not close the account right now."
+    "deleteAccount": "Delete my account",
+    "deleteText": "Deletion is immediate and permanent: your name, email address, phone number, photo, favourites and alerts are erased. Invoices and payments are kept, as the law requires, and your messages and reviews remain visible under “Deleted account”. Details are in the <lien>privacy policy</lien>.",
+    "deleteAskCode": "Get a confirmation code",
+    "deleteCodeSent": "A code has just been sent to your email address. Enter it to permanently delete your account.",
+    "deleteCodeLabel": "Code received by email",
+    "deleteConfirm": "Delete permanently",
+    "deleteInProgress": "Deleting…",
+    "deleteCancel": "Cancel",
+    "deleteBlocked": "Your account cannot be deleted yet:",
+    "deleteError": "Could not delete the account right now."
   },
   "mesReservations": {
     "onglets": {

@@ -155,8 +155,15 @@ export default function ContenuFr() {
               </p>
               <ul>
                 <li>Modifier vos informations : <Link href="/profil/edit">Mon profil → Mes informations</Link>.</li>
-                <li>Fermer votre compte : depuis la même page, rubrique « Fermer mon compte ».</li>
-                <li>Obtenir une copie de vos données ou leur effacement définitif : écrivez à <LienContact sujet="Mes données personnelles" />, en indiquant votre nom et l&apos;adresse de votre compte. Réponse sous un mois ; nous pouvons vous demander de justifier de votre identité.</li>
+                <li>
+                  Supprimer votre compte : depuis la même page, rubrique « Supprimer mon compte », avec un code reçu par email. La
+                  suppression est immédiate : votre nom, votre adresse email, votre téléphone, votre photo, vos favoris, vos alertes,
+                  vos conversations avec le Concierge et une pièce d&apos;identité non vérifiée sont effacés. Restent, sans lien avec un
+                  profil, ce que la loi oblige à conserver (réservations, paiements, factures, contrats, pièce d&apos;identité vérifiée,
+                  aux durées ci-dessus), ainsi que vos messages et vos avis, affichés sous « Compte supprimé ». La suppression est
+                  refusée tant qu&apos;un séjour, un transfert, une location, une caution, un remboursement ou un versement est en cours.
+                </li>
+                <li>Obtenir une copie de vos données : écrivez à <LienContact sujet="Mes données personnelles" />, en indiquant votre nom et l&apos;adresse de votre compte. Réponse sous un mois ; nous pouvons vous demander de justifier de votre identité.</li>
               </ul>
               <p>
                 Vous pouvez aussi saisir l&apos;<strong>Instance de protection des données à caractère personnel (IPDCP)</strong> du Togo, ou

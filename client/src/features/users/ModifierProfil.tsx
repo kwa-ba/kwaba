@@ -1,26 +1,24 @@
 "use client";
 
-import { fermerMonCompte, lireMoi, modifierMoi } from "./api";
+import DeleteAccount from "./DeleteAccount";
+import { lireMoi, modifierMoi } from "./api";
 import { CLE_MOI } from "./hooks";
 import { Link } from "@/i18n/navigation";
 import { ArrowLeft, User, Mail, Phone, Save } from "lucide-react";
 import { useState, useEffect } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiErrorMessage } from "@/lib/api";
-import ConfirmDialog, { type Confirmation } from "@/components/backoffice/ConfirmDialog";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 export default function EditProfilePage() {
   const t = useTranslations("profilEdition");
-  const locale = useLocale();
   const { update } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -193,34 +191,7 @@ export default function EditProfilePage() {
         </form>
       </div>
 
-      <section aria-labelledby="fermer-titre" className="mt-8 bg-background rounded-2xl border border-red-100 p-6 md:p-8">
-        <h2 id="fermer-titre" className="font-heading font-bold text-lg text-dark">{t("fermerCompte")}</h2>
-        <p className="text-sm text-gray-600 mt-2 max-w-2xl">
-          {t.rich("fermerTexte", { lien: (x) => <Link href="/confidentialite#droits" className="text-brand underline">{x}</Link> })}
-        </p>
-        <button
-          type="button"
-          onClick={() => setConfirmation({
-            titre: t("fermerConfirmTitre"),
-            message: t("fermerConfirmTexte"),
-            libelle: t("fermerCompte"),
-            danger: true,
-            action: async () => {
-              try {
-                await fermerMonCompte();
-                await signOut({ callbackUrl: `${locale === "en" ? "/en" : "/"}?compte=ferme` });
-              } catch (err) {
-                setError(apiErrorMessage(err, t("erreurFermeture")));
-                throw err;
-              }
-            },
-          })}
-          className="mt-4 px-5 py-3 rounded-xl border-2 border-red-600 text-red-700 text-sm font-bold hover:bg-red-50"
-        >
-          {t("fermerCompte")}
-        </button>
-      </section>
-      <ConfirmDialog confirmation={confirmation} onClose={() => setConfirmation(null)} />
+      <DeleteAccount />
     </div>
   );
 }

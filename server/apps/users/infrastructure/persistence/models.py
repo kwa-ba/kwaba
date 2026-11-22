@@ -57,6 +57,8 @@ class UserModel(AbstractUser):
     # Finance role (GL-10): an admin who sees their sections but changes nothing (every write refused by the API)
     admin_lecture_seule = models.BooleanField(default=False, db_default=False)
     role_avant_admin = models.CharField(max_length=20, blank=True, default='', db_default='')
+    # Set when the person deleted their account (ADR-039): the row stays, anonymised, for the ids kept elsewhere
+    deleted_at = models.DateTimeField(null=True, blank=True)
     USERNAME_FIELD  = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
     objects = UserModelManager()

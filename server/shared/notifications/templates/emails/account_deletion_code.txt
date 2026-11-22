@@ -1,0 +1,16 @@
+{% autoescape off %}Bonjour {{ first_name }},
+
+Vous avez demandé à supprimer votre compte Kwa-Ba.
+Pour confirmer, saisissez ce code :
+
+    {{ code }}
+
+Il expire dans 10 minutes.
+
+La suppression est définitive : votre nom, votre adresse email, votre téléphone et vos documents seront effacés.
+Les factures et les paiements sont conservés, comme la loi l'exige.
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez cet email et changez votre mot de passe : votre compte reste actif.
+
+L'équipe Kwa-Ba
+{% endautoescape %}

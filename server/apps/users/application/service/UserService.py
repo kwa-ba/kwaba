@@ -99,13 +99,6 @@ class UserService:
         user.verify()
         self._repository.update(user, champs=('is_verified',))
 
-    def deactivate(self, user_id: uuid.UUID) -> None:
-        user = self._repository.find_by_id(user_id)
-        if not user:
-            raise UserNotFoundException(str(user_id))
-        user.deactivate()
-        self._repository.update(user, champs=('is_active',))
-
     def find_for_authentication(self, email: str) -> User:
         """Returns the full entity with password_hash for authentication."""
         user = self._repository.find_by_email(email)
