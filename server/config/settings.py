@@ -91,6 +91,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # Mobile app too old for the API: 426 (APP_MIN_VERSION)
+    'shared.securite.app_version.AppVersionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -307,6 +309,8 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 MOBILE_APP_SCHEME = os.getenv('MOBILE_APP_SCHEME', 'kwaba')
 # Expo push service (ADR-042): only needed once "enhanced push security" is on in the Expo project
 EXPO_ACCESS_TOKEN = os.getenv('EXPO_ACCESS_TOKEN', '')
+# Oldest version of the mobile app the API still serves ("0.2.0"); empty: every version
+APP_MIN_VERSION = os.getenv('APP_MIN_VERSION', '').strip()
 # Pause between two emails sent by the payments worker (limit of test SMTPs like Mailtrap)
 PAIEMENTS_PAUSE_EMAIL = float(os.getenv('PAIEMENTS_PAUSE_EMAIL', '1'))
 
