@@ -116,6 +116,8 @@ ACTIONS: dict[str, ActionSpec] = {
     'connexion_echec': ActionSpec('Échec de connexion', CONNECTIONS, IMPORTANT, summary=_email),
     'mdp_reinitialise': ActionSpec('Mot de passe réinitialisé', CONNECTIONS, IMPORTANT, summary=_email),
     'mdp_change': ActionSpec('Mot de passe changé', CONNECTIONS, IMPORTANT),
+    # A renewed token of the mobile app presented again (ADR-043): every session closed
+    'refresh_reused': ActionSpec('Jeton de session réutilisé', CONNECTIONS, SENSITIVE),
     'connexion_bloquee': ActionSpec('Compte bloqué', CONNECTIONS, SENSITIVE,
                                     summary=lambda d, t: _join(d.get('email', ''), 'trop de tentatives')),
     'code_bloque': ActionSpec('Code bloqué', CONNECTIONS, SENSITIVE,
