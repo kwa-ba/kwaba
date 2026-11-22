@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+Après examen du dommage signalé pour le séjour {{ reference }}, l'équipe Kwa-Ba a retenu {{ retenue }} sur la caution du voyageur ({{ caution }}){% if motif %} : {{ motif }}{% endif %}.
+
+Cette somme vous est versée sur votre compte de versement habituel, par un versement séparé de celui du séjour.
+{% if document %}Vous trouverez en pièce jointe l'avis de retenue {{ document }}.
+{% endif %}
+Une question ? Assistance Kwa-Ba : {{ assistance }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}

@@ -62,6 +62,10 @@ class ReservationModel(models.Model):
     guarantee_fee = models.PositiveIntegerField(default=0, db_default=0)
     guarantee_cover = models.PositiveIntegerField(default=0, db_default=0)
     deposit_returned_at = models.DateTimeField(null=True, blank=True)
+    # Part of the escrowed deposit withheld for a damage, on a motivated decision of the team (ADR-038): paid to the
+    # host when the deposit is settled
+    deposit_withheld = models.PositiveIntegerField(default=0, db_default=0)
+    deposit_withheld_reason = models.TextField(blank=True, default='', db_default='')
 
     # Stay terms frozen at booking, as the traveller accepted them: the host may change the listing afterwards.
     # The bookings made before were given the listing's values of the day (migration 0010).
