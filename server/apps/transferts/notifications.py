@@ -8,6 +8,7 @@ from django.utils import formats, timezone
 
 from apps.paiements import api as paiements
 from apps.users import api as users
+from shared.notifications.api import push
 
 from . import tarifs
 from .models import TransfertModel, VersementChauffeurModel
@@ -56,6 +57,8 @@ def chauffeur_au_voyageur(t: TransfertModel):
         'telephone_chauffeur': c.telephone, 'vehicule': c.vehicule, 'immatriculation': c.immatriculation,
         'assistance': settings.ASSISTANCE_CONTACT, 'niveau': c.get_niveau_display(), 'photo': bool(c.photo_validee),
     })
+    push(t.voyageur_id, category='bookings_payments', title='Votre chauffeur est attribué',
+         body=f"{c.prenom} vous attendra à l'aéroport de {t.aeroport.ville}.", data={'screen': 'transfer', 'id': str(t.id)})
 
 
 def avis_au_voyageur(t: TransfertModel):

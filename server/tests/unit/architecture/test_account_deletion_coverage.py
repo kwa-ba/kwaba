@@ -69,6 +69,8 @@ DECISIONS = {
     'messaging.NotificationOutboxModel.recipient_id': ERASED,
     'messaging.SanctionModel.contest_reviewed_by_id': STAFF,
     'messaging.SanctionModel.user_id': 'kept: moderation record',
+    'notifications.NotificationPreferencesModel.user_id': ERASED,
+    'notifications.PushDeviceModel.user_id': ERASED,
     'paiements.ConditionsHoteModel.hote_id': 'kept: commission terms, nothing personal',
     'paiements.ConditionsHoteModel.mis_a_jour_par_id': STAFF,
     'paiements.DamagePayoutModel.hote_id': 'kept: accounting; a payout not sent blocks',

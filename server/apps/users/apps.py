@@ -6,6 +6,7 @@ class UsersConfig(AppConfig):
     label = 'users'
 
     def ready(self):
+        from shared.notifications import api as notifications
         from shared.securite import two_factor
         from .api import register_account_deletion
         from .infrastructure.persistence.anonymization import staff_account_blockers
@@ -15,3 +16,5 @@ class UsersConfig(AppConfig):
         two_factor.register_admin_checker(check_admin_code)
         # Its own data is erased by the anonymisation itself (ADR-039)
         register_account_deletion('users', blockers=staff_account_blockers)
+        # The shared notifications kernel imports no business module: users registers its devices and preferences
+        register_account_deletion('notifications', erase=notifications.forget_user)

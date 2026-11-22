@@ -305,6 +305,8 @@ PAYPAL = {
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 # Scheme of the mobile app the payment pages send back to (ADR-041): kwaba, or kwaba-preprod on the preprod
 MOBILE_APP_SCHEME = os.getenv('MOBILE_APP_SCHEME', 'kwaba')
+# Expo push service (ADR-042): only needed once "enhanced push security" is on in the Expo project
+EXPO_ACCESS_TOKEN = os.getenv('EXPO_ACCESS_TOKEN', '')
 # Pause between two emails sent by the payments worker (limit of test SMTPs like Mailtrap)
 PAIEMENTS_PAUSE_EMAIL = float(os.getenv('PAIEMENTS_PAUSE_EMAIL', '1'))
 

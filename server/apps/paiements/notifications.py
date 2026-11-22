@@ -8,7 +8,7 @@ import time
 
 from django.conf import settings
 from django.db.models import Q
-from shared.notifications.api import send_mail
+from shared.notifications.api import push, send_mail
 from apps.users import api as users
 from django.template.loader import render_to_string
 from django.utils import formats
@@ -91,6 +91,8 @@ def reservation_payee_voyageur(paiement: PaiementModel):
         'url_remboursement': f"{settings.FRONTEND_URL}/remboursement",
         'politique': tarifs.texte_politique(r),
     }, pieces_jointes=_pieces('reservation', r.id))
+    push(voyageur.pk, category='bookings_payments', title='Séjour confirmé', body=tarifs._annonce(r)['name'],
+         data={'screen': 'reservation', 'id': str(r.id)})
 
 
 def paiement_tiers_recu(paiement: PaiementModel):
@@ -117,6 +119,8 @@ def reservation_payee_hote(paiement: PaiementModel):
         'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus",
         'url_reservations': f"{settings.FRONTEND_URL}/hote/espace?onglet=reservations",
     })
+    push(hote.pk, category='bookings_payments', title='Nouvelle réservation', body=annonce['name'],
+         data={'screen': 'host'})
 
 
 def versement_envoye(v: VersementModel):
