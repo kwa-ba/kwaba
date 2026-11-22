@@ -24,6 +24,10 @@ class NotificationSender(ABC):
         pass
 
     @abstractmethod
+    def send_password_changed_email(self, to: str, first_name: str) -> None:
+        pass
+
+    @abstractmethod
     def send_account_deletion_code_email(self, to: str, first_name: str, code: str) -> None:
         pass
 
