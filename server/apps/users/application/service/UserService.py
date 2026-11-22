@@ -1,13 +1,15 @@
 import logging
 import uuid
 
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password, is_password_usable, make_password
 
 from apps.users.domain.entities.User import User, UserRole
 from apps.users.domain.repositories.UserRepository import UserRepository
 from apps.users.domain.exceptions import (
+    NoPasswordToChange,
     UserAlreadyExistsException,
-    UserNotFoundException
+    UserNotFoundException,
+    WrongCurrentPassword,
 )
 from datetime import timedelta
 from django.utils import timezone
@@ -98,6 +100,17 @@ class UserService:
             raise UserNotFoundException(str(user_id))
         user.verify()
         self._repository.update(user, champs=('is_verified',))
+
+    def change_password(self, user_id: uuid.UUID, current_password: str, new_password: str) -> None:
+        """The rules of the new password are checked by the caller (the same as at registration)."""
+        user = self._repository.find_by_id(user_id)
+        if not user:
+            raise UserNotFoundException(str(user_id))
+        if not is_password_usable(str(user.password_hash)):
+            raise NoPasswordToChange()
+        if not check_password(current_password, str(user.password_hash)):
+            raise WrongCurrentPassword()
+        self._repository.set_password(user_id, new_password)
 
     def find_for_authentication(self, email: str) -> User:
         """Returns the full entity with password_hash for authentication."""

@@ -115,6 +115,7 @@ ACTIONS: dict[str, ActionSpec] = {
     'email_verifie': ActionSpec('Email vérifié', CONNECTIONS, ROUTINE, summary=_email),
     'connexion_echec': ActionSpec('Échec de connexion', CONNECTIONS, IMPORTANT, summary=_email),
     'mdp_reinitialise': ActionSpec('Mot de passe réinitialisé', CONNECTIONS, IMPORTANT, summary=_email),
+    'mdp_change': ActionSpec('Mot de passe changé', CONNECTIONS, IMPORTANT),
     'connexion_bloquee': ActionSpec('Compte bloqué', CONNECTIONS, SENSITIVE,
                                     summary=lambda d, t: _join(d.get('email', ''), 'trop de tentatives')),
     'code_bloque': ActionSpec('Code bloqué', CONNECTIONS, SENSITIVE,

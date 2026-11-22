@@ -6,3 +6,5 @@ from .InactiveUserException import InactiveUserException
 from .UnverifiedUserException import UnverifiedUserException
 from .AccountDeletionBlocked import AccountDeletionBlocked
 from .InvalidDeletionCode import InvalidDeletionCode
+from .NoPasswordToChange import NoPasswordToChange
+from .WrongCurrentPassword import WrongCurrentPassword
