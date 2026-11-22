@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/api";
-import { supprimerAvisAdmin } from "@/features/avis";
+import { dismissReviewReports, ReviewReports, supprimerAvisAdmin } from "@/features/avis";
 import { cn, formatDate } from "@/lib/utils";
 import { PAGE_SIZE, useAdminList, useDebounced } from "@/lib/useAdminList";
 import { ActionButton, Pagination, SearchInput } from "@/components/backoffice/AdminTable";
@@ -20,15 +20,21 @@ const NOTES = [
   ...[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: `${n} étoile${n > 1 ? "s" : ""}` })),
 ];
 
+const SIGNALEMENTS = [
+  { value: "", label: "Tous les avis" },
+  { value: "1", label: "Signalés, à traiter" },
+];
+
 function Avis() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [note, setNote] = useState(searchParams.get("note") ?? "");
+  const [reported, setReported] = useState(searchParams.get("reported") ?? "");
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const recherche = useDebounced(q);
 
-  const { data, isLoading, isFetching, isError, refetch, page, setPage } = useAdminList<AdminAvis>("avis", { q: recherche, note });
+  const { data, isLoading, isFetching, isError, refetch, page, setPage } = useAdminList<AdminAvis>("avis", { q: recherche, note, reported });
 
   const supprimer = (a: AdminAvis) => setConfirmation({
     titre: "Supprimer cet avis",
@@ -46,6 +52,16 @@ function Avis() {
     },
   });
 
+  const classer = async (a: AdminAvis) => {
+    try {
+      await dismissReviewReports(a.id);
+      toast.success("Signalements classés sans suite");
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -56,6 +72,7 @@ function Avis() {
       <div className="flex flex-col sm:flex-row gap-3">
         <SearchInput value={q} onChange={setQ} placeholder="Texte de l'avis, annonce ou email de l'auteur" />
         <Select label="Note" value={note} onChange={setNote} options={NOTES} className="sm:w-48" />
+        <Select label="Signalements" value={reported} onChange={setReported} options={SIGNALEMENTS} className="sm:w-56" />
       </div>
 
       {isError ? (
@@ -87,6 +104,7 @@ function Avis() {
               {a.reponse_hote && (
                 <p className="text-sm text-gray-600 mt-3 pl-3 border-l-2 border-primary/30"><span className="font-semibold text-dark">Réponse de l&apos;hôte : </span>{a.reponse_hote}</p>
               )}
+              <ReviewReports reports={a.reports} onDismiss={() => classer(a)} />
             </li>
           ))}
         </ul>

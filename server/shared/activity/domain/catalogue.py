@@ -285,6 +285,12 @@ ACTIONS: dict[str, ActionSpec] = {
                                      (('report', 'report', None),),
                                      lambda d, t: 'activée' if d.get('hold') else 'levée'),
     'avis_supprime': ActionSpec('Avis supprimé', MODERATION, IMPORTANT, (('avis_id', 'review', 'annonce'),), _reason),
+    # Reports of the reviews (ADR-040)
+    'review_reported': ActionSpec('Avis signalé', MODERATION, IMPORTANT, (('avis_id', 'review', ''),),
+                                  lambda d, t: d.get('reason', '')),
+    'review_reports_dismissed': ActionSpec('Signalements d\'avis classés', MODERATION, ROUTINE,
+                                           (('avis_id', 'review', ''),),
+                                           lambda d, t: f"{d.get('reports', 0)} signalement(s)"),
 
     'backoffice_creation': ActionSpec('Objet créé', OBJECTS, IMPORTANT, (('id', 'object', 'libelle'),), _object),
     'backoffice_modification': ActionSpec('Objet modifié', OBJECTS, IMPORTANT, (('id', 'object', 'libelle'),), _object),

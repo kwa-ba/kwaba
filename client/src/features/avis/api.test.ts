@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
-import { listerAvis, listerSejoursAEvaluer, publierAvis, repondreAvis, supprimerAvisAdmin } from "./api";
+import { dismissReviewReports, listerAvis, listerSejoursAEvaluer, publierAvis, repondreAvis, supprimerAvisAdmin } from "./api";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 
@@ -33,5 +33,10 @@ describe("avis", () => {
   it("supprime un avis côté back-office avec son motif", async () => {
     await supprimerAvisAdmin("a1", "Insultes");
     expect(api.delete).toHaveBeenCalledWith("/v1/admin/avis/a1/", { params: { motif: "Insultes" } });
+  });
+
+  it("dismisses the reports of a review", async () => {
+    await dismissReviewReports("a1");
+    expect(api.post).toHaveBeenCalledWith("/v1/admin/avis/a1/reports/dismiss/");
   });
 });
