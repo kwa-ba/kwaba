@@ -62,6 +62,18 @@ class DjangoEmailSender(NotificationSender):
             recipient_list=[to],
         )
 
+    def send_password_changed_email(self, to: str, first_name: str) -> None:
+        message = render_to_string('emails/password_changed.txt', {
+            'first_name': first_name,
+            'reset_url': f"{settings.FRONTEND_URL.rstrip('/')}/mot-de-passe-oublie",
+        })
+        send_mail(
+            subject='Votre mot de passe Kwa-Ba a été changé',
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to],
+        )
+
     def send_account_deletion_code_email(self, to: str, first_name: str, code: str) -> None:
         message = render_to_string('emails/account_deletion_code.txt', {'first_name': first_name, 'code': code})
         send_mail(
