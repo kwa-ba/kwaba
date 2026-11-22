@@ -8,6 +8,9 @@ import { formatDate, formatPrice } from "@/lib/utils";
 import type { AdminStayDeposit } from "@/types/api/admin";
 import { withholdStayDeposit } from "../api";
 
+/** Terms of sale: damages caused by the customer during a stay (article 13.6) */
+const STAY_DEPOSIT_CGV_ARTICLE = "13.6";
+
 /** Deposit of a stay in its back-office page (ADR-036, ADR-038): the enhanced guarantee, or the escrowed deposit with
  * the withholding for a damage reported by the host, entered before the worker gives the deposit back. */
 export default function StayDepositBlock({ reservationId, caution }: { reservationId: string; caution: AdminStayDeposit }) {
@@ -36,7 +39,7 @@ export default function StayDepositBlock({ reservationId, caution }: { reservati
 function WithholdingForm({ reservationId, caution }: { reservationId: string; caution: AdminStayDeposit }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
-    montant: caution.retenue ? String(caution.retenue) : "", motif: caution.motif, cgv_article: caution.cgv_article,
+    montant: caution.retenue ? String(caution.retenue) : "", motif: caution.motif, cgv_article: caution.cgv_article || STAY_DEPOSIT_CGV_ARTICLE,
   });
   const [pieces, setPieces] = useState<File[]>([]);
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
