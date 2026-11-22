@@ -120,3 +120,16 @@ pgAdmin et la console de gestion RabbitMQ (`compose.yaml` sert au développement
 - **Inscription** : elle indique qu'une adresse a déjà un compte (choix d'ergonomie), dans la limite de 10 essais par heure et par adresse IP.
 - **Numéros Mobile Money** : ils sont stockés en clair, car ils sont nécessaires aux versements. Le chiffrement au repos dépend de l'hébergeur de la base.
 - **Montées de version majeures** à planifier, chacune dans sa propre PR : Next.js 16, Tailwind 4, ESLint 10, next-auth (stable dès sa sortie).
+
+## Version minimale de l'application mobile
+
+L'application envoie `X-Kwaba-Client` (`mobile-ios`, `mobile-android`) et `X-Kwaba-Version` à chaque appel. Quand `APP_MIN_VERSION` est réglé (par exemple `0.2.0`), `shared.securite.app_version.AppVersionMiddleware` répond `426` à une application plus ancienne :
+
+```json
+{"detail": "Mettez à jour Kwa-Ba pour continuer.", "code": "app_update_required", "min_version": "0.2.0"}
+```
+
+- Un appel sans ces en-têtes (le site) n'est jamais refusé. Ces en-têtes sont falsifiables : ils ne servent qu'à refuser une application, jamais à accorder un droit.
+- `/api/v1/site/` et `/api/health/` répondent toujours, pour que l'application puisse afficher son écran de mise à jour.
+- Une version illisible compte comme trop ancienne. `APP_MIN_VERSION` vide : aucun contrôle.
+- On monte `APP_MIN_VERSION` le jour où une route change de forme d'une manière que les anciennes versions ne savent pas lire (dépôt d'infrastructure, sans déploiement de code).
