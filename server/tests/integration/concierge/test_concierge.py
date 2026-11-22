@@ -6,7 +6,6 @@ from unittest import mock
 
 import pytest
 from django.utils import timezone
-import httpx
 from google.genai._gaos.lib import compat_errors
 from google.genai._gaos.utils.retries import TemporaryError
 from rest_framework.test import APIClient
@@ -273,7 +272,7 @@ def test_erreurs_en_anglais(concierge, make_user):
 
 
 @pytest.mark.parametrize('panne', [
-    TemporaryError(httpx.Response(503)),  # Gemini overloaded, after the retries of the SDK (22/11, preprod)
+    TemporaryError(mock.Mock(status_code=503, headers={})),  # Gemini overloaded, after the retries of the SDK (22/11, preprod)
     RuntimeError('lecture du flux impossible'),
 ], ids=['gemini-503', 'autre-exception'])
 def test_panne_de_gemini_hors_api_error_repond_quand_meme(concierge, make_user, panne):
