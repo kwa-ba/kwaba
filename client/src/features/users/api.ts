@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { estErreurApi } from "@/lib/api";
 import type { AdminStats, AdminUser, DroitsAdmin, TwoFactorSetup, TwoFactorStatus } from "@/types/api/admin";
 import type { Me } from "@/types/api/models";
 
@@ -17,8 +17,23 @@ export async function ouvrirCandidature() {
   return (await api.post<Me>(`${MOI}candidature/`)).data;
 }
 
-export async function fermerMonCompte() {
-  await api.delete(MOI);
+/** Emails a code confirming the deletion of the account (ADR-039). Refused (409) while something is still pending. */
+export async function requestAccountDeletionCode() {
+  await api.post(`${MOI}deletion-code/`);
+}
+
+/** Deletes the account for good, with the emailed code. */
+export async function deleteMyAccount(code: string) {
+  await api.delete(MOI, { data: { code } });
+}
+
+/** What must end before the account can be deleted (an upcoming stay, a payout to receive…). */
+export type AccountDeletionBlocker = { code: string; detail: string };
+
+export function accountDeletionBlockers(err: unknown): AccountDeletionBlocker[] {
+  if (!estErreurApi(err) || err.response?.status !== 409) return [];
+  const blockers = (err.response.data as { blockers?: AccountDeletionBlocker[] } | undefined)?.blockers;
+  return Array.isArray(blockers) ? blockers : [];
 }
 
 export async function modifierUtilisateurAdmin(id: AdminUser["id"], champs: Record<string, unknown>) {

@@ -830,11 +830,16 @@
     "telephone": "Numéro de téléphone",
     "enregistrement": "Enregistrement…",
     "enregistrer": "Enregistrer",
-    "fermerCompte": "Fermer mon compte",
-    "fermerTexte": "Votre compte est désactivé immédiatement : vous ne pourrez plus vous connecter et votre profil n'apparaîtra plus. Pour l'effacement définitif de toutes vos données, suivez la procédure de la <lien>politique de confidentialité</lien>.",
-    "fermerConfirmTitre": "Fermer votre compte ?",
-    "fermerConfirmTexte": "Vous serez déconnecté et ne pourrez plus vous connecter avec ce compte. Vos réservations à venir ne sont pas annulées automatiquement : annulez-les d'abord si nécessaire.",
-    "erreurFermeture": "Impossible de fermer le compte pour le moment."
+    "deleteAccount": "Supprimer mon compte",
+    "deleteText": "La suppression est immédiate et définitive : votre nom, votre adresse email, votre téléphone, votre photo, vos favoris et vos alertes sont effacés. Les factures et les paiements sont conservés, comme la loi l'exige, et vos messages et avis restent visibles sous « Compte supprimé ». Le détail est dans la <lien>politique de confidentialité</lien>.",
+    "deleteAskCode": "Recevoir un code de confirmation",
+    "deleteCodeSent": "Un code vient d'être envoyé à votre adresse email. Saisissez-le pour supprimer définitivement votre compte.",
+    "deleteCodeLabel": "Code reçu par email",
+    "deleteConfirm": "Supprimer définitivement",
+    "deleteInProgress": "Suppression…",
+    "deleteCancel": "Annuler",
+    "deleteBlocked": "Votre compte ne peut pas encore être supprimé :",
+    "deleteError": "Impossible de supprimer le compte pour le moment."
   },
   "mesReservations": {
     "onglets": {

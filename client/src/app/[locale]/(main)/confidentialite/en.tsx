@@ -154,8 +154,15 @@ export default function ContenuEn() {
               </p>
               <ul>
                 <li>Change your details: <Link href="/profil/edit">My profile → My details</Link>.</li>
-                <li>Close your account: from the same page, under “Close my account”.</li>
-                <li>Get a copy of your data or have it permanently erased: write to <LienContact sujet="My personal data" />, giving your name and your account email. We reply within one month; we may ask you to prove your identity.</li>
+                <li>
+                  Delete your account: from the same page, under “Delete my account”, with a code received by email. Deletion is
+                  immediate: your name, email address, phone number, photo, favourites, alerts, conversations with the Concierge and an
+                  identity document not yet verified are erased. What the law requires us to keep (bookings, payments, invoices,
+                  contracts, a verified identity document, for the periods above) remains, no longer linked to a profile, as do your
+                  messages and reviews, shown under “Deleted account”. Deletion is refused while a stay, transfer, rental, deposit,
+                  refund or payout is still under way.
+                </li>
+                <li>Get a copy of your data: write to <LienContact sujet="My personal data" />, giving your name and your account email. We reply within one month; we may ask you to prove your identity.</li>
               </ul>
               <p>
                 You may also contact the Togolese <strong>personal data protection authority (IPDCP)</strong>, or the authority of your
