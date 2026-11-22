@@ -6,3 +6,11 @@ class MessagingConfig(AppConfig):
     name = 'apps.messaging'
     # 'messages' is already taken by django.contrib.messages
     label = 'messaging'
+
+    def ready(self):
+        from apps.users.api import register_account_deletion
+
+        from .infrastructure import account_deletion
+
+        # Account deletion (ADR-039)
+        register_account_deletion('messaging', erase=account_deletion.erase)
