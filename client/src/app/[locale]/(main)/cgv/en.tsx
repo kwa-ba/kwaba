@@ -17,7 +17,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Terms of sale"
-      miseAJour="19 November 2026"
+      miseAJour="22 November 2026"
       intro={
         <>
           <VersionFrancaiseFaitFoi />
@@ -69,7 +69,8 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
                 <tr><td>Price</td><td>The price set by the provider (nights, vehicle)</td></tr>
                 <tr><td>Service fee</td><td>KWA-BA’s remuneration paid by the customer for its booking service</td></tr>
                 <tr><td>Total price</td><td>The total amount displayed before payment: price, service fee, driver price, any taxes</td></tr>
-                <tr><td>Security deposit</td><td>The sum given as security and returned at the end of the service (often called “caution”)</td></tr>
+                <tr><td>Security deposit</td><td>The sum paid as security through the Platform, held by KWA-BA and returned at the end of the service (often called “caution”)</td></tr>
+                <tr><td>Kwa-Ba Enhanced Guarantee</td><td>The fee a host may ask instead of a security deposit, described in article 13.7</td></tr>
                 <tr><td>Kwa-Ba Guarantee</td><td>KWA-BA’s commitments described in article 12</td></tr>
               </tbody>
             </table>
@@ -132,6 +133,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
                   <tr><td>Customer under a corporate framework agreement</td><td>4%</td></tr>
                   <tr><td>Loyal customer (new stay with the same host through the Platform)</td><td>{taux.reduits}</td></tr>
                   <tr><td>Tourist or local tax, if applicable</td><td>Shown on the listing and included in the total price</td></tr>
+                  <tr><td>Security deposit or Kwa-Ba Enhanced Guarantee fee, if the host asks for one</td><td>Articles 13.5 and 13.7; shown before payment and included in the total price</td></tr>
                 </tbody>
               </table>
               <p>Reductions are not cumulative: the lowest rate applies.</p>
@@ -162,7 +164,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
               <N n="7.2">Depending on the service, the price is either collected by KWA-BA on behalf of the provider under the mandate given by the provider (payment to KWA-BA then counts as payment to the provider), or paid to the provider through the Platform. The applicable mode is shown at payment.</N>
               <N n="7.3">The price is always paid in F CFA. For a card issued outside the franc zone, the conversion is made by the customer’s bank at its rate. If PayPal is offered, the euro amount is shown before validation (fixed parity €1 = 655.957 F CFA). Any fees charged by the customer’s bank remain payable by the customer.</N>
               <N n="7.4">Payment provider fees are borne by KWA-BA, unless otherwise stated before payment.</N>
-              <N n="7.5"><strong>Payment outside the Platform is forbidden.</strong> No payment may be made to the provider, driver or a canvasser in cash or by any other means for a service booked through the Platform. The only exception is an accommodation security deposit handed to the host against a receipt (article 13.5). A direct payment outside this case is not covered by the Kwa-Ba Guarantee.</N>
+              <N n="7.5"><strong>Payment outside the Platform is forbidden.</strong> No payment may be made to the provider, driver or a canvasser in cash or by any other means for a service booked through the Platform. This also applies to the security deposit, which is paid only through the Platform (articles 13.5 and 14.3). A direct payment is not covered by the Kwa-Ba Guarantee.</N>
               <N n="7.6"><strong>Payment disputes:</strong> a customer who disputes with their bank or operator a payment for a service actually provided may have their account suspended and the sums due recovered. They are invited to contact KWA-BA first (article 21).</N>
               <N n="7.7"><strong>Payment by a third party:</strong> the customer may ask another person with an account on the Platform (the payer) to pay their booking in full, through a personal link valid for 24 hours or from a Kwa-Ba Together group trip. The customer remains the only party to the contract: they receive the confirmation, communicate with the provider and may cancel under these Terms. The payer receives their receipt. In the event of cancellation, the refund due is paid to the payer, on the payment method used, and never to the customer. The dates stay held only for the usual payment period: after that, the payment is accepted only if the service is still available. The payer receives neither the address of the accommodation nor the contact details of the customer or the provider.</N>
             </>
@@ -228,7 +230,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
                   <tr><td>Cancellation by the host, accommodation already occupied (overbooking)</td><td>Equivalent rehousing or full refund</td><td>–</td></tr>
                   <tr><td>Driver or vehicle absent, more than one hour late or unable to come</td><td>Search for a replacement; failing that, refund of the day or trip</td><td>Immediate report</td></tr>
                   <tr><td>Vehicle different from the listing or in poor condition</td><td>Replacement or refund</td><td>Report before departure, with photos</td></tr>
-                  <tr><td>Dispute over a security deposit</td><td>KWA-BA arbitration on the evidence (articles 13 and 14)</td><td>Report within 7 days</td></tr>
+                  <tr><td>Dispute over a security deposit or a deduction</td><td>Review by KWA-BA on the evidence (articles 13.6 and 14.3)</td><td>Challenge within 7 days of the deduction notice</td></tr>
                 </tbody>
               </table>
               <p>The Kwa-Ba Guarantee does not cover: differences in taste or opinion; incidents caused by the customer; services or payments made outside the Platform; lost or stolen personal belongings; indirect damage (missed flights, other bookings).</p>
@@ -245,8 +247,25 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
               <N n="13.2">The customer shows an identity document to the provider if requested for the guest register.</N>
               <N n="13.3">A departure after the scheduled time without the host’s agreement may be charged according to the scale shown on the listing, up to one night.</N>
               <N n="13.4"><strong>Illegal activities</strong>: prostitution, drugs, weapons, hosting unaccompanied minors, serious disturbance. They lead to the immediate end of the stay without refund and may be reported to the authorities.</N>
-              <N n="13.5"><strong>Security deposit for accommodation</strong>: the host may request one provided it is shown on the listing before booking. It is limited to one night and to 50,000 F CFA at most. It is handed over on arrival against a receipt and returned on departure, or at the latest within 48 hours. If damage is declared under article 13.6, the host only keeps the corresponding amount, pending KWA-BA’s opinion. No other deposit may be required.</N>
-              <N n="13.6"><strong>Damage caused by the customer.</strong> The host declares damage within <strong>48 hours</strong> of departure, through the Platform, with photos and a quote or invoice. The customer has <strong>72 hours</strong> to reply. Failing agreement, KWA-BA gives a reasoned opinion, taking normal wear and tear into account. The amount retained is first taken from any security deposit. The balance is paid by the customer within 7 days through the Platform; otherwise KWA-BA may suspend their account and the host keeps its remedies.</N>
+              <N n="13.5"><strong>Security deposit for accommodation</strong>: only an individual host may ask for one, when the Platform offers it; a hotel or a residence does not ask for one through the Platform. It is shown on the listing and in the summary before payment.</N>
+              <ul>
+                <li>Its amount is a percentage of the <strong>price of the nights only</strong> (excluding service and cleaning fees), chosen by the host up to <strong>40%</strong>, rounded to 500 F CFA and capped at <strong>150,000 F CFA</strong>. Below 5,000 F CFA, no deposit is asked.</li>
+                <li>It is <strong>paid through the Platform with the booking and held by KWA-BA</strong> during the stay. It remains the customer’s property: KWA-BA never pays it to the host, except for a deduction decided under article 13.6. The host may not ask for any deposit or sum on arrival.</li>
+                <li>It is <strong>returned in full 72 hours after departure</strong> if there is no deduction, on the payment method used, with a return receipt.</li>
+                <li>It is <strong>always returned in full</strong> if the booking is cancelled, whichever party cancels.</li>
+              </ul>
+              <N n="13.6"><strong>Damage caused by the customer.</strong> The host declares damage to KWA-BA within <strong>48 hours</strong> of departure, through the Platform, with photos and a quote or invoice. KWA-BA informs the customer, who may reply within <strong>24 hours</strong>. KWA-BA then gives a reasoned decision, taking normal wear and tear into account, before the end of the 72-hour period.</N>
+              <ul>
+                <li>The amount deducted is taken from the security deposit and paid to the host. The customer receives the rest of the deposit and a <strong>deduction notice</strong> stating the amount, the reason, the evidence and the basis of the decision.</li>
+                <li>The customer may challenge the notice within 7 days, through the Platform; KWA-BA then reviews the case on the evidence (article 12).</li>
+                <li>If the damage exceeds the deposit, or if there is no deposit, the balance is paid by the customer within 7 days through the Platform. Otherwise KWA-BA may suspend their account, and the host keeps its remedies.</li>
+              </ul>
+              <N n="13.7"><strong>Kwa-Ba Enhanced Guarantee</strong>: instead of a security deposit, an individual host may ask for a fee, which they set and which is shown on the listing and in the summary before payment.</N>
+              <ul>
+                <li>The fee is paid through the Platform with the booking. It pays for a KWA-BA service and is <strong>not refundable</strong>, unless the booking is cancelled by the host or by KWA-BA.</li>
+                <li>It covers minor damage caused by the customer during the stay, declared under article 13.6, <strong>up to five times its amount</strong>. KWA-BA compensates the host within this limit, without asking anything of the customer.</li>
+                <li>Beyond this limit, and for damage caused by an intentional fault or an illegal activity (article 13.4), article 13.6 applies to the customer for the excess.</li>
+              </ul>
             </>
           ),
         },
@@ -396,6 +415,8 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
                 <li><strong>Stays of 28 nights or more:</strong> the first month is non-refundable if cancelled less than 30 days before arrival; the following months are refunded if the customer gives at least 30 days’ notice.</li>
                 <li><strong>No-show without cancellation:</strong> no refund.</li>
                 <li><strong>Cleaning fee:</strong> refunded if the customer has not arrived.</li>
+                <li><strong>Security deposit:</strong> always refunded in full (article 13.5).</li>
+                <li><strong>Kwa-Ba Enhanced Guarantee fee:</strong> kept, unless the host or KWA-BA cancels (article 13.7).</li>
                 <li><strong>Hotels:</strong> the hotel’s own policy, shown before booking, applies if it is more favourable to the customer.</li>
               </ul>
               <p className="font-semibold text-dark">Mobility</p>
@@ -412,7 +433,7 @@ export default function ContenuEn({ taux }: { taux: TauxCgv }) {
             <table>
               <thead><tr><th>Service</th><th>What the customer pays</th></tr></thead>
               <tbody>
-                <tr><td>Short stay</td><td>Price of nights + {taux.voyageur} ({taux.reduits} with the Stay Pack or as a Loyal customer, 4% for companies under a framework agreement)</td></tr>
+                <tr><td>Short stay</td><td>Price of nights + {taux.voyageur} ({taux.reduits} with the Stay Pack or as a Loyal customer, 4% for companies under a framework agreement) + cleaning fee; where applicable, security deposit (returned) or Kwa-Ba Enhanced Guarantee fee</td></tr>
                 <tr><td>Car</td><td>Price set by the owner, no service fee</td></tr>
                 <tr><td>Airport transfer</td><td>Flat price per trip, driver included</td></tr>
                 <tr><td>Driver</td><td>7,000 F CFA per day + any allowances (1,500 or 2,000 F CFA per day) + overtime (1,000 F CFA)</td></tr>
