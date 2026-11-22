@@ -19,6 +19,17 @@ apps/users/
 
 Les autres modules ne gardent que l'identifiant d'un compte (`<rôle>_id`) et le lisent par `users.api` (`compte`, `comptes`, `attacher`).
 
+## Sessions
+
+Jetons JWT : accès de 15 minutes, renouvellement (`POST /api/v1/auth/refresh/`) avec rotation et liste noire.
+
+| Client | Durée du refresh | Réglage |
+|---|---|---|
+| Site (serveur Next) | 1 jour | `JWT_REFRESH_DAYS` |
+| Application mobile (`X-Kwaba-Client: mobile-…` à la connexion) | 60 jours, qui repartent à chaque renouvellement | `MOBILE_REFRESH_DAYS` |
+
+La session longue (ADR-043) est donnée à la connexion par mot de passe, par Google, par le code de vérification et au changement du mot de passe. Un refresh de session longue déjà renouvelé, présenté de nouveau après le délai de grâce (`JWT_REFRESH_GRACE_SECONDS`, 60 s), ferme toutes les sessions du compte (journal : `refresh_reused`). Pendant le délai de grâce, la même paire revient, sans rien fermer.
+
 ## Changement du mot de passe
 
 `POST /api/v1/auth/password-change/`, connecté, `{"old_password": "…", "new_password": "…"}` :
