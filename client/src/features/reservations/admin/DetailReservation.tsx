@@ -5,6 +5,7 @@ import { TriangleAlert } from "lucide-react";
 import Panneau from "@/components/backoffice/Panneau";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { lireReservationAdmin } from "../api";
+import StayDepositBlock from "./StayDepositBlock";
 
 const STATUTS: Record<string, string> = {
   reussi: "Réussi", en_attente: "En attente", echoue: "Échoué", annule: "Annulé",
@@ -56,6 +57,8 @@ export default function DetailReservation({ id, onFermer }: { id: string | null;
             <Ligne libelle={`${formatPrice(r.prix_nuit_reserve)} × ${r.nights} nuit${r.nights > 1 ? "s" : ""}${r.nb_unites > 1 ? ` × ${r.nb_unites}` : ""}`} montant={m.prix_nuits} />
             <Ligne libelle={`Frais de service (${m.taux_frais} %)`} montant={m.frais_service} />
             {m.frais_menage > 0 && <Ligne libelle="Frais de ménage" montant={m.frais_menage} />}
+            {r.caution.garantie > 0 && <Ligne libelle="Garantie Kwa-Ba renforcée" montant={r.caution.garantie} />}
+            {r.caution.montant > 0 && <Ligne libelle="Caution (rendue après le séjour)" montant={r.caution.montant} />}
             <Ligne libelle="Total" montant={m.total} fort />
             {r.prix_nuit_actuel != null && r.prix_nuit_actuel !== r.prix_nuit_reserve && (
               <p className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 rounded-lg px-2.5 py-2 mt-2">
@@ -72,6 +75,10 @@ export default function DetailReservation({ id, onFermer }: { id: string | null;
             {m.frais_menage > 0 && <Ligne libelle="Ménage (pour l'hôte)" montant={m.frais_menage} />}
             <Ligne libelle="Part de l'hôte" montant={m.montant_hote} fort />
             <Ligne libelle="Revenu Kwa-Ba (frais + commission)" montant={m.revenu_kwaba} />
+          </Bloc>
+
+          <Bloc titre="Caution">
+            <StayDepositBlock reservationId={r.id} caution={r.caution} />
           </Bloc>
 
           <Bloc titre="Mouvements d'argent">

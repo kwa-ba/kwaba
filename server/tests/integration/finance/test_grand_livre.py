@@ -54,10 +54,11 @@ def executer(sql: str, params=()):
 # --- Reference data -----------------------------------------------------------------------------------------------
 
 def test_reference_data_of_the_schema_is_loaded():
-    # 54 of the file, plus the two natures of the cut-off of the service fees (R19, R20: migration 0021)
-    assert NatureModel.objects.count() == 56
-    # R07, the fee of the enhanced guarantee, active since the deposit decision v3 (migration 0023)
-    assert NatureModel.objects.filter(actif=True).count() == 43
+    # 54 of the file, plus the two natures of the cut-off of the service fees (R19, R20: migration 0021) and the damage
+    # compensation owed to the host (T10: migration 0024)
+    assert NatureModel.objects.count() == 57
+    # R07, the fee of the enhanced guarantee, active since the deposit decision v3 (migration 0023), and T10
+    assert NatureModel.objects.filter(actif=True).count() == 44
     # 95 of the file, plus the capital decided on 18 November 2026 (migration 0008), the threshold of the expenses
     # decided on 19 November 2026 (migration 0012), the target of the guarantee fund (0013) and the late payout
     # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),

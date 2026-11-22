@@ -139,6 +139,22 @@ export interface AdminReservationDetail extends AdminReservation {
   versement: { montant_brut: number; commission: number; montant: number; statut: string; date_prevue: string; envoye_le: string | null } | null;
   annule_par: string;
   annule_le: string | null;
+  caution: AdminStayDeposit;
+}
+
+/** Deposit of a stay (ADR-036, ADR-038): escrowed deposit or enhanced guarantee, withholding and settlement */
+export interface AdminStayDeposit {
+  option: "none" | "enhanced_guarantee" | "escrow";
+  montant: number;
+  garantie: number;
+  garantie_couverture: number;
+  retenue: number;
+  motif: string;
+  cgv_article: string;
+  restituee_le: string | null;
+  date_limite: string | null;
+  document: string;
+  justificatifs: number;
 }
 
 export interface AdminAvis {

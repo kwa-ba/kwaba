@@ -591,9 +591,12 @@ def passe() -> dict:
         synchroniser_remboursement(remboursement)
     from . import notifications  # local import: notifications imports the models and the rates
 
+    from . import damage_payouts  # local import: damage_payouts sends through this module
+
     stats = {
         'versements_envoyes': envoyer_versements_dus(),
         'remboursements_envoyes': envoyer_remboursements(),
+        **damage_payouts.passe(),
     }
     for produit in PRODUITS.values():
         if produit.passe:

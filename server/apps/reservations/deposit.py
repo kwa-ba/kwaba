@@ -1,11 +1,11 @@
 """The escrowed deposit of a stay (ADR-036) in the register of the deposits (finance, GL-13) and its documents
-(documents, GL-14): received with the stay paid online, given back in full when the stay is cancelled, and given back
-by the worker once the reporting period after the departure is over (`caution_restitution_heures`), each time with a
-REC receipt emailed to the traveller. The ledger lines (C01, C02) are written by apps.paiements."""
+(documents, GL-14): received with the stay paid online, given back in full when the stay is cancelled, and settled by
+the worker once the reporting period after the departure is over (`caution_restitution_heures`): given back minus the
+part withheld for a damage (deposit_withholding.py, ADR-038), with a REC receipt or a RET notice. The ledger lines
+(C01, C02, C03, T10) and the payout to the host are written by apps.paiements."""
 import logging
 from datetime import datetime, time, timedelta
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -13,6 +13,7 @@ from apps.documents import api as documents
 from apps.finance import api as finance
 from apps.paiements import api as paiements
 
+from . import deposit_emails
 from .models import ReservationModel
 
 logger = logging.getLogger('apps.reservations')
@@ -41,16 +42,21 @@ def register(reservation) -> None:
 def give_back_on_cancellation(reservation) -> str | None:
     """The stay was cancelled and its refund includes the whole deposit: the REC receipt, then the register. Returns
     the number of the document."""
-    if not reservation.deposit_amount or finance.caution(OBJECT_TYPE, reservation.pk) is None:
+    inscrite = finance.caution(OBJECT_TYPE, reservation.pk) if reservation.deposit_amount else None
+    if inscrite is None:
         return None
+    if inscrite['montant_retenu']:
+        # A withholding decided before the cancellation falls with it: the whole deposit goes back
+        finance.decider_retenue(OBJECT_TYPE, reservation.pk, montant=0, motif='', cgv_article=inscrite['cgv_article'])
     reservation.deposit_returned_at = timezone.now()
-    reservation.save(update_fields=['deposit_returned_at'])
+    reservation.deposit_withheld, reservation.deposit_withheld_reason = 0, ''
+    reservation.save(update_fields=['deposit_returned_at', 'deposit_withheld', 'deposit_withheld_reason'])
     return _settle_safely(reservation, mode='Remboursement en ligne (séjour annulé)')
 
 
 def return_due_deposits(now: datetime | None = None) -> int:
-    """Worker: the deposits whose reporting period after the departure is over, given back in full. Returns how
-    many."""
+    """Worker: the deposits whose reporting period after the departure is over, given back minus what was withheld.
+    Returns how many."""
     now = now or timezone.now()
     due = (ReservationModel.objects.filter(status='confirmed', deposit_amount__gt=0, deposit_returned_at__isnull=True,
                                            check_out__lte=timezone.localdate(now))
@@ -61,13 +67,13 @@ def return_due_deposits(now: datetime | None = None) -> int:
             reservation = ReservationModel.objects.select_for_update().get(pk=pk)
             if reservation.deposit_returned_at or _deadline(reservation) > now:
                 continue
-            if not paiements.give_back_stay_deposit(reservation, reservation.deposit_amount,
-                                                    'Restitution de la caution'):
+            if not paiements.settle_stay_deposit(reservation, withheld=reservation.deposit_withheld,
+                                                 reason=reservation.deposit_withheld_reason):
                 continue
             reservation.deposit_returned_at = now
             reservation.save(update_fields=['deposit_returned_at'])
-            _settle_safely(reservation, mode='Remboursement en ligne')
-        _email_traveller(reservation)
+            _settle_safely(reservation, mode=_mode(reservation))
+        deposit_emails.deposit_settled(reservation)
         returned += 1
     return returned
 
@@ -84,31 +90,27 @@ def _settle_safely(reservation, *, mode: str) -> str | None:
         return None
 
 
-def _email_traveller(reservation) -> None:
-    """The deposit given back, with its REC receipt attached. A failed email never undoes the return."""
-    piece = documents.piece_caution(OBJECT_TYPE, reservation.pk)
-    guest = reservation.guest
-    try:
-        paiements.envoyer_email(
-            'emails/reservations/deposit_returned.txt', f"Restitution de votre caution : {reservation.reference}",
-            [guest.email], {
-                'prenom': guest.first_name, 'reference': reservation.reference,
-                'caution': paiements.fcfa(reservation.deposit_amount),
-                'numero_requis': paiements.numero_remboursement_requis(OBJECT_TYPE, reservation.pk),
-                'url': f"{settings.FRONTEND_URL}/profil/reservations", 'assistance': settings.ASSISTANCE_CONTACT,
-                'document': piece[0].removesuffix('.pdf') if piece else '',
-            }, pieces_jointes=[piece] if piece else None)
-    except Exception:
-        logger.exception("Email de restitution de caution non envoyé pour %s", reservation.reference)
+def _mode(reservation) -> str:
+    if reservation.deposit_withheld >= reservation.deposit_amount:
+        return 'Aucun remboursement : caution retenue en totalité'
+    return 'Remboursement en ligne'
 
 
 def _settle(reservation, *, mode: str) -> str:
+    """Its document (REC receipt, or RET notice with the decision), then the register."""
+    register(reservation)
+    inscrite = finance.caution(OBJECT_TYPE, reservation.pk)
+    withheld = reservation.deposit_withheld
+    decision = ''
+    if withheld and inscrite and inscrite['decision_le']:
+        decision = f"Décision de l'équipe Kwa-Ba du {inscrite['decision_le']:%d/%m/%Y}"
     guest = reservation.guest
     document = documents.emettre_document_caution(
         objet_type=OBJECT_TYPE, objet_id=reservation.pk, reference=reservation.reference,
         client_nom=(f"{guest.first_name} {guest.last_name}".strip() or guest.email) if guest else '',
-        client_email=guest.email if guest else '', montant_caution=reservation.deposit_amount, montant_retenu=0,
-        mode_restitution=mode)
-    finance.solder_caution(OBJECT_TYPE, reservation.pk, rendu=reservation.deposit_amount, mode=mode,
+        client_email=guest.email if guest else '', montant_caution=reservation.deposit_amount,
+        montant_retenu=withheld, mode_restitution=mode, motif=reservation.deposit_withheld_reason,
+        cgv_article=(inscrite or {}).get('cgv_article') or '', decision=decision)
+    finance.solder_caution(OBJECT_TYPE, reservation.pk, rendu=reservation.deposit_amount - withheld, mode=mode,
                            document_numero=document['numero'])
     return document['numero']

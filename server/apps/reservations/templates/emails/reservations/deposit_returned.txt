@@ -1,14 +1,15 @@
 {% autoescape off %}Bonjour {{ prenom }},
 
-Le délai de signalement après votre départ est terminé pour votre séjour {{ reference }} : votre caution vous est rendue en entier.
+Le délai de signalement après votre départ est terminé pour votre séjour {{ reference }}.
 
   Caution payée : {{ caution }}
-  Remboursé : {{ caution }}
+{% if retenue %}  Retenue : {{ retenue }}{% if motif %} ({{ motif }}){% endif %}
+{% endif %}  Remboursé : {{ rendu }}
 
 {% if numero_requis %}Pour recevoir ce remboursement, indiquez votre numéro Mobile Money sur la page de vos réservations : {{ url }}
 {% else %}Le remboursement part sur le moyen de paiement utilisé ; selon votre opérateur ou votre banque, il peut mettre quelques jours à apparaître.
 {% endif %}
-{% if document %}Vous trouverez en pièce jointe le reçu de restitution {{ document }}.
+{% if document %}Vous trouverez en pièce jointe {% if retenue %}l'avis de retenue{% else %}le reçu de restitution{% endif %} {{ document }}{% if retenue %}, qui indique le motif de la décision et son fondement dans nos conditions générales{% endif %}.
 {% endif %}Une question ? Assistance Kwa-Ba : {{ assistance }}
 
 L'équipe Kwa-Ba

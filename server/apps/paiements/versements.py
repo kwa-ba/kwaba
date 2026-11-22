@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.users import api as users
 
-from .models import RecuperationModel, RetenueVersementModel, VersementModel
+from .models import DamagePayoutModel, RecuperationModel, RetenueVersementModel, VersementModel
 from .registre import PRODUITS
 
 logger = logging.getLogger('apps.paiements')
@@ -29,6 +29,10 @@ A_VERSER = ('planifie', 'en_cours', 'echoue')
 
 class VersementErreur(ValueError):
     """A payout or a recovery that cannot be handled as asked, in French."""
+
+
+# Payout of a damage compensation to a host (ADR-038), on the payouts page
+DAMAGE = 'indemnite'
 
 
 def heures_de_retard() -> int:
@@ -173,6 +177,21 @@ def _hotes(qs) -> list[dict]:
     } for v in lignes]
 
 
+def _damage_payouts(statut: str | None) -> list[dict]:
+    """Damage compensations owed to hosts (ADR-038), planned when their deposit is settled."""
+    qs = DamagePayoutModel.objects.filter(statut=statut) if statut else DamagePayoutModel.objects.filter(
+        statut__in=A_VERSER)
+    lignes = list(qs.order_by('cree_le')[:500])
+    hotes = users.comptes({v.hote_id for v in lignes})
+    references = _references('reservation', {v.reservation_id for v in lignes})
+    return [{
+        'type': DAMAGE, 'id': str(v.id), 'categorie': 'Hôte (indemnité de dommage)',
+        'beneficiaire': _nom(hotes.get(v.hote_id)), 'objet': references.get(v.reservation_id, ''),
+        'montant': v.montant, 'retenue': 0, 'commission': 0, 'statut': v.statut, 'date_prevue': v.cree_le,
+        'envoye_le': v.envoye_le, 'tentatives': v.tentatives, 'derniere_erreur': v.derniere_erreur,
+    } for v in lignes]
+
+
 def a_verser(statut: str | None = None) -> list[dict]:
     """Every partner payout still to send (or of the state asked), from every paid product, with whether it is late
     and whether it can be sent again (a failed payout)."""
@@ -180,13 +199,13 @@ def a_verser(statut: str | None = None) -> list[dict]:
     limite = maintenant - timedelta(hours=heures_de_retard())
     qs = VersementModel.objects.filter(statut=statut) if statut else VersementModel.objects.filter(
         statut__in=A_VERSER)
-    lignes = _hotes(qs.order_by('date_prevue')[:500])
+    lignes = _hotes(qs.order_by('date_prevue')[:500]) + _damage_payouts(statut)
     for type_produit, produit in PRODUITS.items():
         if produit.a_verser:
             lignes += [{**ligne, 'type': type_produit} for ligne in produit.a_verser(statut)]
     for ligne in lignes:
         ligne['en_retard'] = ligne['statut'] in ('planifie', 'echoue') and ligne['date_prevue'] < limite
-        ligne['relancable'] = ligne['statut'] == 'echoue' and (ligne['type'] == 'hote' or bool(
+        ligne['relancable'] = ligne['statut'] == 'echoue' and (ligne['type'] in ('hote', DAMAGE) or bool(
             PRODUITS.get(ligne['type']) and PRODUITS[ligne['type']].relancer))
     lignes.sort(key=lambda x: x['date_prevue'])
     return lignes
@@ -202,8 +221,9 @@ def remettre_en_route(ligne) -> None:
 
 
 def relancer(type_versement: str, versement_id) -> None:
-    if type_versement == 'hote':
-        versement = VersementModel.objects.select_for_update().filter(pk=versement_id).first()
+    if type_versement in ('hote', DAMAGE):
+        modele = VersementModel if type_versement == 'hote' else DamagePayoutModel
+        versement = modele.objects.select_for_update().filter(pk=versement_id).first()
         if versement is None:
             raise VersementErreur('Versement introuvable.')
         remettre_en_route(versement)

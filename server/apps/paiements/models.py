@@ -349,3 +349,36 @@ class RetenueVersementModel(models.Model):
         db_table = 'paiements_retenue_versement'
         ordering = ['cree_le']
         verbose_name = 'Retenue sur un versement'
+
+
+class DamagePayoutModel(models.Model):
+    """Payout to the host of the part of a stay's escrowed deposit withheld for a damage (ADR-038): one per booking,
+    sent by the worker once the deposit is settled, followed like the other payouts."""
+    STATUTS = VersementModel.STATUTS
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reservation_id = models.UUIDField(unique=True)
+    hote_id = models.UUIDField(db_index=True)
+    montant = models.PositiveIntegerField(help_text="Retenue sur la caution, versée à l'hôte")
+    motif = models.CharField(max_length=300)
+    statut = models.CharField(max_length=20, choices=STATUTS, default='planifie')
+    payout_id = models.CharField(max_length=64, blank=True)
+    mode = models.CharField(max_length=30, blank=True)
+    numero = models.CharField(max_length=20, blank=True)
+    tentatives = models.PositiveSmallIntegerField(default=0)
+    derniere_erreur = models.TextField(blank=True)
+    envoye_le = models.DateTimeField(null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    mis_a_jour_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'paiements'
+        db_table = 'paiements_damage_payout'
+        ordering = ['cree_le']
+        verbose_name = 'Versement d’une indemnité de dommage'
+        constraints = [models.CheckConstraint(condition=models.Q(montant__gt=0), name='damage_payout_positive')]
+
+    @cached_property
+    def hote(self):
+        from apps.users.api import compte
+        return compte(self.hote_id)

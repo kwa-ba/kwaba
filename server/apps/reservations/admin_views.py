@@ -12,6 +12,7 @@ from apps.users import api as users
 from shared.backoffice_kit.views import VueAdmin, introuvable as _introuvable, motif as _motif, nom as _nom, paginer as _paginer
 
 from . import paiement
+from .admin_deposit import deposit_json
 from .models import ReservationModel
 
 
@@ -87,6 +88,7 @@ class ReservationDetailView(VueAdmin):
                 'taux_commission': round(m.commission_hote * 100 / m.prix_nuits) if m.prix_nuits else 0,
                 'montant_hote': m.montant_hote, 'revenu_kwaba': m.revenu_kwaba,
             },
+            'caution': deposit_json(r),
             'montants_figes': r.prix_nuits is not None,
             **paiements.mouvements('reservation', r.id),
             'annule_par': r.annule_par, 'annule_le': r.annule_le,
