@@ -9,7 +9,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from shared.securite import captcha
@@ -22,6 +21,7 @@ from apps.users.application.events.UserRegistered import UserRegistered
 from apps.users.application.events.PasswordResetRequested import PasswordResetRequested
 from apps.users.infrastructure.persistence.DjangoUserRepository import DjangoUserRepository
 from apps.users.infrastructure.messaging.FallbackEventBus import FallbackEventBus
+from apps.users.infrastructure.http.session_tokens import asks_long_session, tokens_for
 from apps.users.infrastructure.http.serializers.auth_serializers import (
     RegisterSerializer, LoginSerializer, PasswordResetConfirmSerializer, RefreshWithGracePeriodSerializer,
 )
@@ -75,9 +75,10 @@ def _user_payload(user) -> dict:
     }
 
 
-def _tokens_for(user_id) -> dict:
-    refresh = RefreshToken.for_user(UserModel.objects.get(id=user_id))
-    return {'access': str(refresh.access_token), 'refresh': str(refresh)}
+def _tokens_for(user_id, request=None) -> dict:
+    """`request`: a sign-in from the mobile app gets a long session (ADR-043)."""
+    return tokens_for(UserModel.objects.get(id=user_id),
+                      long_session=request is not None and asks_long_session(request))
 
 
 def _cle(email: str) -> str:
@@ -199,7 +200,7 @@ class LoginView(APIView):
 
         essais.reussite()
         activity.record('connexion', request, actor=user.id, email=data['email'])
-        return Response({**_tokens_for(user.id), 'user': _user_payload(user)}, status=status.HTTP_200_OK)
+        return Response({**_tokens_for(user.id, request), 'user': _user_payload(user)}, status=status.HTTP_200_OK)
 
 
 class GoogleAuthView(APIView):
@@ -220,7 +221,7 @@ class GoogleAuthView(APIView):
             return Response({'detail': 'Compte désactivé.', 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
 
         activity.record('connexion_google', request, actor=result.id, email=str(result.email))
-        return Response({**_tokens_for(result.id), 'user': _user_payload(result)}, status=status.HTTP_200_OK)
+        return Response({**_tokens_for(result.id, request), 'user': _user_payload(result)}, status=status.HTTP_200_OK)
 
 
 class VerifyEmailView(APIView):
@@ -258,7 +259,7 @@ class VerifyEmailView(APIView):
         user = _service().get_by_id(user_id)
         return Response({
             "detail": "Compte vérifié avec succès.",
-            **_tokens_for(user_id),
+            **_tokens_for(user_id, request),
             "user": _user_payload(user),
         }, status=status.HTTP_200_OK)
 

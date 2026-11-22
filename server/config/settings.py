@@ -440,6 +440,8 @@ SIMPLE_JWT = {
     # Tokens carry a fingerprint of the password: changing it invalidates every access token issued before
     'CHECK_REVOKE_TOKEN': True,
 }
+# Sessions of the mobile app (ADR-043): 60 days, starting again at every renewal
+MOBILE_REFRESH_DAYS = int(os.getenv('MOBILE_REFRESH_DAYS', '60'))
 
 # Google sign-in: Kwa-Ba's OAuth client ID(s) (separated by commas). A Google token issued for another
 # application is refused; without a configured ID, Google sign-in is disabled.
