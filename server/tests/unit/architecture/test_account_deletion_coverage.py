@@ -25,6 +25,8 @@ DECISIONS = {
     'agenda.AppointmentModel.agent_id': STAFF,
     'agenda.AppointmentModel.requester_id': 'kept: past visits; an upcoming one blocks (verifications)',
     'avis.AvisModel.auteur_id': 'kept: the review stays, shown under "Compte supprimé"',
+    'avis.ReviewReportModel.dismissed_by_id': STAFF,
+    'avis.ReviewReportModel.reporter_id': 'kept: moderation record',
     'concierge.ConversationModel.utilisateur_id': ERASED,
     'contrats.ContratModel.cree_par_id': STAFF,
     'contrats.ContratModel.hote_id': 'kept: signed contract, kept as proof',

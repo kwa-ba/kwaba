@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.reservations import api as reservations
 from apps.users import api as users
 
-from .models import AvisModel, CRITERES
+from .models import AvisModel, CRITERES, ReviewReportModel
 
 
 class AvisSerializer(serializers.ModelSerializer):
@@ -65,3 +65,15 @@ class AvisCreateSerializer(serializers.ModelSerializer):
 
 class ReponseHoteSerializer(serializers.Serializer):
     reponse = serializers.CharField(min_length=2, max_length=1000)
+
+
+class ReviewReportSerializer(serializers.Serializer):
+    reason = serializers.ChoiceField(choices=[code for code, _ in ReviewReportModel.REASONS])
+    details = serializers.CharField(required=False, allow_blank=True, max_length=ReviewReportModel.DETAILS_MAX_LENGTH,
+                                    default='')
+
+    def validate(self, data):
+        data['details'] = data['details'].strip()
+        if data['reason'] == 'other' and not data['details']:
+            raise serializers.ValidationError({'details': ['Précisez ce qui pose problème.']})
+        return data

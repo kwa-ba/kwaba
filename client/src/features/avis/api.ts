@@ -20,3 +20,8 @@ export async function publierAvis(avis: { reservation: string; note: number; com
 export async function supprimerAvisAdmin(avisId: string, motif: string) {
   await api.delete(`/v1/admin/avis/${avisId}/`, { params: { motif } });
 }
+
+/** The team keeps the review: its pending reports are dismissed (ADR-040). */
+export async function dismissReviewReports(avisId: string) {
+  await api.post(`/v1/admin/avis/${avisId}/reports/dismiss/`);
+}
