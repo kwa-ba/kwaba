@@ -35,6 +35,7 @@ class Part:
     tiers_type: str | None = None
     tiers_id: object = None
     sens: str = finance.ENTREE
+    motif: str | None = None  # required by C03 (deposit withheld): the reason and the reference of the decision
 
 
 def offre_de(type_objet: str, objet_id) -> str | None:
@@ -70,7 +71,7 @@ def _ligne(paiement, offre: str, part: Part, *, externe_reference: str | None) -
         nature=part.nature, offre=offre, montant=part.montant, sens=part.sens,
         compte_argent=COMPTES.get(paiement.prestataire, paiement.prestataire.upper()),
         tiers_type=part.tiers_type, tiers_id=part.tiers_id, moyen_paiement=moyen(paiement),
-        piece_reference=paiement.reference, externe_reference=externe_reference, **_objet(paiement))
+        piece_reference=paiement.reference, externe_reference=externe_reference, motif=part.motif, **_objet(paiement))
 
 
 def ecrire(paiement, offre: str, parts: list[Part], *, origine: str, cle: str) -> list[int]:
@@ -196,14 +197,30 @@ def annulation_sejour(reservation, paiement, bareme, *, commission_constatee: bo
                           reservation_id=reservation.pk)
 
 
-def stay_deposit_returned(reservation, paiement, montant: int) -> None:
-    """The escrowed deposit given back after the stay: it leaves the deposits (C02), then is owed to the traveller
-    (du_au_voyageur)."""
+def stay_deposit_settled(reservation, paiement, *, returned: int, withheld: int, motif: str = '') -> None:
+    """The escrowed deposit settled after the stay: what is given back leaves the deposits (C02), then is owed to the
+    traveller (du_au_voyageur); what is withheld for a damage leaves them too (C03, with its motif) and becomes owed to
+    the host (T10, ADR-038)."""
     if not dans_le_grand_livre('reservation', reservation.pk):
         return
-    ecrire(paiement, offre_sejour(reservation),
-           [Part('C02', montant, 'voyageur', reservation.guest_id, finance.SORTIE)],
-           origine='caution', cle=f'caution-rendue:{reservation.pk}')
+    offre, tiers_type, hote_id = _hote(reservation)
+    ecrire(paiement, offre, [
+        Part('C02', returned, 'voyageur', reservation.guest_id, finance.SORTIE),
+        Part('C03', withheld, 'voyageur', reservation.guest_id, finance.SORTIE, motif=motif),
+        Part('T10', withheld, tiers_type, hote_id),
+    ], origine='caution', cle=f'caution-rendue:{reservation.pk}')
+
+
+def damage_payout_sent(payout, paiement) -> None:
+    """The damage compensation paid to the host: T09 settles what Kwa-Ba owed them (ADR-038)."""
+    from apps.reservations import api as reservations  # local import: reservations depends on paiements
+
+    reservation = reservations.objet(payout.reservation_id)
+    if reservation is None or not dans_le_grand_livre('reservation', reservation.pk):
+        return
+    offre, tiers_type, hote_id = _hote(reservation)
+    ecrire(paiement, offre, [Part('T09', payout.montant, tiers_type, hote_id, finance.SORTIE)],
+           origine='versement', cle=payout.payout_id or f'indemnite:{payout.pk}')
 
 
 def versement_hote_envoye(versement, paiement) -> None:

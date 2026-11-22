@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from apps.users import api as users
 
-from . import deposit, grand_livre, notifications, tarifs
+from . import damage_payouts, deposit, grand_livre, notifications, tarifs
 from .documents import recu_paiement
 from .models import ConditionsHoteModel, PaiementModel, ProfilVersementModel, RemboursementModel
 from .operateurs import OPERATEUR_CHOICES, PAYS_CHOICES, operateurs_du_pays
@@ -27,7 +27,7 @@ __all__ = [
     'indiquer_numero_remboursement', 'moyens_actifs', 'paiement_actif', 'paiement_reussi', 'recu_pdf', 'rembourser',
     'reservation_possible', 'synchroniser_paiement', 'synchroniser_payout', 'texte_politique', 'total_sejour',
     'devis_sejour', 'frais_reduits', 'frais_reduits_sejour', 'montants_de', 'hotes_deja_visites', 'rembourser_en_partie',
-    'paye_par_un_tiers', 'statut_paiement_de', 'give_back_stay_deposit',
+    'paye_par_un_tiers', 'statut_paiement_de', 'settle_stay_deposit',
     # Payouts page (GL-11): a failed payout row of a product planned again
     'VersementErreur', 'remettre_en_route', 'ligne_a_verser',
     # Ledger of the finance module (grand_livre.py)
@@ -153,13 +153,19 @@ def apercu_annulation_sejour(reservation) -> dict | None:
             'plateforme': montants.total}
 
 
-def give_back_stay_deposit(reservation, montant: int, motif: str) -> bool:
-    """The escrowed deposit of a paid stay given back: C02 in the ledger, then the refund. False if never paid."""
+def settle_stay_deposit(reservation, *, withheld: int = 0, reason: str = '') -> bool:
+    """The escrowed deposit of a paid stay settled after the stay (ADR-036, ADR-038): the ledger, the refund of what is
+    given back, and the payout to the host of what is withheld for a damage. False if never paid."""
     paiement = _paiement_reussi('reservation', reservation.pk)
     if not paiement:
         return False
-    grand_livre.stay_deposit_returned(reservation, paiement, montant)
-    rembourser(paiement, montant, motif)
+    returned = reservation.deposit_amount - withheld
+    grand_livre.stay_deposit_settled(reservation, paiement, returned=returned, withheld=withheld,
+                                     motif=f'{reason} (décision {reservation.reference})' if withheld else '')
+    if returned:
+        rembourser(paiement, returned, 'Restitution de la caution')
+    if withheld:
+        damage_payouts.schedule(reservation, amount=withheld, reason=reason)
     return True
 
 
