@@ -19,6 +19,15 @@ apps/users/
 
 Les autres modules ne gardent que l'identifiant d'un compte (`<rôle>_id`) et le lisent par `users.api` (`compte`, `comptes`, `attacher`).
 
+## Changement du mot de passe
+
+`POST /api/v1/auth/password-change/`, connecté, `{"old_password": "…", "new_password": "…"}` :
+
+- `200 {"access", "refresh"}` : nouveaux jetons pour l'appareil qui a changé le mot de passe ; toutes les autres sessions sont fermées, et un e-mail prévient la personne ;
+- `400 {"old_password": [...]}` : mot de passe actuel incorrect ; `400 {"new_password": [...]}` : mêmes règles qu'à l'inscription, et différent de l'actuel ;
+- `400 {"code": "no_password"}` : compte Google sans mot de passe, à créer avec « Mot de passe oublié » ;
+- `429` après 10 essais en 15 minutes.
+
 ## Suppression du compte
 
 Le voyageur ou l'hôte supprime son compte depuis « Mon profil → Mes informations » (web) ou « Profil → Paramètres » (application).
