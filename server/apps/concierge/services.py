@@ -79,10 +79,15 @@ def actif() -> bool:
 
 def _client() -> genai.Client:
     # Retry on server errors only: an exceeded quota (429) must fail right away,
-    # otherwise the SDK retries for more than a minute and the traveller waits in front of a frozen screen
+    # otherwise the SDK retries for more than a minute and the traveller waits in front of a frozen screen.
+    # One retry after a short pause, and at most 30 s of silence from Google per read: an overloaded Gemini (503) gives
+    # the traveller an answer instead of holding the API worker until gunicorn kills it (22/11, preprod).
     return genai.Client(
         api_key=settings.CONCIERGE['API_KEY'],
-        http_options=types.HttpOptions(retry_options=types.HttpRetryOptions(attempts=2, http_status_codes=[500, 502, 503, 504])),
+        http_options=types.HttpOptions(
+            timeout=30_000,
+            retry_options=types.HttpRetryOptions(attempts=2, initial_delay=1, max_delay=2, http_status_codes=[500, 502, 503, 504]),
+        ),
     )
 
 
@@ -218,6 +223,10 @@ def repondre(conversation: ConversationModel, texte_voyageur: str, langue: str =
         yield _sse('erreur', {'message': _m('longue', langue)})
         return
 
+    # Sent at once: the headers leave before the call to Google, the proxies see an answer under way (the site and the
+    # app ignore this event)
+    yield _sse('debut', {})
+
     resume = _resume(conversation) if conversation.interaction_id else ''
     MessageModel.objects.create(conversation=conversation, role='user', contenu={}, texte=texte_voyageur)
     if not conversation.titre:
@@ -270,6 +279,12 @@ def repondre(conversation: ConversationModel, texte_voyageur: str, langue: str =
         except erreurs_gemini.APIError as exc:
             logger.error("Erreur Gemini %s : %s", getattr(exc, 'status_code', ''), getattr(exc, 'message', exc))
             yield _sse('erreur', {'message': _m('erreur', langue)})
+            return
+        except Exception:
+            # Errors of the SDK outside APIError (TemporaryError of google.genai._gaos after the retries on a 503) or
+            # of the reading: the traveller always gets an answer, never a stream cut without a word
+            logger.exception("Concierge : appel à Gemini en échec")
+            yield _sse('erreur', {'message': _m('injoignable', langue)})
             return
 
         if tour.erreur or tour.statut == 'failed':
