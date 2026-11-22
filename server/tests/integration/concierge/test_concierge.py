@@ -144,7 +144,7 @@ def test_conversation_avec_fonction_puis_reponse(concierge, make_user, make_hebe
         evts = _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Un appart à Lomé pour 2'}, format='json'))
 
     types = [e for e, _ in evts]
-    assert types[0] == 'texte' and 'outil' in types and 'cartes' in types and types[-1] == 'fin'
+    assert types[:2] == ['debut', 'texte'] and 'outil' in types and 'cartes' in types and types[-1] == 'fin'
     assert next(d for e, d in evts if e == 'cartes')['cartes'][0]['id'] == str(h.id)
 
     # First call: model, thinking, system instruction, functions + Google search, without a previous interaction
