@@ -7,6 +7,7 @@ from apps.users.infrastructure.http.controllers.AuthController import (
 from apps.users.infrastructure.http.controllers.TwoFactorController import (
     TwoFactorConfirmView, TwoFactorSetupView, TwoFactorStatusView, TwoFactorVerifyView,
 )
+from apps.users.infrastructure.http.controllers.AccountDeletionController import AccountDeletionCodeView
 from apps.users.infrastructure.http.controllers.UserController import CandidatureHoteView, MeView
 
 urlpatterns = [
@@ -19,6 +20,7 @@ urlpatterns = [
     path('auth/resend-code/', ResendCodeView.as_view(),  name='auth-resend-code'),
     path('users/me/',         MeView.as_view(),          name='user-me'),
     path('users/me/candidature/', CandidatureHoteView.as_view(), name='user-candidature'),
+    path('users/me/deletion-code/', AccountDeletionCodeView.as_view(), name='user-deletion-code'),
     path('auth/google/',      GoogleAuthView.as_view(),  name='auth-google'),
     path('auth/password-reset/',         PasswordResetRequestView.as_view(), name='auth-password-reset'),
     path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),

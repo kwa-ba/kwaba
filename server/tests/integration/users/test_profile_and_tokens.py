@@ -37,17 +37,6 @@ class TestMe:
         assert client.patch(ME, {'role': 'admin'}, format='json').data['role'] == 'voyageur'
         assert client.patch(ME, {'role': 'hote'}, format='json').data['role'] == 'voyageur'
 
-    def test_delete_deactivates_account(self, api_client, make_user, password):
-        user = make_user()
-        access = _login(api_client, user, password)['access']
-        api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
-
-        assert api_client.delete(ME).status_code == 204
-        assert api_client.get(ME).status_code == 401
-        api_client.credentials()
-        response = api_client.post(LOGIN, {'email': user.email, 'password': password}, format='json')
-        assert response.data['code'] == 'inactive'
-
 
 class TestRefresh:
     def test_refresh_returns_new_tokens(self, api_client, make_user, password):

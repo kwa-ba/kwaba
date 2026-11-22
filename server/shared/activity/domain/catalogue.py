@@ -142,6 +142,8 @@ ACTIONS: dict[str, ActionSpec] = {
     'super_admin_retire': ActionSpec('Super admin retiré', RIGHTS, SENSITIVE, ACCOUNT_RULES),
     'compte_desactive': ActionSpec('Compte désactivé', RIGHTS, SENSITIVE, ACCOUNT_RULES),
     'compte_reactive': ActionSpec('Compte réactivé', RIGHTS, SENSITIVE, ACCOUNT_RULES),
+    # The person deleted their own account (ADR-039): never their former name or address in the details
+    'account_deleted': ActionSpec('Compte supprimé', RIGHTS, SENSITIVE, ACCOUNT_RULES),
     'candidature_ouverte': ActionSpec('Candidature hôte ouverte', RIGHTS, IMPORTANT, ACCOUNT_RULES),
     'candidature_refusee': ActionSpec('Candidature hôte refusée', RIGHTS, IMPORTANT, ACCOUNT_RULES, _reason),
     'roles_hotes_migres': ActionSpec('Rôles des hôtes révisés', RIGHTS, SENSITIVE,

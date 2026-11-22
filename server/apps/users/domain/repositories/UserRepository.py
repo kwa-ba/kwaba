@@ -36,6 +36,11 @@ class UserRepository(ABC):
         """The account can no longer sign in with a password, and all its sessions are closed."""
 
     @abstractmethod
+    def anonymize(self, user_id: uuid.UUID) -> None:
+        """Erases what identifies the person (ADR-039), keeps the row for the ids kept elsewhere, closes every
+        session. The account can never sign in again."""
+
+    @abstractmethod
     def find_by_google_id(self, google_id: str) -> Optional[User]:
         pass
 

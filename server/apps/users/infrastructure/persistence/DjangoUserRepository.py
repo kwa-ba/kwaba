@@ -6,6 +6,7 @@ from typing import Optional
 from apps.users.domain.entities.User import User, UserRole
 from apps.users.domain.repositories.UserRepository import UserRepository
 from apps.users.domain.exceptions import UserNotFoundException
+from apps.users.infrastructure.persistence.anonymization import anonymize_account
 from apps.users.infrastructure.persistence.models import UserModel
 from apps.users.domain.value_objects import Email, PasswordHash, PhoneNumber
 
@@ -96,6 +97,9 @@ class DjangoUserRepository(UserRepository):
         model.save(update_fields=['password'])
         revoquer_jetons(user_id)
     
+    def anonymize(self, user_id: uuid.UUID) -> None:
+        anonymize_account(user_id)
+
     def find_by_google_id(self, google_id: str) -> Optional[User]:
         try:
             model = UserModel.objects.get(google_id=google_id)
