@@ -219,7 +219,8 @@ class PayerTransfertView(APIView):
         if not transfert:
             return Response({'detail': 'Transfert introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            url = services.demarrer_paiement(transfert, request.data.get('moyen') or transfert.moyen)
+            url = services.demarrer_paiement(transfert, request.data.get('moyen') or transfert.moyen,
+                                             to_app=paiements.asked_from_app(request.data))
         except paiements.PaiementErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'url': url})

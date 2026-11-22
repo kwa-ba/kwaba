@@ -69,6 +69,20 @@ Le voyageur peut faire payer son séjour entier par une autre personne : un pare
 5. **Remboursements** : toujours au payeur, sur le moyen débité (`RemboursementModel.payeur`). Si FedaPay n'a pas donné le numéro débité, le remboursement passe « À traiter manuellement » : un admin demande son compte au payeur. Le voyageur ne peut jamais indiquer le compte d'un remboursement qui n'est pas le sien (il pourrait détourner l'argent du payeur).
 6. **Garde-fous** : 30 créations de lien ou paiements par heure et par compte (`paiement_tiers`), journal d'audit (`paiement_tiers_lien`, `paiement_tiers_groupe`, `paiement_tiers_demarre`), pages `/payer` privées (robots) et mesurées sans leur secret (`lib/mesure-audience.ts`). Un double paiement (voyageur et payeur) est remboursé automatiquement, comme avant.
 
+## Retour vers l'application mobile (ADR-041)
+
+L'application ajoute `"return_to": "app"` à l'appel qui démarre un paiement :
+
+- `POST /api/v1/paiements/reservations/<id>/payer/` (séjour) ;
+- la route de paiement d'un transfert et celle d'une location.
+
+Le prestataire renvoie alors le voyageur sur `FRONTEND_URL/retour-app/<MOBILE_APP_SCHEME>/<chemin>` au lieu de la page du site. Cette page ouvre `<schéma>://<chemin>` (`reservation/paiement/<id>`, `transfert/<id>`, `location/<id>`), avec `?annule=1` si le voyageur a annulé chez PayPal, et affiche un bouton « Revenir à l'application » si le navigateur bloque l'ouverture. Côté application : `WebBrowser.openAuthSessionAsync(url, "<schéma>://")`, qui se ferme dès ce retour.
+
+- L'adresse est construite par le back (`paiements.api.return_address`) : une autre valeur de `return_to` est ignorée.
+- La page n'accepte que les schémas `kwaba` et `kwaba-preprod` et ces trois chemins (`client/src/features/paiements/appReturn.ts`).
+- `MOBILE_APP_SCHEME` : `kwaba` par défaut, `kwaba-preprod` sur la préprod.
+- Le résultat reste lu dans l'API (webhook), jamais dans l'adresse.
+
 ## Annulation
 
 `DELETE /api/v1/reservations/<id>/` → `services.annuler(reservation, par='voyageur')`, renvoie `{"rembourse": montant}`.

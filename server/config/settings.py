@@ -303,6 +303,8 @@ PAYPAL = {
 
 # Frontend URL, used in the email links
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+# Scheme of the mobile app the payment pages send back to (ADR-041): kwaba, or kwaba-preprod on the preprod
+MOBILE_APP_SCHEME = os.getenv('MOBILE_APP_SCHEME', 'kwaba')
 # Pause between two emails sent by the payments worker (limit of test SMTPs like Mailtrap)
 PAIEMENTS_PAUSE_EMAIL = float(os.getenv('PAIEMENTS_PAUSE_EMAIL', '1'))
 

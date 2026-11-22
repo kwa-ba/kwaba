@@ -39,7 +39,7 @@ class PayerView(APIView):
             return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         moyen = request.data.get('moyen') or reservation.payment_method
         try:
-            url = paiement.demarrer_paiement(reservation, moyen)
+            url = paiement.demarrer_paiement(reservation, moyen, to_app=paiements.asked_from_app(request.data))
         except paiements.PaiementErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'url': url})
