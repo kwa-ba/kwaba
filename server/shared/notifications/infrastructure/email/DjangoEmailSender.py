@@ -62,6 +62,24 @@ class DjangoEmailSender(NotificationSender):
             recipient_list=[to],
         )
 
+    def send_account_deletion_code_email(self, to: str, first_name: str, code: str) -> None:
+        message = render_to_string('emails/account_deletion_code.txt', {'first_name': first_name, 'code': code})
+        send_mail(
+            subject='Suppression de votre compte Kwa-Ba : votre code',
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to],
+        )
+
+    def send_account_deleted_email(self, to: str, first_name: str) -> None:
+        message = render_to_string('emails/account_deleted.txt', {'first_name': first_name})
+        send_mail(
+            subject='Votre compte Kwa-Ba a été supprimé',
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to],
+        )
+
     def send_booking_cancelled_listing_removed_email(
         self, to: str, first_name: str, hebergement_name: str, city: str, check_in: date, check_out: date,
     ) -> None:
