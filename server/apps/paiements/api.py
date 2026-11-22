@@ -15,10 +15,12 @@ from .services import (
     reservation_possible,
     synchroniser_paiement, synchroniser_payout,
 )
+from .return_address import asked_from_app, return_address
 from .versements import VersementErreur, remettre_en_route
 from .views import CompteRemboursementSerializer
 
 __all__ = [
+    'asked_from_app', 'return_address',
     'DEPOSIT_ENHANCED_GUARANTEE', 'DEPOSIT_ESCROW', 'DEPOSIT_NONE', 'DEPOSIT_OPTIONS', 'a_profil_versement', 'deposit_rules', 'escrow_amount', 'guarantee_cover', 'stay_deposit', 'titulaire_versement', 'conditions_commission', 'modifier_conditions_hote', 'operateurs_du_pays', 'ProduitPaye', 'Relance', 'enregistrer_produit', 'autre_paiement_reussi', 'etats_paiement', 'etats_pour_serializer',
     'ids_paiements_echoues', 'numero_remboursement_requis', 'synchroniser_dernier_paiement',
     'synchroniser_paiements_en_attente', 'CompteRemboursementSerializer', 'annuler_paiement_reservation', 'planifier_versement_hote', 'FCFA_PAR_EURO', 'INDISPONIBLE', 'OPERATEUR_CHOICES', 'PAYS_CHOICES',
