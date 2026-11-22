@@ -1,8 +1,10 @@
 """In-memory adapters of the users ports, for the unit tests of its services."""
 import dataclasses
 
+from django.contrib.auth.hashers import make_password
+
 from apps.users.domain.repositories.UserRepository import UserRepository
-from apps.users.domain.value_objects import PhoneNumber
+from apps.users.domain.value_objects import PasswordHash, PhoneNumber
 
 
 class FakeUserRepository(UserRepository):
@@ -34,6 +36,9 @@ class FakeUserRepository(UserRepository):
 
     def oublier_mot_de_passe(self, user_id):
         self.rows[user_id] = dataclasses.replace(self.rows[user_id], password_hash=None)
+
+    def set_password(self, user_id, raw_password):
+        self.rows[user_id] = dataclasses.replace(self.rows[user_id], password_hash=PasswordHash(make_password(raw_password)))
 
     def anonymize(self, user_id):
         self.rows[user_id] = dataclasses.replace(self.rows[user_id], is_active=False, first_name='Compte',

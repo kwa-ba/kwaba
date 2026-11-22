@@ -97,6 +97,11 @@ class DjangoUserRepository(UserRepository):
         model.save(update_fields=['password'])
         revoquer_jetons(user_id)
     
+    def set_password(self, user_id: uuid.UUID, raw_password: str) -> None:
+        model = UserModel.objects.get(id=user_id)
+        model.set_password(raw_password)
+        model.save(update_fields=['password'])
+
     def anonymize(self, user_id: uuid.UUID) -> None:
         anonymize_account(user_id)
 

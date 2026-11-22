@@ -36,6 +36,10 @@ class UserRepository(ABC):
         """The account can no longer sign in with a password, and all its sessions are closed."""
 
     @abstractmethod
+    def set_password(self, user_id: uuid.UUID, raw_password: str) -> None:
+        """Stores the hash of the new password. Access tokens issued before are refused (CHECK_REVOKE_TOKEN)."""
+
+    @abstractmethod
     def anonymize(self, user_id: uuid.UUID) -> None:
         """Erases what identifies the person (ADR-039), keeps the row for the ids kept elsewhere, closes every
         session. The account can never sign in again."""
