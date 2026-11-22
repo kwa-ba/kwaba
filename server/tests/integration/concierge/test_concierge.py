@@ -6,7 +6,9 @@ from unittest import mock
 
 import pytest
 from django.utils import timezone
+import httpx
 from google.genai._gaos.lib import compat_errors
+from google.genai._gaos.utils.retries import TemporaryError
 from rest_framework.test import APIClient
 
 from apps.concierge import outils, services
@@ -268,3 +270,26 @@ def test_erreurs_en_anglais(concierge, make_user):
         with mock.patch.object(services, 'MAX_MESSAGES_PAR_CONVERSATION', 0):
             evts = _evenements(client.post(url, {'texte': 'Hello'}, format='json', HTTP_ACCEPT_LANGUAGE='en'))
     assert evts == [('erreur', {'message': 'This conversation is long: start a new one to continue.'})]
+
+
+@pytest.mark.parametrize('panne', [
+    TemporaryError(httpx.Response(503)),  # Gemini overloaded, after the retries of the SDK (22/11, preprod)
+    RuntimeError('lecture du flux impossible'),
+], ids=['gemini-503', 'autre-exception'])
+def test_panne_de_gemini_hors_api_error_repond_quand_meme(concierge, make_user, panne):
+    """An error of the SDK that is not an APIError still ends the stream with the « unreachable » message."""
+    faux = FauxGemini(panne)
+    client = _client(make_user())
+    cid = client.post(CONVERSATIONS).data['id']
+    with mock.patch.object(services, '_client', return_value=faux):
+        evts = _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Hi'}, format='json'))
+    assert evts[0] == ('debut', {})
+    assert evts[-1] == ('erreur', {'message': services._m('injoignable', 'fr')})
+    assert not MessageModel.objects.filter(conversation_id=cid, role='assistant').exists()
+
+
+def test_client_gemini_borne_dans_le_temps(concierge):
+    """One retry after a short pause and a read timeout: never longer than the API worker can wait."""
+    options = services._client()._api_client._http_options
+    assert options.timeout == 30_000
+    assert options.retry_options.attempts == 2 and options.retry_options.max_delay == 2
