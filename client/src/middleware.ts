@@ -12,8 +12,9 @@ const PUBLIC_EXCEPTIONS = ["/profil/aide"];
 const PROTECTED_SUBPATHS = ["/transfert", "/together", "/location"];
 // Authentication pages useless once signed in
 const GUEST_ONLY = ["/login", "/register"];
-// Internal spaces served outside the language routes (app/backoffice, app/agent)
-const SANS_LANGUE = ["/backoffice", "/agent"];
+// Internal spaces served outside the language routes (app/backoffice, app/agent), and the return of a payment to the
+// mobile app (app/retour-app, ADR-041)
+const SANS_LANGUE = ["/backoffice", "/agent", "/retour-app"];
 
 // Language: /en prefix, otherwise NEXT_LOCALE cookie, otherwise browser language (first visit)
 const intl = createIntlMiddleware(routing);
@@ -112,6 +113,11 @@ export default async function middleware(req: NextRequest) {
     if (isLoggedIn && token?.role !== "agent" && token?.role !== "admin") {
       return NextResponse.redirect(new URL(prefixe || "/", req.nextUrl.origin));
     }
+    return avecCsp(NextResponse.next({ request: { headers } }), csp);
+  }
+
+  // Return of a payment to the mobile app: no session in the app's browser, no language
+  if (chemin.startsWith("/retour-app/")) {
     return avecCsp(NextResponse.next({ request: { headers } }), csp);
   }
 

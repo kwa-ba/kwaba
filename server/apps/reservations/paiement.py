@@ -22,11 +22,13 @@ def _annonce(r) -> dict:
     return hebergements.fiche(r.hebergement_id, archivees=True)
 
 
-def demarrer_paiement(reservation, moyen: str = 'mobile_money', *, payeur=None, url_retour: str = '') -> str:
+def demarrer_paiement(reservation, moyen: str = 'mobile_money', *, payeur=None, url_retour: str = '',
+                      to_app: bool = False) -> str:
     """Payment of a listing booking: returns the address of the payment page.
 
     `payeur`: someone else than the traveller (payment by a third party, already checked by tiers.verifier, which
-    also accepts a booking released for lack of payment whose dates are still free).
+    also accepts a booking released for lack of payment whose dates are still free). `to_app`: started from the mobile
+    app, which the provider sends back to (ADR-041).
     """
     if moyen not in paiements.moyens_actifs():
         raise paiements.PaiementErreur("Ce moyen de paiement n'est pas disponible.")
@@ -44,7 +46,7 @@ def demarrer_paiement(reservation, moyen: str = 'mobile_money', *, payeur=None, 
         type_objet='reservation', objet_id=reservation.id, montant=paiements.montants_de(reservation).total,
         moyen=moyen, voyageur=payeur or reservation.guest, payeur=payeur,
         description=f"Kwa-Ba {reservation.reference}, {_annonce(reservation)['name']}",
-        url_retour=url_retour or f"{settings.FRONTEND_URL}/reservation/paiement/{reservation.id}",
+        url_retour=url_retour or paiements.return_address(f"/reservation/paiement/{reservation.id}", to_app=to_app),
     )
 
 

@@ -269,7 +269,8 @@ def creer(*, voyageur, categorie: CategorieVehiculeModel | None, formule: str, l
     )
 
 
-def demarrer_paiement(location: LocationModel, moyen: str) -> str:
+def demarrer_paiement(location: LocationModel, moyen: str, *, to_app: bool = False) -> str:
+    """`to_app`: started from the mobile app, which the provider sends back to (ADR-041)."""
     if location.statut != 'en_attente_paiement':
         raise paiements.PaiementErreur("Cette location n'attend pas de paiement.")
     if location.expire_le and location.expire_le <= timezone.now():
@@ -280,7 +281,7 @@ def demarrer_paiement(location: LocationModel, moyen: str) -> str:
     return paiements.creer_paiement(
         type_objet='location', objet_id=location.id, montant=location.montant_a_payer, moyen=moyen, voyageur=location.voyageur,
         description=f"Kwa-Ba {location.reference}, {location.libelle}, {location.lieu_prise.ville}",
-        url_retour=f"{settings.FRONTEND_URL}/location/{location.id}",
+        url_retour=paiements.return_address(f"/location/{location.id}", to_app=to_app),
     )
 
 
