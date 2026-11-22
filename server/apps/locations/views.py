@@ -319,7 +319,8 @@ class PayerLocationView(APIView):
         if not location:
             return Response({'detail': 'Location introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            url = services.demarrer_paiement(location, request.data.get('moyen') or location.moyen)
+            url = services.demarrer_paiement(location, request.data.get('moyen') or location.moyen,
+                                             to_app=paiements.asked_from_app(request.data))
         except paiements.PaiementErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'url': url})

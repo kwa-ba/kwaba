@@ -73,7 +73,8 @@ def creer(*, voyageur, aeroport: AeroportModel, arrivee: datetime, categorie: st
     )
 
 
-def demarrer_paiement(transfert: TransfertModel, moyen: str) -> str:
+def demarrer_paiement(transfert: TransfertModel, moyen: str, *, to_app: bool = False) -> str:
+    """`to_app`: started from the mobile app, which the provider sends back to (ADR-041)."""
     if transfert.statut != 'en_attente_paiement':
         raise paiements.PaiementErreur("Ce transfert n'attend pas de paiement.")
     if transfert.expire_le and transfert.expire_le <= timezone.now():
@@ -84,7 +85,7 @@ def demarrer_paiement(transfert: TransfertModel, moyen: str) -> str:
     return paiements.creer_paiement(
         type_objet='transfert', objet_id=transfert.id, montant=transfert.prix, moyen=moyen, voyageur=transfert.voyageur,
         description=f"Kwa-Ba {transfert.reference}, transfert aéroport {transfert.aeroport.ville}",
-        url_retour=f"{settings.FRONTEND_URL}/transfert/{transfert.id}",
+        url_retour=paiements.return_address(f"/transfert/{transfert.id}", to_app=to_app),
     )
 
 
