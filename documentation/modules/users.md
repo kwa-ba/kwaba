@@ -71,3 +71,17 @@ register_account_deletion('mon_module', blockers=account_deletion.blockers, eras
 Le test `tests/unit/architecture/test_account_deletion_coverage.py` liste tous les champs qui gardent l'identifiant d'un compte. Un nouveau champ doit y être décidé (effacé, bloquant, gardé avec sa raison, ou rempli par l'équipe), sinon la CI échoue.
 
 Modules inscrits aujourd'hui : `users`, `reservations`, `transferts`, `locations`, `paiements`, `hebergements`, `verifications`, `favoris`, `concierge`, `messaging`.
+
+## Compte de relecture des stores
+
+Apple et Google demandent un compte pour tester l'application. C'est un voyageur ordinaire, créé en production au lancement (pas pendant le pré-lancement : aucune annonce n'y serait visible) :
+
+```bash
+python manage.py create_review_account <email>
+```
+
+- Le mot de passe est saisi deux fois au clavier, ou lu dans `REVIEW_ACCOUNT_PASSWORD`. Il n'est ni affiché ni écrit dans le dépôt : il va seulement dans les notes de revue des stores.
+- Relancer la commande remet le mot de passe et ferme les sessions ouvertes avec l'ancien.
+- Elle refuse un compte administrateur, agent, hôte ou supprimé.
+- Aucune fausse réservation : le relecteur parcourt les vraies annonces et s'arrête à la page de paiement.
+- Procédure en production : dépôt d'infrastructure (`docs/admins.md`).
