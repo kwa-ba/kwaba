@@ -165,6 +165,17 @@ export interface AdminAvis {
   hebergement: { id: string; name: string };
   reponse_hote: string;
   created_at: string;
+  /** Reports still waiting for a decision (ADR-040). */
+  reports: AdminReviewReport[];
+}
+
+export interface AdminReviewReport {
+  id: string;
+  reason: string;
+  reason_label: string;
+  details: string;
+  created_at: string;
+  reporter: { nom: string; email: string };
 }
 
 // --- Location de voiture (back-office) ---------------------------------------------------------

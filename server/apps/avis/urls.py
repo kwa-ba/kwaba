@@ -1,8 +1,10 @@
 from django.urls import path
+from .report_views import ReportReviewView
 from .views import AvisALaisserView, AvisListCreateView, ReponseHoteView
 
 urlpatterns = [
     path('', AvisListCreateView.as_view(), name='avis-list'),
     path('a-laisser/', AvisALaisserView.as_view(), name='avis-a-laisser'),
     path('<uuid:pk>/reponse/', ReponseHoteView.as_view(), name='avis-reponse'),
+    path('<uuid:pk>/report/', ReportReviewView.as_view(), name='avis-report'),
 ]
