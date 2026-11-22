@@ -6,9 +6,15 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import TokenBackendError, TokenError
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.state import token_backend
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from shared.activity import api as activity
+
 from apps.users.infrastructure.http.refresh_lock import locked_refresh, remember_replacing_pair, replacing_pair
+from apps.users.infrastructure.http.session_tokens import SessionRefreshToken, was_renewed_already
 
 
 NOM_REFUSE = "Un nom tient sur une ligne, sans caractère invisible."
@@ -105,7 +111,17 @@ class RefreshWithGracePeriodSerializer(TokenRefreshSerializer):
     and the cache (DatabaseCache) are committed in the same transaction, so the next call finds the pair.
     """
 
+    token_class = SessionRefreshToken
+
     def validate(self, attrs):
+        try:
+            return self._renew(attrs)
+        except TokenError:
+            # Outside the renewal's transaction, which the refusal rolls back
+            _close_every_session_if_reused(attrs['refresh'])
+            raise
+
+    def _renew(self, attrs):
         with locked_refresh(attrs['refresh']):
             deja_renouvele = replacing_pair(attrs['refresh'])
             if deja_renouvele is not None:
@@ -116,6 +132,20 @@ class RefreshWithGracePeriodSerializer(TokenRefreshSerializer):
             remember_replacing_pair(attrs['refresh'], data)
             return data
 
+
+def _close_every_session_if_reused(refresh: str) -> None:
+    """A long-session token already renewed, presented after the grace period: a copy of it is going round. Every
+    session of the account is closed, the thief's included (ADR-043)."""
+    try:
+        payload = token_backend.decode(refresh, verify=True)
+    except TokenBackendError:
+        return
+    if was_renewed_already(payload):
+        from apps.users.api import revoquer_jetons  # local import: the users API loads the models
+
+        user_id = payload.get(api_settings.USER_ID_CLAIM)
+        revoquer_jetons(user_id)
+        activity.record('refresh_reused', actor=user_id)
 
 
 class PasswordChangeSerializer(serializers.Serializer):

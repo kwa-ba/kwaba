@@ -52,4 +52,4 @@ class PasswordChangeView(APIView):
         activity.record('mdp_change', request, actor=user)
         FallbackEventBus().publish(PasswordChanged(event='users.password_changed', user_id=str(user.pk),
                                                    email=user.email, first_name=user.first_name))
-        return Response(_tokens_for(user.pk))
+        return Response(_tokens_for(user.pk, request))
