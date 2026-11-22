@@ -14,5 +14,6 @@ class NewMessageEmailRequested(DomainEvent):
     sender_first_name: str
     hebergement_name: str
     message_preview: str      # excerpt only, never the full body
+    recipient_id: str = ''    # push notification of the same event (ADR-042); empty in rows queued before
 
     EVENT_NAME = 'messaging.new_message_email_requested'
