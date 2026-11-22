@@ -19,6 +19,8 @@ urlpatterns = [
     path('api/v1/site/', site, name='site'),
     path('api/v1/site/reclamation/', ReclamationView.as_view(), name='reclamation'),
     path('api/v1/', include('apps.users.infrastructure.http.routes.urls')),
+    # Devices of the mobile app and notification preferences (ADR-042)
+    path('api/v1/', include('shared.notifications.infrastructure.http.urls')),
     path('api/v1/hebergements/', include('apps.hebergements.urls')),
     path('api/v1/reservations/', include('apps.reservations.urls')),
     path('api/v1/favoris/', include('apps.favoris.urls')),

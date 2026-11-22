@@ -26,6 +26,7 @@ class RabbitMQConsumer:
         "users.welcome_email_requested": "handle_welcome_email",
         "users.password_reset_requested": "handle_password_reset_email",
         "users.password_changed": "handle_password_changed_email",
+        "notifications.push_requested": "handle_push",
         "users.account_deletion_code_requested": "handle_account_deletion_code_email",
         "users.account_deleted": "handle_account_deleted_email",
         "messaging.new_message_email_requested": "handle_new_message_email",
@@ -143,6 +144,26 @@ class RabbitMQConsumer:
             "Email de nouveau message envoyé (outbox_id=%s, conversation=%s)",
             data.get("outbox_id"), data["conversation_id"],
         )
+        self._push_new_message(data)
+
+    def _push_new_message(self, data: dict) -> None:
+        """Same rule as the email (first unread message, after the delay). Never the text of the message."""
+        from shared.notifications.infrastructure.push import delivery, devices  # local import: models of the app
+
+        recipient_id = data.get('recipient_id')
+        if not recipient_id or not devices.wants(recipient_id, 'messages'):
+            return
+        delivery.deliver({
+            'user_id': recipient_id, 'title': f"{data['sender_first_name'] or 'Kwa-Ba'} vous a écrit",
+            'body': data['hebergement_name'] or 'Nouveau message',
+            'data': {'screen': 'conversation', 'id': data['conversation_id']},
+        })
+
+    def handle_push(self, data: dict) -> None:
+        from shared.notifications.infrastructure.push import delivery  # local import: models of the app
+
+        delivery.deliver(data)
+        logger.info("Notification push envoyée (user_id=%s)", data.get("user_id"))
 
     def handle_password_reset_email(self, data: dict) -> None:
         self._service.send_password_reset_email(
