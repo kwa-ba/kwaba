@@ -8,7 +8,7 @@ export default function ContenuFr() {
   return (
     <LegalPage
       titre="Politique d'annulation et de remboursement"
-      miseAJour="22 octobre 2026"
+      miseAJour="22 novembre 2026"
       intro={
         <>
           <p>
@@ -55,6 +55,8 @@ export default function ContenuFr() {
                 <li><strong>Séjours de 28 nuits ou plus :</strong> le premier mois n’est pas remboursable en cas d’annulation moins de 30 jours avant l’arrivée ; les mois suivants sont remboursés si vous prévenez au moins 30 jours à l’avance.</li>
                 <li><strong>Non-présentation sans annulation :</strong> aucun remboursement.</li>
                 <li><strong>Frais de ménage :</strong> remboursés si vous n’êtes pas arrivé.</li>
+                <li><strong>Dépôt de garantie :</strong> toujours rendu en entier, quelle que soit la partie qui annule.</li>
+                <li><strong>Forfait de la Garantie Kwa-Ba renforcée :</strong> conservé, sauf si l’hôte ou KWA-BA annule.</li>
                 <li><strong>Hôtels :</strong> la politique propre de l’hôtel s’applique si elle vous est plus favorable.</li>
               </ul>
             </>

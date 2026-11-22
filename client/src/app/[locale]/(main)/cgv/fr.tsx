@@ -11,13 +11,13 @@ function N({ n, children }: { n: string; children: React.ReactNode }) {
   return <p><strong>{n}.</strong> {children}</p>;
 }
 
-/** French version (authoritative). Terms of sale version 2.5 of 19 November 2026 (payout to the host 48 h after the arrival), adapted to the open services. */
+/** French version (authoritative). Terms of sale version 2.6 (deposit of the stays, decision v3 of 18 November 2026, ADR-036 and ADR-038), adapted to the open services. */
 /** `taux`: the traveller's fee rates set in the back-office ("6 %", "3 %"). */
 export default function ContenuFr({ taux }: { taux: TauxCgv }) {
   return (
     <LegalPage
       titre="Conditions générales de vente"
-      miseAJour="19 novembre 2026"
+      miseAJour="22 novembre 2026"
       intro={
         <>
           <p>
@@ -69,7 +69,8 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
                 <tr><td>Prix</td><td>Le prix fixé par le prestataire (nuits, véhicule)</td></tr>
                 <tr><td>Frais de service</td><td>La rémunération de KWA-BA payée par le client pour son service de réservation</td></tr>
                 <tr><td>Prix total</td><td>Le montant total affiché avant le paiement : prix, frais de service, prix du chauffeur, taxes éventuelles</td></tr>
-                <tr><td>Dépôt de garantie</td><td>La somme remise en garantie et restituée en fin de prestation (souvent appelée « caution »)</td></tr>
+                <tr><td>Dépôt de garantie</td><td>La somme payée en garantie par la Plateforme, conservée par KWA-BA et restituée en fin de prestation (souvent appelée « caution »)</td></tr>
+                <tr><td>Garantie Kwa-Ba renforcée</td><td>Le forfait qu’un hôte peut demander à la place d’un dépôt de garantie, décrit à l’article 13.7</td></tr>
                 <tr><td>Garantie Kwa-Ba</td><td>Les engagements de KWA-BA décrits à l’article 12</td></tr>
               </tbody>
             </table>
@@ -132,6 +133,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
                   <tr><td>Client sous contrat cadre entreprise</td><td>4 %</td></tr>
                   <tr><td>Client fidèle (nouveau séjour chez le même hôte par la Plateforme)</td><td>{taux.reduits}</td></tr>
                   <tr><td>Taxe de séjour ou taxe locale, si elle est applicable</td><td>Indiquée sur l’annonce et incluse dans le prix total</td></tr>
+                  <tr><td>Dépôt de garantie ou forfait de la Garantie Kwa-Ba renforcée, si l’hôte en demande un</td><td>Articles 13.5 et 13.7 ; affiché avant le paiement et inclus dans le prix total</td></tr>
                 </tbody>
               </table>
               <p>Les réductions ne se cumulent pas : le taux le plus bas s’applique.</p>
@@ -162,7 +164,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
               <N n="7.2">Selon le service, le prix est soit encaissé par KWA-BA pour le compte du prestataire, en vertu du mandat donné par celui-ci (le paiement fait à KWA-BA vaut alors paiement au prestataire), soit réglé au prestataire par l’intermédiaire de la Plateforme. Le mode applicable est indiqué au moment du paiement.</N>
               <N n="7.3">Le prix est toujours payé en F CFA. Pour une carte émise hors de la zone franc, la conversion est faite par la banque du client, à son taux. Si PayPal est proposé, le montant en euros est affiché avant validation (parité fixe 1 € = 655,957 F CFA). Les frais éventuels de la banque du client restent à sa charge.</N>
               <N n="7.4">Les frais des prestataires de paiement sont pris en charge par KWA-BA, sauf mention contraire affichée avant le paiement.</N>
-              <N n="7.5"><strong>Paiement hors Plateforme interdit.</strong> Aucun paiement ne doit être fait au prestataire, au chauffeur ou à un démarcheur en espèces ou par tout autre moyen pour une prestation réservée par la Plateforme. Seul fait exception le dépôt de garantie d’un logement remis à l’hôte contre reçu (article 13.5). Un paiement direct en dehors de ce cas n’est pas couvert par la Garantie Kwa-Ba.</N>
+              <N n="7.5"><strong>Paiement hors Plateforme interdit.</strong> Aucun paiement ne doit être fait au prestataire, au chauffeur ou à un démarcheur en espèces ou par tout autre moyen pour une prestation réservée par la Plateforme. Cela vaut aussi pour le dépôt de garantie, qui se paie uniquement par la Plateforme (articles 13.5 et 14.3). Un paiement direct n’est pas couvert par la Garantie Kwa-Ba.</N>
               <N n="7.6"><strong>Contestation de paiement :</strong> un client qui conteste auprès de sa banque ou de son opérateur un paiement pour une prestation fournie s’expose à la suspension de son compte et au recouvrement des sommes dues. Il est invité à contacter d’abord KWA-BA (article 21).</N>
               <N n="7.7"><strong>Paiement par un tiers :</strong> le client peut demander à une autre personne disposant d’un compte sur la Plateforme (le payeur) de payer sa réservation en totalité, par un lien personnel valable 24 heures ou depuis un voyage de groupe Kwa-Ba Together. Le client reste seul partie au contrat : il reçoit la confirmation, échange avec le prestataire et peut annuler selon les présentes CGV. Le payeur reçoit son reçu. En cas d’annulation, le remboursement prévu est versé au payeur, sur le moyen de paiement utilisé, et jamais au client. Les dates ne restent bloquées que pendant le délai de paiement habituel : passé ce délai, le paiement n’est accepté que si la prestation est encore disponible. Le payeur ne reçoit ni l’adresse du logement ni les coordonnées du client ou du prestataire.</N>
             </>
@@ -228,7 +230,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
                   <tr><td>Annulation par l’hôte, logement déjà occupé (surréservation)</td><td>Relogement équivalent ou remboursement intégral</td><td>–</td></tr>
                   <tr><td>Chauffeur ou véhicule absent, en retard de plus d’une heure ou empêché</td><td>Recherche d’un remplaçant ; à défaut, remboursement de la journée ou du trajet</td><td>Signalement immédiat</td></tr>
                   <tr><td>Véhicule différent de l’annonce ou en mauvais état</td><td>Remplacement ou remboursement</td><td>Signalement avant le départ, photos à l’appui</td></tr>
-                  <tr><td>Désaccord sur un dépôt de garantie</td><td>Arbitrage de KWA-BA sur pièces (articles 13 et 14)</td><td>Signalement dans les 7 jours</td></tr>
+                  <tr><td>Désaccord sur un dépôt de garantie ou une retenue</td><td>Réexamen par KWA-BA sur pièces (articles 13.6 et 14.3)</td><td>Contestation dans les 7 jours suivant l’avis de retenue</td></tr>
                 </tbody>
               </table>
               <p>La Garantie Kwa-Ba ne couvre pas : les différences de goût ou d’appréciation ; les incidents causés par le client ; les prestations ou paiements faits en dehors de la Plateforme ; les objets personnels perdus ou volés ; les dommages indirects (vols manqués, autres réservations).</p>
@@ -245,8 +247,25 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
               <N n="13.2">Le client présente une pièce d’identité au prestataire si celui-ci la demande pour le registre des voyageurs.</N>
               <N n="13.3">Un départ après l’heure prévue sans accord de l’hôte peut être facturé selon le barème indiqué sur l’annonce, dans la limite d’une nuit.</N>
               <N n="13.4"><strong>Activités illicites</strong> : prostitution, drogue, armes, accueil de mineurs non accompagnés, troubles graves. Elles entraînent la fin immédiate du séjour sans remboursement et peuvent être signalées aux autorités.</N>
-              <N n="13.5"><strong>Dépôt de garantie pour un logement</strong> : l’hôte peut en demander un, à condition qu’il soit indiqué sur l’annonce avant la réservation. Il est limité à une nuit et à 50 000 F CFA au plus. Il est remis à l’arrivée contre un reçu et restitué au départ, ou au plus tard sous 48 heures. Si un dommage est déclaré selon l’article 13.6, l’hôte ne conserve que le montant correspondant, jusqu’à l’avis de KWA-BA. Aucun autre dépôt ne peut être exigé.</N>
-              <N n="13.6"><strong>Dommages causés par le client.</strong> L’hôte déclare les dommages dans les <strong>48 heures</strong> suivant le départ, par la Plateforme, avec photos et devis ou facture. Le client dispose de <strong>72 heures</strong> pour répondre. À défaut d’accord, KWA-BA rend un avis motivé, en tenant compte de l’usure normale. Le montant retenu est d’abord prélevé sur le dépôt de garantie éventuel. Le solde est payé par le client sous 7 jours par la Plateforme ; à défaut, KWA-BA peut suspendre son compte et l’hôte conserve ses recours.</N>
+              <N n="13.5"><strong>Dépôt de garantie pour un logement</strong> : seul un hôte particulier peut en demander un, lorsque la Plateforme le propose ; un hôtel ou une résidence n’en demande pas par la Plateforme. Il est indiqué sur l’annonce et dans le récapitulatif avant le paiement.</N>
+              <ul>
+                <li>Son montant est un pourcentage du <strong>prix des nuits seul</strong> (hors frais de service et de ménage), choisi par l’hôte dans la limite de <strong>40 %</strong>, arrondi à 500 F CFA et plafonné à <strong>150 000 F CFA</strong>. En dessous de 5 000 F CFA, aucun dépôt n’est demandé.</li>
+                <li>Il est <strong>payé par la Plateforme avec la réservation et conservé par KWA-BA</strong> pendant le séjour. Il reste la propriété du client : KWA-BA ne le verse jamais à l’hôte, sauf retenue décidée selon l’article 13.6. L’hôte ne peut demander aucun dépôt ni aucune somme à l’arrivée.</li>
+                <li>Il est <strong>restitué en entier 72 heures après le départ</strong> s’il n’y a pas de retenue, sur le moyen de paiement utilisé, avec un reçu de restitution.</li>
+                <li>Il est <strong>toujours restitué en entier</strong> si la réservation est annulée, quelle que soit la partie qui annule.</li>
+              </ul>
+              <N n="13.6"><strong>Dommages causés par le client.</strong> L’hôte déclare les dommages à KWA-BA dans les <strong>48 heures</strong> suivant le départ, par la Plateforme, avec photos et devis ou facture. KWA-BA en informe le client, qui peut répondre dans les <strong>24 heures</strong>. KWA-BA rend ensuite un avis motivé, en tenant compte de l’usure normale, avant la fin du délai de 72 heures.</N>
+              <ul>
+                <li>Le montant retenu est prélevé sur le dépôt de garantie et versé à l’hôte. Le client reçoit le reste du dépôt et un <strong>avis de retenue</strong> qui indique le montant, le motif, les pièces et le fondement de la décision.</li>
+                <li>Le client peut contester l’avis dans les 7 jours, par la Plateforme ; KWA-BA réexamine alors le dossier sur pièces (article 12).</li>
+                <li>Si les dommages dépassent le dépôt, ou s’il n’y a pas de dépôt, le solde est payé par le client sous 7 jours par la Plateforme. À défaut, KWA-BA peut suspendre son compte, et l’hôte conserve ses recours.</li>
+              </ul>
+              <N n="13.7"><strong>Garantie Kwa-Ba renforcée</strong> : à la place d’un dépôt de garantie, un hôte particulier peut demander un forfait, qu’il fixe et qui est indiqué sur l’annonce et dans le récapitulatif avant le paiement.</N>
+              <ul>
+                <li>Le forfait est payé par la Plateforme avec la réservation. Il rémunère un service de KWA-BA et n’est <strong>pas remboursable</strong>, sauf si la réservation est annulée par l’hôte ou par KWA-BA.</li>
+                <li>Il couvre les dommages mineurs causés par le client pendant le séjour, déclarés selon l’article 13.6, <strong>jusqu’à cinq fois son montant</strong>. KWA-BA indemnise l’hôte dans cette limite, sans rien demander au client.</li>
+                <li>Au-delà de cette limite, et pour les dommages causés par une faute intentionnelle ou une activité illicite (article 13.4), l’article 13.6 s’applique au client pour le surplus.</li>
+              </ul>
             </>
           ),
         },
@@ -396,6 +415,8 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
                 <li><strong>Séjours de 28 nuits ou plus :</strong> le premier mois n’est pas remboursable en cas d’annulation moins de 30 jours avant l’arrivée ; les mois suivants sont remboursés si le client prévient au moins 30 jours à l’avance.</li>
                 <li><strong>Non-présentation sans annulation :</strong> aucun remboursement.</li>
                 <li><strong>Frais de ménage :</strong> remboursés si le client n’est pas arrivé.</li>
+                <li><strong>Dépôt de garantie :</strong> toujours remboursé en entier (article 13.5).</li>
+                <li><strong>Forfait de la Garantie Kwa-Ba renforcée :</strong> conservé, sauf annulation par l’hôte ou par KWA-BA (article 13.7).</li>
                 <li><strong>Hôtels :</strong> la politique propre de l’hôtel, affichée avant la réservation, s’applique si elle est plus favorable au client.</li>
               </ul>
               <p className="font-semibold text-dark">Mobilité</p>
@@ -412,7 +433,7 @@ export default function ContenuFr({ taux }: { taux: TauxCgv }) {
             <table>
               <thead><tr><th>Service</th><th>Ce que paie le client</th></tr></thead>
               <tbody>
-                <tr><td>Séjour de courte durée</td><td>Prix des nuits + {taux.voyageur} ({taux.reduits} en Pack Séjour ou en Client fidèle, 4 % pour les entreprises sous contrat cadre)</td></tr>
+                <tr><td>Séjour de courte durée</td><td>Prix des nuits + {taux.voyageur} ({taux.reduits} en Pack Séjour ou en Client fidèle, 4 % pour les entreprises sous contrat cadre) + frais de ménage ; le cas échéant, dépôt de garantie (restitué) ou forfait de la Garantie Kwa-Ba renforcée</td></tr>
                 <tr><td>Voiture</td><td>Prix fixé par le propriétaire, sans frais de service</td></tr>
                 <tr><td>Transfert aéroport</td><td>Prix forfaitaire du trajet, chauffeur compris</td></tr>
                 <tr><td>Chauffeur</td><td>7 000 F CFA par jour + primes éventuelles (1 500 ou 2 000 F CFA par jour) + heures supplémentaires (1 000 F CFA)</td></tr>

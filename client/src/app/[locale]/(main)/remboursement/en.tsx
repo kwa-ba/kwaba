@@ -8,7 +8,7 @@ export default function ContenuEn() {
   return (
     <LegalPage
       titre="Cancellation and refund policy"
-      miseAJour="22 October 2026"
+      miseAJour="22 November 2026"
       intro={
         <>
           <p>
@@ -55,6 +55,8 @@ export default function ContenuEn() {
                 <li><strong>Stays of 28 nights or more:</strong> the first month is non-refundable if cancelled less than 30 days before arrival; the following months are refunded if you give at least 30 days’ notice.</li>
                 <li><strong>No-show without cancellation:</strong> no refund.</li>
                 <li><strong>Cleaning fee:</strong> refunded if you have not arrived.</li>
+                <li><strong>Security deposit:</strong> always returned in full, whichever party cancels.</li>
+                <li><strong>Kwa-Ba Enhanced Guarantee fee:</strong> kept, unless the host or KWA-BA cancels.</li>
                 <li><strong>Hotels:</strong> the hotel’s own policy applies if it is more favourable to you.</li>
               </ul>
             </>
