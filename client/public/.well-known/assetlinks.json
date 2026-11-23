@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kwaba.app.preprod",
+      "sha256_cert_fingerprints": ["BB:00:EC:2F:F2:3E:C2:A5:A8:87:64:7F:08:72:64:9A:B7:E0:4F:D1:19:C1:E3:5A:47:B0:C6:3C:E6:78:08:42"]
+    }
+  }
+]
