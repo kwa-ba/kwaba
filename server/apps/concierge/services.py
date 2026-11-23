@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types
 # Errors of the Interactions API: not re-exported publicly by the SDK (version pinned in requirements.txt)
 from google.genai._gaos.lib import compat_errors as erreurs_gemini
+from google.genai._gaos.utils.retries import TemporaryError
 
 from shared.securite.limites import incrementer
 from config.site import module_actif
@@ -89,6 +90,13 @@ def _client() -> genai.Client:
             retry_options=types.HttpRetryOptions(attempts=2, initial_delay=1, max_delay=2, http_status_codes=[500, 502, 503, 504]),
         ),
     )
+
+
+def _modele_indisponible(exc: Exception) -> bool:
+    """Gemini overloaded or failing on Google's side (5xx, after the SDK's retry): another model may answer."""
+    if isinstance(exc, TemporaryError):
+        return True
+    return isinstance(exc, erreurs_gemini.APIError) and getattr(exc, 'status_code', None) in (500, 502, 503, 504)
 
 
 def verifier_quota(utilisateur):
@@ -239,10 +247,13 @@ def repondre(conversation: ConversationModel, texte_voyageur: str, langue: str =
     cartes_du_tour = []
     dernier = None
     recherche_web = _recherche_web()
+    # Main model, then the fallback ones if Google cannot serve it (22-23/11: 503 on gemini-3.8-flash in preprod)
+    modeles = [settings.CONCIERGE['MODELE'], *settings.CONCIERGE.get('MODELES_SECOURS', [])]
+    modele = 0
 
-    for _ in range(MAX_TOURS_OUTILS + 2):
+    for _ in range(MAX_TOURS_OUTILS + 2 + len(modeles) - 1):
         parametres = {
-            'model': settings.CONCIERGE['MODELE'],
+            'model': modeles[modele],
             'system_instruction': _systeme(langue),
             'tools': _outils(recherche_web),
             'input': entree,
@@ -253,7 +264,19 @@ def repondre(conversation: ConversationModel, texte_voyageur: str, langue: str =
             parametres['previous_interaction_id'] = precedent
         tour = _Tour()
         try:
-            yield from _lire_flux(client.interactions.create(**parametres), tour, langue)
+            try:
+                yield from _lire_flux(client.interactions.create(**parametres), tour, langue)
+            except Exception as exc:
+                # Nothing shown to the traveller yet and another model left: we try it rather than failing
+                if not (_modele_indisponible(exc) and not tour.texte and modele + 1 < len(modeles)):
+                    raise
+                logger.warning("Gemini %s indisponible (%s) : essai avec %s", modeles[modele], exc, modeles[modele + 1])
+                modele += 1
+                if precedent and isinstance(entree, str):
+                    # The interaction of another model is not reused: a summary carries the conversation
+                    precedent = None
+                    entree = f"Résumé de notre conversation précédente :\n{resume}\n\nNouveau message : {texte_voyageur}"
+                continue
         except (erreurs_gemini.NotFoundError, erreurs_gemini.BadRequestError) as exc:
             if precedent and isinstance(entree, str):
                 # Previous interaction expired at Google: we start again with a summary of the conversation
