@@ -296,7 +296,8 @@ def test_modele_de_secours_quand_gemini_est_surcharge(concierge, make_user):
     client = _client(make_user())
     cid = client.post(CONVERSATIONS).data['id']
     with mock.patch.object(services, '_client', return_value=faux):
-        client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Lomé'}, format='json')
+        # The answer is a stream: read it so that the first turn really happens
+        _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Lomé'}, format='json'))
         evts = _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Et Kpalimé ?'}, format='json'))
     assert ('texte', {'delta': 'Voi'}) in evts and evts[-1][0] == 'fin'
     assert [r['model'] for r in faux.requetes] == ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.6-flash']
