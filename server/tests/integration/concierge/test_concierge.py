@@ -287,6 +287,37 @@ def test_panne_de_gemini_hors_api_error_repond_quand_meme(concierge, make_user, 
     assert not MessageModel.objects.filter(conversation_id=cid, role='assistant').exists()
 
 
+def test_modele_de_secours_quand_gemini_est_surcharge(concierge, make_user):
+    """503 on the main model before any text: the next model answers, with a summary instead of the old interaction."""
+    concierge.CONCIERGE = {**concierge.CONCIERGE, 'MODELES_SECOURS': ['gemini-3.6-flash', 'gemini-3.5-flash-lite']}
+    faux = FauxGemini(tour('int_1', texte='Bonjour, je vous aide.'),
+                      TemporaryError(mock.Mock(status_code=503, headers={})),
+                      tour('int_2', texte='Voici.'))
+    client = _client(make_user())
+    cid = client.post(CONVERSATIONS).data['id']
+    with mock.patch.object(services, '_client', return_value=faux):
+        client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Lomé'}, format='json')
+        evts = _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Et Kpalimé ?'}, format='json'))
+    assert ('texte', {'delta': 'Voi'}) in evts and evts[-1][0] == 'fin'
+    assert [r['model'] for r in faux.requetes] == ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.6-flash']
+    # Second message: the main model fails, the fallback one starts again from a summary (no previous interaction)
+    assert faux.requetes[1]['previous_interaction_id'] == 'int_1'
+    assert 'previous_interaction_id' not in faux.requetes[2] and 'Nouveau message : Et Kpalimé ?' in faux.requetes[2]['input']
+
+
+def test_tous_les_modeles_indisponibles(concierge, make_user):
+    """Every model overloaded: the « unreachable » message, after one try of each."""
+    concierge.CONCIERGE = {**concierge.CONCIERGE, 'MODELES_SECOURS': ['gemini-3.6-flash']}
+    panne = TemporaryError(mock.Mock(status_code=503, headers={}))
+    faux = FauxGemini(panne, panne)
+    client = _client(make_user())
+    cid = client.post(CONVERSATIONS).data['id']
+    with mock.patch.object(services, '_client', return_value=faux):
+        evts = _evenements(client.post(f'{CONVERSATIONS}{cid}/messages/', {'texte': 'Hi'}, format='json'))
+    assert evts[-1] == ('erreur', {'message': services._m('injoignable', 'fr')})
+    assert [r['model'] for r in faux.requetes] == ['gemini-3.8-flash', 'gemini-3.6-flash']
+
+
 def test_client_gemini_borne_dans_le_temps(concierge):
     """One retry after a short pause and a read timeout: never longer than the API worker can wait."""
     options = services._client()._api_client._http_options

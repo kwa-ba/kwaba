@@ -318,6 +318,9 @@ PAIEMENTS_PAUSE_EMAIL = float(os.getenv('PAIEMENTS_PAUSE_EMAIL', '1'))
 CONCIERGE = {
     'API_KEY': os.getenv('GEMINI_API_KEY', ''),
     'MODELE': os.getenv('CONCIERGE_MODELE', 'gemini-3.8-flash'),
+    # Models tried in turn when the main one is overloaded or unavailable at Google (5xx, after the SDK's retry),
+    # before any text was sent: a Flash model of the previous generation, then Flash-Lite. Empty: no fallback
+    'MODELES_SECOURS': _env_list('CONCIERGE_MODELES_SECOURS', 'gemini-3.6-flash,gemini-3.5-flash-lite'),
     # Model thinking depth: minimal | low | medium | high (low = fast answers)
     'REFLEXION': os.getenv('CONCIERGE_REFLEXION', 'low'),
     'RECHERCHE_WEB': os.getenv('CONCIERGE_RECHERCHE_WEB', 'True').lower() in ('true', '1', 'yes'),

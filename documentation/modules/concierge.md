@@ -68,3 +68,12 @@ Les messages sont transmis à Google (sous-traitant, États-Unis) ; c'est indiqu
 ## Tests
 
 `server/tests/integration/concierge/` : fonctions sur la vraie base (prix, disponibilité, frais, aéroports), format des déclarations, validation des arguments, boucle complète avec un faux client Gemini (événements SSE, paramètres de la requête, résultat de fonction rattaché à l'interaction, conversation suivie), interaction expirée, quota de la recherche Google, réponse bloquée, quotas, confidentialité.
+
+## Modèles de secours (23/11/2026)
+
+Quand Google ne peut pas servir le modèle principal (`CONCIERGE_MODELE`, erreur 5xx ou `TemporaryError` après le
+nouvel essai du SDK) et qu'aucun texte n'est encore parti vers le voyageur, le Concierge essaie les modèles de
+`CONCIERGE_MODELES_SECOURS` dans l'ordre (par défaut `gemini-3.6-flash`, puis `gemini-3.5-flash-lite`, tous deux
+servis par l'API Interactions). L'interaction précédente n'est pas reprise par un autre modèle : un résumé de la
+conversation la remplace, comme après une interaction expirée. Variable vide : pas de secours. Le passage est
+journalisé (`Gemini … indisponible : essai avec …`).
