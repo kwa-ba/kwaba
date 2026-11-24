@@ -69,6 +69,19 @@
     "slogan": "Africa welcomes you.",
     "choisir": "Choose"
   },
+  "champTelephone": {
+    "choisirPays": "Choose a country",
+    "indicatif": "Country code: {pays} +{indicatif}. Change the country",
+    "autreIndicatif": "Other country code",
+    "autreIndicatifAide": "Type the full number, starting with +",
+    "indicatifLibre": "Other country code, typed with the number. Change the country",
+    "rechercher": "Search for a country or a code",
+    "aucunPays": "No country found.",
+    "exempleLibre": "+1 555 123 4567",
+    "erreurLongueur": "Invalid number ({pays}): {attendu} digits expected after +{indicatif}, e.g. {exemple}.",
+    "erreurInternational": "Invalid number: type the country code, then the number (8 to 15 digits in all).",
+    "a": "to"
+  },
   "langue": {
     "choisir": "Choose language",
     "titre": "Language & region",
@@ -335,7 +348,7 @@
     "verifierCompte": "verify the account",
     "telephone": "Phone",
     "optionnel": "optional",
-    "telephoneAide": "International format with country code.",
+    "telephoneAide": "Choose the country, then type the number.",
     "force": {
       "0": "Too short",
       "1": "Weak",
@@ -1306,7 +1319,7 @@
     "adresseDestination": "Destination address",
     "adressePlaceholder": "Place name, area, city",
     "telephone": "Your phone number on arrival",
-    "telephoneAide": "With country code. The driver will contact you by call or WhatsApp.",
+    "telephoneAide": "The driver will contact you by call or WhatsApp.",
     "messageChauffeur": "Message to the driver",
     "facultatif": "optional",
     "messagePlaceholder": "Child seat, pushchair, help with bags…",

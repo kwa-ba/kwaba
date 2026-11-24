@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConfigPaiement } from "@/features/paiements";
 import AdminTable, { ActionButton, Pill, type Colonne } from "@/components/backoffice/AdminTable";
-import Panneau, { Champ, Interrupteur, Liste, Saisie, erreursApi } from "@/components/backoffice/Panneau";
+import Panneau, { Champ, Interrupteur, LIBELLE_ADMIN, Liste, Saisie, erreursApi } from "@/components/backoffice/Panneau";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { CATEGORIES_TRANSFERT } from "./Aeroports";
 import type { ChauffeurAdmin } from "@/types/api/admin";
 
@@ -32,6 +33,7 @@ export default function Chauffeurs() {
   const [form, setForm] = useState<Formulaire>(VIDE);
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
+  const erreurTelephone = useErreurTelephone();
   const pays = config?.pays ?? [];
   const operateurs = pays.find((p) => p.code === form.pays_versement)?.operateurs ?? [];
 
@@ -48,6 +50,11 @@ export default function Chauffeurs() {
   };
 
   const enregistrer = async () => {
+    const invalide = erreurTelephone(form.telephone);
+    if (invalide) {
+      setErreurs({ telephone: invalide });
+      return;
+    }
     setEnvoi(true);
     try {
       if (edition === "nouveau") await creerChauffeur(form);
@@ -93,7 +100,8 @@ export default function Chauffeurs() {
         <div className="grid grid-cols-2 gap-3">
           <Champ label="Prénom" erreur={erreurs.prenom}><Saisie value={form.prenom} onChange={(e) => setForm({ ...form, prenom: e.target.value })} required /></Champ>
           <Champ label="Nom" erreur={erreurs.nom}><Saisie value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></Champ>
-          <Champ label="Téléphone" erreur={erreurs.telephone}><Saisie type="tel" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} required /></Champ>
+          <PhoneInput label="Téléphone" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off" required
+            value={form.telephone} onChange={(telephone) => setForm({ ...form, telephone })} error={erreurs.telephone} />
           <Champ label="Email (facultatif)" erreur={erreurs.email}><Saisie type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Champ>
         </div>
         <fieldset>
