@@ -127,6 +127,14 @@ class EstHote(IsAuthenticated):
         return super().has_permission(request, view) and users.hote_ou_candidat(request.user)
 
 
+class PeutGererAnnonces(IsAuthenticated):
+    """Hosts, candidates and admins, who may prepare a listing too."""
+    message = "Réservé aux comptes qui préparent des annonces."
+
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and users.peut_gerer_annonces(request.user)
+
+
 class ContratHoteView(APIView):
     """GET: host contract of the signed-in user (404 while Kwa-Ba has not filled in its legal information)."""
     permission_classes = [EstHote]
@@ -329,10 +337,14 @@ class ModeleAdminView(APIView):
 class PreinscriptionView(APIView):
     """Pre-launch pre-registration of the connected host.
 
-    GET : {requise, acceptee, version, texte} in the site's language (Accept-Language).
-    POST {accepte: true, version, langue} : records the acceptance with its date, IP address and browser.
+    GET : {requise, acceptee, version, texte} in the site's language (Accept-Language). Also answered to an admin
+    preparing a listing, with requise false: the pre-registration only concerns hosts and candidates.
+    POST {accepte: true, version, langue} : records the acceptance with its date, IP address and browser (hosts and
+    candidates only).
     """
-    permission_classes = [EstHote]
+
+    def get_permissions(self):
+        return [PeutGererAnnonces()] if self.request.method == 'GET' else [EstHote()]
 
     def get_throttles(self):
         return [LimiteSignature()] if self.request.method == 'POST' else []
@@ -340,7 +352,8 @@ class PreinscriptionView(APIView):
     def get(self, request):
         langue = preinscription.langue_de(request.headers.get('Accept-Language', ''))
         return Response({
-            'requise': prelancement.actif(), 'acceptee': preinscription.acceptee(request.user),
+            'requise': prelancement.actif() and users.hote_ou_candidat(request.user),
+            'acceptee': preinscription.acceptee(request.user),
             'version': preinscription.VERSION, 'langue': langue, 'texte': preinscription.TEXTES[langue],
         })
 

@@ -89,3 +89,17 @@ def test_admins_are_not_asked_to_pre_register(client_for, make_user):
 
 def test_no_pre_registration_outside_the_pre_launch(client_for, make_user):
     assert client_for(make_user(role='hote')).post(HEBERGEMENTS, _annonce(), format='json').status_code == 201
+
+
+def test_an_admin_preparing_a_listing_has_nothing_to_accept(client_for, make_user, prelancement):
+    client = client_for(make_user(role='admin'))
+
+    reponse = client.get(PREINSCRIPTION)
+
+    assert reponse.status_code == 200
+    assert reponse.data['requise'] is False
+    assert _accepter(client).status_code == 403
+
+
+def test_a_traveller_is_still_refused(client_for, make_user):
+    assert client_for(make_user()).get(PREINSCRIPTION).status_code == 403
