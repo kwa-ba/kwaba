@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Champ, Interrupteur, Saisie, Zone, erreursApi } from "@/components/backoffice/Panneau";
+import { Champ, Interrupteur, LIBELLE_ADMIN, Saisie, Zone, erreursApi } from "@/components/backoffice/Panneau";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
+import { formaterTelephone } from "@/lib/telephone/telephone";
 import { Pill } from "@/components/backoffice/AdminTable";
 import type { SocieteAdmin } from "@/types/api/admin";
 import { enregistrerSociete, lireSignature } from "../api";
@@ -22,6 +24,7 @@ export default function Societe() {
   const [signature, setSignature] = useState<File | null>(null);
   const [supprimer, setSupprimer] = useState(false);
   const apercuSignature = useApercuSignature(data?.signature_presente, signature);
+  const erreurTelephone = useErreurTelephone();
 
   useEffect(() => { if (data) setForm(data); }, [data]);
 
@@ -35,12 +38,19 @@ export default function Societe() {
   );
 
   const enregistrer = async () => {
+    const invalide = erreurTelephone(form?.telephone ?? "");
+    if (invalide) {
+      setErreurs({ telephone: invalide });
+      return;
+    }
     setEnvoi(true);
     setErreurs({});
     try {
       const corps = new FormData();
       for (const [k, v] of Object.entries(form ?? {})) {
         if (k === "complets" || k === "signature_presente") continue;  // computed by the server
+        // Printed at the top of the documents: the number is kept readable (+228 22 21 00 00)
+        if (k === "telephone") { corps.append(k, formaterTelephone(String(v ?? ""))); continue; }
         corps.append(k, typeof v === "boolean" ? (v ? "true" : "false") : String(v ?? ""));
       }
       if (signature) corps.append("signature_representant", signature);
@@ -77,7 +87,8 @@ export default function Societe() {
         </Champ>
         {texte("nif", "NIF", { placeholder: "Numéro d'identification fiscale" })}
         {texte("rccm", "RCCM", { placeholder: "Ex. TG-LOM-01-2026-B12-00001" })}
-        {texte("telephone", "Téléphone", { type: "tel" })}
+        <PhoneInput label="Téléphone" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off"
+          value={form.telephone} onChange={champ("telephone")} error={erreurs.telephone} />
         {texte("email", "Email", { type: "email" })}
         {texte("site", "Site web")}
       </div>

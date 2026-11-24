@@ -14,6 +14,8 @@ import { useConfigPaiement } from "@/features/paiements";
 import AdminTable, { ActionButton, Pill, type Colonne } from "@/components/backoffice/AdminTable";
 import Panneau, { Champ, Interrupteur, LIBELLE_ADMIN, Liste, Saisie, erreursApi } from "@/components/backoffice/Panneau";
 import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
+import { PAYS_PAR_DEFAUT } from "@/lib/telephone/countries";
+import { composerTelephone, decomposerTelephone, estCodePays } from "@/lib/telephone/telephone";
 import { CATEGORIES_TRANSFERT } from "./Aeroports";
 import type { ChauffeurAdmin } from "@/types/api/admin";
 
@@ -34,6 +36,7 @@ export default function Chauffeurs() {
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
   const erreurTelephone = useErreurTelephone();
+  const paysVersement = estCodePays(form.pays_versement) ? form.pays_versement : PAYS_PAR_DEFAUT;
   const pays = config?.pays ?? [];
   const operateurs = pays.find((p) => p.code === form.pays_versement)?.operateurs ?? [];
 
@@ -51,8 +54,9 @@ export default function Chauffeurs() {
 
   const enregistrer = async () => {
     const invalide = erreurTelephone(form.telephone);
-    if (invalide) {
-      setErreurs({ telephone: invalide });
+    const versementInvalide = erreurTelephone(composerTelephone(form.pays_versement, form.numero_versement), paysVersement);
+    if (invalide || versementInvalide) {
+      setErreurs({ ...(invalide && { telephone: invalide }), ...(versementInvalide && { numero_versement: versementInvalide }) });
       return;
     }
     setEnvoi(true);
@@ -128,13 +132,16 @@ export default function Chauffeurs() {
         <Champ label="Véhicule (marque, modèle, couleur)" erreur={erreurs.vehicule}><Saisie value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} required placeholder="Toyota Corolla grise" /></Champ>
         <p className="text-xs font-bold text-dark uppercase tracking-wide pt-2">Versement Mobile Money</p>
         <div className="grid grid-cols-2 gap-3">
-          <Champ label="Pays"><Liste value={form.pays_versement} onChange={(e) => setForm({ ...form, pays_versement: e.target.value, operateur_versement: "" })}
-            options={pays.map((p) => ({ value: p.code, label: p.nom }))} /></Champ>
+          <PhoneInput label="Numéro" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off" required
+            value={composerTelephone(form.pays_versement, form.numero_versement)}
+            onChange={(v) => setForm((f) => ({ ...f, numero_versement: decomposerTelephone(v, paysVersement).numero }))}
+            paysParDefaut={paysVersement} paysAutorises={pays.map((p) => p.code).filter(estCodePays)}
+            onPaysChange={(iso) => setForm((f) => ({ ...f, pays_versement: iso, operateur_versement: "" }))}
+            error={erreurs.numero_versement || erreurs.pays_versement} />
           <Champ label="Opérateur" erreur={erreurs.operateur_versement}><Liste value={form.operateur_versement} required
             onChange={(e) => setForm({ ...form, operateur_versement: e.target.value })}
             options={[{ value: "", label: "Choisir" }, ...operateurs.map((o) => ({ value: o.code, label: o.nom }))]} /></Champ>
         </div>
-        <Champ label="Numéro (sans l'indicatif)" erreur={erreurs.numero_versement}><Saisie inputMode="numeric" value={form.numero_versement} onChange={(e) => setForm({ ...form, numero_versement: e.target.value })} required /></Champ>
         <Interrupteur label="Actif (reçoit des courses et des missions)" checked={form.actif} onChange={(v) => setForm({ ...form, actif: v })} />
         {edition && edition !== "nouveau" && <Photo chauffeur={edition} onChange={() => queryClient.invalidateQueries({ queryKey: clesTransferts.admin })} />}
         {edition === "nouveau" && <p className="text-xs text-muted">Enregistrez le chauffeur, puis ajoutez sa photo de profil : il ne reçoit aucune course sans photo validée.</p>}

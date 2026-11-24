@@ -725,11 +725,10 @@
     "fermer": "Close",
     "titre": "Where should we send your refund?",
     "texte": "Enter the Mobile Money account where you want to receive <strong>{montant}</strong>. The transfer goes out within minutes.",
-    "pays": "Country",
     "operateur": "Operator",
     "operateurMM": "Mobile Money operator",
-    "numero": "Number (+{indicatif})",
-    "chiffres": "{nombre} digits, without the country code",
+    "numeroMobileMoney": "Mobile Money number",
+    "numeroRequis": "Enter the number of the Mobile Money account.",
     "enregistrement": "Saving…",
     "recevoir": "Get my refund",
     "plusTard": "Later (from My bookings)"

@@ -725,11 +725,10 @@
     "fermer": "Fermer",
     "titre": "Où recevoir votre remboursement ?",
     "texte": "Indiquez le compte Mobile Money sur lequel vous voulez recevoir <strong>{montant}</strong>. Le virement part dans les minutes qui suivent.",
-    "pays": "Pays",
     "operateur": "Opérateur",
     "operateurMM": "Opérateur Mobile Money",
-    "numero": "Numéro (+{indicatif})",
-    "chiffres": "{nombre} chiffres, sans l'indicatif",
+    "numeroMobileMoney": "Numéro Mobile Money",
+    "numeroRequis": "Saisissez le numéro du compte Mobile Money.",
     "enregistrement": "Enregistrement…",
     "recevoir": "Recevoir mon remboursement",
     "plusTard": "Plus tard (depuis Mes réservations)"
