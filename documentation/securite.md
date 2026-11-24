@@ -133,3 +133,18 @@ L'application envoie `X-Kwaba-Client` (`mobile-ios`, `mobile-android`) et `X-Kwa
 - `/api/v1/site/` et `/api/health/` répondent toujours, pour que l'application puisse afficher son écran de mise à jour.
 - Une version illisible compte comme trop ancienne. `APP_MIN_VERSION` vide : aucun contrôle.
 - On monte `APP_MIN_VERSION` le jour où une route change de forme d'une manière que les anciennes versions ne savent pas lire (dépôt d'infrastructure, sans déploiement de code).
+
+## Limitation de débit dans nginx (ADR-044)
+
+En plus des limites de Django (par adresse et par compte), nginx limite les requêtes par adresse du visiteur (`deploy/vps/nginx/templates/kwa-ba.conf.template` pour les zones, `kwa-ba-site.inc.template` pour les routes) :
+
+| Zone | Routes | Débit | Rafale |
+|---|---|---|---|
+| `admin` | `/api/v1/admin/`, `/api/proxy/v1/admin/`, `/admin/` | 5/s | 20 |
+| `auth` | `/api/v1/auth/` (sauf `refresh/`), `/api/auth/callback/` | 30/min | 20 |
+| `api` | le reste de `/api/`, `/api/proxy/`, `/api/auth/`, `/static/`, et `/api/v1/auth/refresh/` | 20/s | 60 |
+
+- Au-delà : `429` et une ligne `limiting requests` (niveau `warn`) dans le journal d'erreurs de nginx.
+- Valeurs larges : les opérateurs mobiles partagent une adresse entre beaucoup de clients.
+- En préprod (mode `proxy`), nginx prend l'adresse du visiteur dans `X-Forwarded-For` de Caddy (`real_ip`, adresses privées du réseau Docker seulement). En production, nginx est en frontal : l'adresse de la connexion est la bonne.
+- Le journal d'accès de nginx enregistre aussi `X-Kwaba-Client` et `X-Kwaba-Version` (vides pour le site).
