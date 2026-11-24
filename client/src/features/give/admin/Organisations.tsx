@@ -6,7 +6,8 @@ import { HandHeart } from "lucide-react";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/utils";
 import { Pill } from "@/components/backoffice/AdminTable";
-import Panneau, { Champ, Interrupteur, Liste, Saisie, Zone, erreursApi } from "@/components/backoffice/Panneau";
+import Panneau, { Champ, Interrupteur, LIBELLE_ADMIN, Liste, Saisie, Zone, erreursApi } from "@/components/backoffice/Panneau";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import type { CauseGive, OngAdmin, ProjetAdmin } from "@/types/api/admin";
 import { creerOng, creerProjet, depublierOng, modifierOng, modifierProjet } from "../api";
 import { clesGive, useOngAdmin, useProjetsAdmin } from "../hooks";
@@ -45,6 +46,7 @@ export default function Organisations() {
   const [photos, setPhotos] = useState<{ logo: File | null; image: File | null }>({ logo: null, image: null });
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
+  const erreurTelephone = useErreurTelephone();
 
   // Projets de l'ONG ouverte
   const [ongProjets, setOngProjets] = useState<OngAdmin | null>(null);
@@ -63,6 +65,11 @@ export default function Organisations() {
   };
 
   const enregistrer = async () => {
+    const invalide = erreurTelephone(form.contact_telephone);
+    if (invalide) {
+      setErreurs({ contact_telephone: invalide });
+      return;
+    }
     setEnvoi(true);
     setErreurs({});
     const valeurs: Record<string, unknown> = { ...form, verifiee_le: form.verifiee_le || null };
@@ -167,7 +174,8 @@ export default function Organisations() {
         <p className="text-xs font-bold text-dark uppercase tracking-wide pt-2">Réservé à l&apos;équipe</p>
         <div className="grid grid-cols-2 gap-3">
           <Champ label="Contact"><Saisie value={form.contact_nom} onChange={(e) => champ("contact_nom")(e.target.value)} /></Champ>
-          <Champ label="Téléphone"><Saisie type="tel" value={form.contact_telephone} onChange={(e) => champ("contact_telephone")(e.target.value)} /></Champ>
+          <PhoneInput label="Téléphone" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off"
+            value={form.contact_telephone} onChange={champ("contact_telephone")} error={erreurs.contact_telephone} />
         </div>
         <Champ label="Email" erreur={erreurs.contact_email}><Saisie type="email" value={form.contact_email} onChange={(e) => champ("contact_email")(e.target.value)} /></Champ>
         <Champ label="Coordonnées de reversement" aide="IBAN / RIB ou Mobile Money au nom de l'ONG, jamais affiché sur le site">

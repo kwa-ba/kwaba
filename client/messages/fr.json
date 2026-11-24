@@ -69,6 +69,19 @@
     "slogan": "L'Afrique vous accueille.",
     "choisir": "Choisir"
   },
+  "champTelephone": {
+    "choisirPays": "Choisir un pays",
+    "indicatif": "Indicatif : {pays} +{indicatif}. Changer de pays",
+    "autreIndicatif": "Autre indicatif",
+    "autreIndicatifAide": "Saisissez le numéro complet, en commençant par +",
+    "indicatifLibre": "Autre indicatif, saisi avec le numéro. Changer de pays",
+    "rechercher": "Rechercher un pays ou un indicatif",
+    "aucunPays": "Aucun pays trouvé.",
+    "exempleLibre": "+1 555 123 4567",
+    "erreurLongueur": "Numéro invalide ({pays}) : {attendu} chiffres attendus après +{indicatif}, par ex. {exemple}.",
+    "erreurInternational": "Numéro invalide : saisissez l'indicatif puis le numéro (8 à 15 chiffres en tout).",
+    "a": "à"
+  },
   "langue": {
     "choisir": "Choisir la langue",
     "titre": "Langue & région",
@@ -335,7 +348,7 @@
     "verifierCompte": "vérifier le compte",
     "telephone": "Téléphone",
     "optionnel": "optionnel",
-    "telephoneAide": "Format international avec indicatif pays.",
+    "telephoneAide": "Choisissez le pays, puis saisissez le numéro.",
     "force": {
       "0": "Trop court",
       "1": "Faible",
@@ -1306,7 +1319,7 @@
     "adresseDestination": "Adresse de destination",
     "adressePlaceholder": "Nom du logement, quartier, ville",
     "telephone": "Votre numéro joignable à l'arrivée",
-    "telephoneAide": "Avec l'indicatif. Le chauffeur vous contactera par appel ou WhatsApp.",
+    "telephoneAide": "Le chauffeur vous contactera par appel ou WhatsApp.",
     "messageChauffeur": "Message au chauffeur",
     "facultatif": "facultatif",
     "messagePlaceholder": "Siège enfant, poussette, aide pour les bagages…",

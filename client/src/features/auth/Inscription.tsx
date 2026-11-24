@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useRouter } from "@/i18n/navigation";
-import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { firstErrorMessage } from "@/lib/api";
@@ -11,6 +11,7 @@ import AuthShell from "./AuthShell";
 import GoogleButton from "./GoogleButton";
 import Captcha, { type CaptchaHandle } from "./Captcha";
 import FormField from "@/components/ui/FormField";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { retenirEmail } from "@/lib/email-en-cours";
 import { useTranslations } from "next-intl";
 
@@ -44,6 +45,7 @@ function RegisterForm() {
   const [pret, setPret] = useState(false);
   useEffect(() => setPret(true), []);
   const captchaRef = useRef<CaptchaHandle>(null);
+  const erreurTelephone = useErreurTelephone();
 
   const strength = passwordStrength(form.password);
   const mismatch = form.password_confirm.length > 0 && form.password !== form.password_confirm;
@@ -60,6 +62,11 @@ function RegisterForm() {
     setFieldErrors({});
     setExistingAccount(false);
 
+    const erreurTel = erreurTelephone(form.phone);
+    if (erreurTel) {
+      setFieldErrors({ phone: erreurTel });
+      return;
+    }
     if (form.password.length < 8) {
       setFieldErrors({ password: t("mdpTropCourt") });
       return;
@@ -77,7 +84,7 @@ function RegisterForm() {
     const email = form.email.trim().toLowerCase();
 
     try {
-      const res = await inscrire({ ...form, email, phone: form.phone.trim() || null, captcha: captcha ?? "" });
+      const res = await inscrire({ ...form, email, phone: form.phone || null, captcha: captcha ?? "" });
 
       if (res.status >= 400) {
         const data = res.data;
@@ -141,10 +148,13 @@ function RegisterForm() {
           )}
         </div>
 
-        <FormField
+        <PhoneInput
           label={<>{t("telephone")} <span className="text-gray-400 normal-case font-normal">({t("optionnel")})</span></>}
-          name="phone" type="tel" icon={Phone} value={form.phone} onChange={update}
-          placeholder="+228 90 00 00 00" autoComplete="tel" inputMode="tel"
+          id="phone" name="phone" value={form.phone}
+          onChange={(phone) => {
+            setForm((prev) => ({ ...prev, phone }));
+            setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+          }}
           hint={t("telephoneAide")}
           error={fieldErrors.phone}
         />

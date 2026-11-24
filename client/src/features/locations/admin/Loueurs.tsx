@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 import { useConfigPaiement } from "@/features/paiements";
 import AdminTable, { ActionButton, Pill, type Colonne } from "@/components/backoffice/AdminTable";
-import Panneau, { Champ, Interrupteur, Liste, Saisie, erreursApi } from "@/components/backoffice/Panneau";
+import Panneau, { Champ, Interrupteur, LIBELLE_ADMIN, Liste, Saisie, erreursApi } from "@/components/backoffice/Panneau";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import type { Loueur } from "@/types/api/admin";
 
 type Formulaire = Omit<Loueur, "id" | "nb_locations" | "nb_vehicules" | "commission_pourcent" | "fondateur_debut" | "fondateur_fin"> & {
@@ -53,6 +54,7 @@ export default function Loueurs() {
   const [envoi, setEnvoi] = useState(false);
   const pays = config?.pays ?? [];
   const operateurs = pays.find((p) => p.code === form.pays_versement)?.operateurs ?? [];
+  const erreurTelephone = useErreurTelephone();
 
   const ouvrir = (l: Loueur | "nouveau") => {
     setEdition(l);
@@ -62,6 +64,11 @@ export default function Loueurs() {
   };
 
   const enregistrer = async () => {
+    const invalide = erreurTelephone(form.telephone);
+    if (invalide) {
+      setErreurs({ telephone: invalide });
+      return;
+    }
     setEnvoi(true);
     const corps = { ...form, fondateur_debut: form.fondateur_debut || null, fondateur_fin: form.fondateur_fin || null };
     try {
@@ -105,7 +112,8 @@ export default function Loueurs() {
         <Champ label="Nom du propriétaire ou de l'agence" erreur={erreurs.nom}><Saisie value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></Champ>
         <div className="grid grid-cols-2 gap-3">
           <Champ label="Contact" erreur={erreurs.contact}><Saisie value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} required /></Champ>
-          <Champ label="Téléphone" erreur={erreurs.telephone}><Saisie type="tel" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} required placeholder="+228 90 00 00 00" /></Champ>
+          <PhoneInput label="Téléphone" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off" required
+            value={form.telephone} onChange={(telephone) => setForm({ ...form, telephone })} error={erreurs.telephone} />
         </div>
         <Champ label="Email (facultatif)" aide="Reçoit le détail des locations attribuées" erreur={erreurs.email}>
           <Saisie type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
