@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { PAYS_TELEPHONE } from "./countries";
 import { DRAPEAUX } from "./drapeaux";
-import { filtrerPays, lireTelephone, nettoyerSaisie, normaliserTelephone, verifierTelephone, versE164 } from "./telephone";
+import {
+  composerTelephone, decomposerTelephone, estCodePays, filtrerPays, formaterTelephone, lireTelephone, nettoyerSaisie,
+  normaliserTelephone, verifierTelephone, versE164,
+} from "./telephone";
 
 /** Same cases as src/shared/telephone/telephone.test.ts of the app. */
 describe("phone field", () => {
@@ -61,6 +64,27 @@ describe("phone field", () => {
     expect(verifierTelephone("+231770123456")).toBeNull();
     expect(verifierTelephone("+2317701234")).toBeNull();
     expect(verifierTelephone("")).toBeNull();
+  });
+
+  it("Mobile Money: country and number without the code, both ways", () => {
+    expect(composerTelephone("TG", "90123456")).toBe("+22890123456");
+    expect(composerTelephone("BJ", "0190123456")).toBe("+2290190123456");
+    expect(composerTelephone("TG", "")).toBe("");
+    expect(composerTelephone("XX", "90123456")).toBe("");
+    expect(decomposerTelephone("+22890123456")).toEqual({ pays: "TG", numero: "90123456" });
+    expect(decomposerTelephone("+2290190123456")).toEqual({ pays: "BJ", numero: "0190123456" });
+    expect(decomposerTelephone("90 12 34 56", "ML")).toEqual({ pays: "ML", numero: "90123456" });
+    expect(estCodePays("NE")).toBe(true);
+    expect(estCodePays("XX")).toBe(false);
+  });
+
+  it("readable format for documents", () => {
+    expect(formaterTelephone("+22822210000")).toBe("+228 22 21 00 00");
+    expect(formaterTelephone("+228 22 21 00 00")).toBe("+228 22 21 00 00");
+    expect(formaterTelephone("+33612345678")).toBe("+33 6 12 34 56 78");
+    expect(formaterTelephone("+2317701234")).toBe("+231 7701234");
+    expect(formaterTelephone("+15551234567")).toBe("+15551234567");
+    expect(formaterTelephone("")).toBe("");
   });
 
   it("search by name, code or dialling code", () => {

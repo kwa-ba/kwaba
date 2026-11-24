@@ -19,6 +19,11 @@ export type ErreurTelephone =
 
 const chiffres = (texte: string) => texte.replace(/\D/g, "");
 
+/** Code of the API (payment settings) that the phone field knows. */
+export function estCodePays(code: string | null | undefined): code is CodePays {
+  return PAYS_TELEPHONE.some((p) => p.iso === code);
+}
+
 export function paysTelephone(iso: CodePays | null | undefined): PaysTelephone | undefined {
   return iso ? PAYS_TELEPHONE.find((p) => p.iso === iso) : undefined;
 }
@@ -85,6 +90,36 @@ export function versE164({ pays, texte }: SaisieTelephone): string {
 /** Any value (E.164, older format, number without code) as E.164; a number without code is read in `pays`. */
 export function normaliserTelephone(valeur: string, pays: CodePays = PAYS_PAR_DEFAUT): string {
   return versE164(lireTelephone(valeur, pays));
+}
+
+/** E.164 of a Mobile Money account saved as country and number without the code (`pays`, `numero` of the API). */
+export function composerTelephone(pays: CodePays | string | null | undefined, numero: string | null | undefined): string {
+  const infos = PAYS_TELEPHONE.find((p) => p.iso === pays);
+  const d = chiffres(numero ?? "");
+  return infos && d ? `+${infos.indicatif}${d}` : "";
+}
+
+/** Country and number without the code of a value, as the Mobile Money routes of the API expect them. */
+export function decomposerTelephone(valeur: string, pays: CodePays = PAYS_PAR_DEFAUT): { pays: CodePays | null; numero: string } {
+  const e164 = normaliserTelephone(valeur, pays);
+  const infos = paysDeLIndicatif(e164);
+  return infos ? { pays: infos.iso, numero: e164.slice(1 + infos.indicatif.length) } : { pays: null, numero: chiffres(e164) };
+}
+
+/**
+ * Number for reading or printing (« +228 90 12 34 56 »): grouped like the country's example when the length
+ * matches, otherwise the E.164 as it is.
+ */
+export function formaterTelephone(valeur: string, pays: CodePays = PAYS_PAR_DEFAUT): string {
+  const e164 = normaliserTelephone(valeur, pays);
+  const infos = paysDeLIndicatif(e164);
+  if (!infos) return e164;
+  const national = e164.slice(1 + infos.indicatif.length);
+  const groupes = infos.exemple.split(" ").map((g) => g.length);
+  if (groupes.reduce((a, b) => a + b, 0) !== national.length) return `+${infos.indicatif} ${national}`;
+  let i = 0;
+  const morceaux = groupes.map((n) => national.slice(i, (i += n)));
+  return `+${infos.indicatif} ${morceaux.join(" ")}`;
 }
 
 /** Checks a value (E.164 or older format); null when it is empty or valid. */

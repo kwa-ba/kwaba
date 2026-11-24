@@ -10,9 +10,11 @@ import { CLE_REVENUS, useConfigPaiement, useRevenus } from "./paiement";
 import { cn } from "@/lib/utils";
 import Select from "@/components/ui/Select";
 import FormField from "@/components/ui/FormField";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
+import { PAYS_PAR_DEFAUT } from "@/lib/telephone/countries";
+import { composerTelephone, decomposerTelephone, estCodePays, formaterTelephone } from "@/lib/telephone/telephone";
 import type { ProfilVersement, StatutVersement } from "@/types/api/paiement";
 import { useTranslations } from "next-intl";
-import { useNomsPays } from "@/lib/pays";
 import { useFormat } from "@/lib/format";
 
 const STATUTS: Record<StatutVersement, { label: string; className: string }> = {
@@ -88,7 +90,6 @@ export default function RevenusHote() {
 }
 
 export function ProfilVersementForm({ manquant }: { manquant: boolean }) {
-  const PAYS = useNomsPays();
   const t = useTranslations("revenus");
   const tD = useTranslations("remboursementDialog");
   const queryClient = useQueryClient();
@@ -99,24 +100,41 @@ export function ProfilVersementForm({ manquant }: { manquant: boolean }) {
   });
 
   const [form, setForm] = useState<ProfilVersement>({ pays: "TG", operateur: "", numero: "", titulaire: "" });
+  // Number in E.164 while typed; the API keeps the country and the number without its code
+  const [telephone, setTelephone] = useState("");
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
   const [edition, setEdition] = useState(false);
+  const erreurTelephone = useErreurTelephone();
+
+  const reprendre = (p: ProfilVersement) => {
+    setForm(p);
+    setTelephone(composerTelephone(p.pays, p.numero));
+  };
 
   useEffect(() => {
-    if (profil) setForm(profil);
+    if (!profil) return;
+    setForm(profil);
+    setTelephone(composerTelephone(profil.pays, profil.numero));
   }, [profil]);
 
   const pays = config?.pays.find((p) => p.code === form.pays);
   const operateurs = pays?.operateurs ?? [];
   const operateur = operateurs.some((o) => o.code === form.operateur) ? form.operateur : operateurs[0]?.code ?? "";
+  const paysTel = estCodePays(form.pays) ? form.pays : PAYS_PAR_DEFAUT;
 
   const enregistrer = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalide = erreurTelephone(telephone, paysTel);
+    if (invalide) {
+      setErreurs({ numero: invalide });
+      return;
+    }
     setEnvoi(true);
     setErreurs({});
     try {
-      queryClient.setQueryData(["paiements", "profil-versement"], await enregistrerProfilVersement({ ...form, operateur }));
+      const numero = decomposerTelephone(telephone, paysTel).numero;
+      queryClient.setQueryData(["paiements", "profil-versement"], await enregistrerProfilVersement({ ...form, operateur, numero }));
       queryClient.invalidateQueries({ queryKey: CLE_REVENUS });
       toast.success(t("enregistrees"));
       setEdition(false);
@@ -143,7 +161,9 @@ export function ProfilVersementForm({ manquant }: { manquant: boolean }) {
         <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0"><Smartphone size={22} /></div>
         <div className="flex-1 min-w-0">
           <h2 className="font-heading font-bold text-dark">{t("arriventSur")}</h2>
-          <p className="text-sm text-gray-600">{nomOperateur(profil.operateur)} · +{indicatif} {profil.numero} · {profil.titulaire}</p>
+          <p className="text-sm text-gray-600">
+            {nomOperateur(profil.operateur)} · {formaterTelephone(composerTelephone(profil.pays, profil.numero)) || `+${indicatif} ${profil.numero}`} · {profil.titulaire}
+          </p>
         </div>
         <button onClick={() => setEdition(true)} className="px-5 py-2.5 rounded-full border border-gray-200 text-sm font-bold text-dark hover:bg-gray-50">{t("modifier")}</button>
       </section>
@@ -159,14 +179,13 @@ export function ProfilVersementForm({ manquant }: { manquant: boolean }) {
           : t("envoyeSur")}
       </p>
       <form method="post" onSubmit={enregistrer} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5" noValidate>
-        <div>
-          <p className="block text-xs font-bold text-dark uppercase tracking-wide mb-2" id="pays-label">{tD("pays")}</p>
-          <Select
-            label={tD("pays")} value={form.pays}
-            onChange={(v) => setForm({ ...form, pays: v as ProfilVersement["pays"], operateur: "" })}
-            options={config.pays.map((p) => ({ value: p.code, label: PAYS[p.code] ?? p.nom }))}
-          />
-        </div>
+        <PhoneInput
+          label={tD("numeroMobileMoney")} id="v-numero" required
+          value={telephone} onChange={(v) => { setTelephone(v); setErreurs((avant) => ({ ...avant, numero: "", pays: "" })); }}
+          paysParDefaut={paysTel} paysAutorises={config.pays.map((p) => p.code).filter(estCodePays)}
+          onPaysChange={(iso) => setForm((avant) => ({ ...avant, pays: iso as ProfilVersement["pays"], operateur: "" }))}
+          error={erreurs.numero || erreurs.pays || undefined}
+        />
         <div>
           <p className="block text-xs font-bold text-dark uppercase tracking-wide mb-2">{tD("operateur")}</p>
           <Select
@@ -177,19 +196,13 @@ export function ProfilVersementForm({ manquant }: { manquant: boolean }) {
           {erreurs.operateur && <p className="text-xs text-red-600 mt-1.5 ml-1">{erreurs.operateur}</p>}
         </div>
         <FormField
-          label={tD("numero", { indicatif: pays?.indicatif ?? "" })} id="v-numero" inputMode="numeric" autoComplete="tel-national"
-          value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })}
-          placeholder={pays ? "0".repeat(pays.chiffres) : ""} error={erreurs.numero}
-          hint={pays ? tD("chiffres", { nombre: pays.chiffres }) : undefined} required
-        />
-        <FormField
           label={t("titulaire")} id="v-titulaire" autoComplete="name"
           value={form.titulaire} onChange={(e) => setForm({ ...form, titulaire: e.target.value })}
           error={erreurs.titulaire} hint={t("titulaireAide")} required
         />
         <div className="sm:col-span-2 flex flex-wrap gap-3 justify-end">
           {profil && (
-            <button type="button" onClick={() => { setForm(profil); setEdition(false); setErreurs({}); }} className="px-5 py-3 rounded-xl border border-gray-200 text-sm font-bold text-dark">
+            <button type="button" onClick={() => { reprendre(profil); setEdition(false); setErreurs({}); }} className="px-5 py-3 rounded-xl border border-gray-200 text-sm font-bold text-dark">
               {t("annuler")}
             </button>
           )}

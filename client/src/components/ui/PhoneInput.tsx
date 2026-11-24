@@ -69,6 +69,10 @@ interface PhoneInputProps {
   taille?: keyof typeof TAILLES;
   /** "tel" for the phone of the account, "off" for someone else's number (driver, renter). */
   autoComplete?: "tel" | "off";
+  /** Only these countries, without « Other dialling code » (Mobile Money: the countries of the payment settings). */
+  paysAutorises?: readonly CodePays[];
+  /** Country chosen or found in a pasted number (Mobile Money: the operators depend on it). */
+  onPaysChange?: (iso: CodePays) => void;
   className?: string;
 }
 
@@ -78,8 +82,9 @@ interface PhoneInputProps {
  */
 export default function PhoneInput({
   value, onChange, label, labelClassName, hint, error, id, name, required, disabled = false,
-  paysParDefaut = PAYS_PAR_DEFAUT, taille = "normal", autoComplete = "tel", className,
+  paysParDefaut = PAYS_PAR_DEFAUT, taille = "normal", autoComplete = "tel", paysAutorises, onPaysChange, className,
 }: PhoneInputProps) {
+  const autorise = (iso: CodePays | null) => !paysAutorises || (iso !== null && paysAutorises.includes(iso));
   const t = useTranslations("champTelephone");
   const langue: Langue = useLocale() === "en" ? "en" : "fr";
   const erreurTelephone = useErreurTelephone();
@@ -91,7 +96,10 @@ export default function PhoneInput({
   const saisieRef = useRef<HTMLInputElement>(null);
   const rechercheRef = useRef<HTMLInputElement>(null);
 
-  const [saisie, setSaisie] = useState<SaisieTelephone>(() => lireTelephone(value, paysParDefaut));
+  const [saisie, setSaisie] = useState<SaisieTelephone>(() => {
+    const lue = lireTelephone(value, paysParDefaut);
+    return autorise(lue.pays) ? lue : { pays: paysParDefaut, texte: "" };
+  });
   // Last value given or received: a new value from the form (reset, profile loaded) is read again
   const [suivie, setSuivie] = useState(value);
   const [touche, setTouche] = useState(false);
@@ -100,7 +108,10 @@ export default function PhoneInput({
 
   if (value !== suivie) {
     setSuivie(value);
-    if (value !== versE164(saisie)) setSaisie(lireTelephone(value, saisie.pays ?? paysParDefaut));
+    if (value !== versE164(saisie)) {
+      const lue = lireTelephone(value, saisie.pays ?? paysParDefaut);
+      setSaisie(autorise(lue.pays) ? lue : { pays: saisie.pays, texte: "" });
+    }
   }
 
   const pays = paysTelephone(saisie.pays);
@@ -108,10 +119,14 @@ export default function PhoneInput({
   // Own check once the field is left, so the message does not show while the number is being typed
   const message = error || (touche ? erreurTelephone(e164) : null) || undefined;
   // null: « Other dialling code », offered when nothing is searched
-  const options: (PaysTelephone | null)[] = [...filtrerPays(recherche, langue), ...(recherche ? [] : [null])];
+  const listePays = (q: string) => filtrerPays(q, langue).filter((p) => autorise(p.iso));
+  const options: (PaysTelephone | null)[] = [...listePays(recherche), ...(recherche || paysAutorises ? [] : [null])];
   const dims = TAILLES[taille];
 
-  function changer(suivante: SaisieTelephone) {
+  function changer(proposee: SaisieTelephone) {
+    // A code outside the allowed countries stays in the current country: the length check then flags it
+    const suivante = autorise(proposee.pays) ? proposee : { pays: saisie.pays, texte: proposee.texte.replace(/^\+/, "") };
+    if (suivante.pays && suivante.pays !== saisie.pays) onPaysChange?.(suivante.pays);
     setSaisie(suivante);
     const valeur = versE164(suivante);
     setSuivie(valeur);
@@ -126,7 +141,7 @@ export default function PhoneInput({
 
   function ouvrir() {
     // The search starts empty: the active line is the selected country in the full list
-    const toutes: (PaysTelephone | null)[] = [...filtrerPays("", langue), null];
+    const toutes: (PaysTelephone | null)[] = [...listePays(""), ...(paysAutorises ? [] : [null])];
     setRecherche("");
     setActif(Math.max(0, toutes.findIndex((o) => (o?.iso ?? null) === saisie.pays)));
     setOpen(true);
