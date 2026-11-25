@@ -4,11 +4,13 @@ import DeleteAccount from "./DeleteAccount";
 import { lireMoi, modifierMoi } from "./api";
 import { CLE_MOI } from "./hooks";
 import { Link } from "@/i18n/navigation";
-import { ArrowLeft, User, Mail, Phone, Save } from "lucide-react";
+import { ArrowLeft, User, Mail, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiErrorMessage } from "@/lib/api";
+import { normaliserTelephone } from "@/lib/telephone/telephone";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { useTranslations } from "next-intl";
 
 export default function EditProfilePage() {
@@ -19,6 +21,8 @@ export default function EditProfilePage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [erreurTel, setErreurTel] = useState<string>();
+  const erreurTelephone = useErreurTelephone();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -49,6 +53,11 @@ export default function EditProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalide = erreurTelephone(form.phone);
+    if (invalide) {
+      setErreurTel(invalide);
+      return;
+    }
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -56,7 +65,8 @@ export default function EditProfilePage() {
       const moi = await modifierMoi({
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        phone: form.phone.trim() || null,
+        // Saved numbers in an older format (« +228 90 00 00 00 ») leave in E.164 too
+        phone: normaliserTelephone(form.phone) || null,
       });
       setForm((prev) => ({ ...prev, phone: moi.phone ?? "" }));
       await update({ name: `${moi.first_name} ${moi.last_name}` });
@@ -155,22 +165,18 @@ export default function EditProfilePage() {
             <p className="text-xs text-muted ml-1 mt-1">{t("emailFixe")}</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-dark mb-1.5 ml-1">{t("telephone")}</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Phone size={18} className="text-muted" />
-              </div>
-              <input
-                type="tel"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="+228 90 00 00 00"
-                className="w-full pl-11 pr-4 py-3 bg-surface border border-gray-200 rounded-xl text-base sm:text-sm text-dark focus:outline-hidden focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
-              />
-            </div>
-          </div>
+          <PhoneInput
+            label={t("telephone")}
+            labelClassName="block text-sm font-semibold text-dark mb-1.5 ml-1"
+            id="phone"
+            name="phone"
+            value={form.phone}
+            onChange={(phone) => {
+              setForm((prev) => ({ ...prev, phone }));
+              setErreurTel(undefined);
+            }}
+            error={erreurTel}
+          />
 
           <div className="pt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-gray-100 mt-8">
             <Link

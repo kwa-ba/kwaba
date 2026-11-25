@@ -9,6 +9,7 @@ import { useTaux } from "@/features/paiements";
 import { toast } from "sonner";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { apiErrorMessage } from "@/lib/api";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
 import { cn, isoDate } from "@/lib/utils";
@@ -49,6 +50,8 @@ export default function FormulaireLocation({ catalogue, categorie, formule, onCh
   const placesMax = categorie?.places ?? 8;
   const [passagers, setPassagers] = useState(Math.min(2, placesMax));
   const [telephone, setTelephone] = useState("");
+  const [erreurTel, setErreurTel] = useState<string>();
+  const erreurTelephone = useErreurTelephone();
   const [precisions, setPrecisions] = useState("");
   const [conducteur, setConducteur] = useState("");
   const [permisNumero, setPermisNumero] = useState("");
@@ -90,6 +93,12 @@ export default function FormulaireLocation({ catalogue, categorie, formule, onCh
     e.preventDefault();
     if (status !== "authenticated") {
       router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    const invalide = erreurTelephone(telephone);
+    if (invalide) {
+      setErreurTel(invalide);
+      document.getElementById("location-telephone")?.focus();
       return;
     }
     setEnvoi(true);
@@ -156,10 +165,10 @@ export default function FormulaireLocation({ catalogue, categorie, formule, onCh
           <Stepper className="border border-gray-200 rounded-xl px-4 py-2.5 bg-surface" label={t("passagers")} value={passagers}
             min={1} max={placesMax} onChange={setPassagers} />
         </div>
-        <label className="block">
-          <span className={labelClass}>{t("telephone")}</span>
-          <input type="tel" className={inputClass} value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="+228 90 00 00 00" required />
-        </label>
+        <PhoneInput
+          label={t("telephone")} labelClassName={labelClass} id="location-telephone" required
+          value={telephone} onChange={(v) => { setTelephone(v); setErreurTel(undefined); }} error={erreurTel}
+        />
       </div>
 
       {avecChauffeur && (

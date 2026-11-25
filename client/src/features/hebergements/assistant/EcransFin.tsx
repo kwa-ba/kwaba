@@ -8,10 +8,12 @@ import { PreinscriptionHote } from "@/features/contrats";
 import { ProfilVersementForm, useRevenus } from "@/features/paiements";
 import { CLE_MOI, modifierMoi, useMoi } from "@/features/users";
 import { VerificationIdentite } from "@/features/verifications";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import Select from "@/components/ui/Select";
 import { Link } from "@/i18n/navigation";
 import { apiErrorMessage, firstErrorMessage } from "@/lib/api";
 import { useFormat } from "@/lib/format";
+import { normaliserTelephone } from "@/lib/telephone/telephone";
 import { cn } from "@/lib/utils";
 import type { PolitiqueAnnulation } from "@/types/api/models";
 import { useEquipements } from "../AmenityBadge";
@@ -158,6 +160,7 @@ export function EcranTelephone({ conditions }: EcranProps) {
   const t = useTranslations("assistantHote.telephone");
   const queryClient = useQueryClient();
   const { data: moi } = useMoi();
+  const erreurTelephone = useErreurTelephone();
   const [numero, setNumero] = useState<string | null>(null);
   const [erreur, setErreur] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -165,10 +168,15 @@ export function EcranTelephone({ conditions }: EcranProps) {
 
   const enregistrer = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalide = erreurTelephone(valeur);
+    if (invalide) {
+      setErreur(invalide);
+      return;
+    }
     setEnvoi(true);
     setErreur("");
     try {
-      await modifierMoi({ phone: valeur });
+      await modifierMoi({ phone: normaliserTelephone(valeur) });
       await queryClient.invalidateQueries({ queryKey: CLE_MOI });
     } catch (err) {
       const donnees = (err as { response?: { data?: { phone?: unknown } } }).response?.data;
@@ -181,13 +189,13 @@ export function EcranTelephone({ conditions }: EcranProps) {
   return (
     <Question cle="telephone">
       <form onSubmit={enregistrer} className="space-y-3">
-        <label className={libelleClass} htmlFor="a-telephone">{t("libelle")}</label>
-        <input id="a-telephone" type="tel" autoComplete="tel" inputMode="tel" className={champClass} placeholder="+228 90 00 00 00"
-          value={valeur} onChange={(e) => setNumero(e.target.value)} />
+        <PhoneInput
+          label={t("libelle")} labelClassName={libelleClass} id="a-telephone" taille="grand"
+          value={valeur} onChange={(v) => { setNumero(v); setErreur(""); }} error={erreur || undefined}
+        />
         <button type="submit" disabled={envoi || !valeur.trim()} className="px-5 py-3 rounded-2xl border border-primary/30 text-brand font-semibold disabled:opacity-50">
           {envoi ? t("envoi") : t("enregistrer")}
         </button>
-        {erreur && <p role="alert" className="text-sm text-red-700">{erreur}</p>}
         {conditions?.telephone && <p className="flex items-center gap-2 text-sm font-semibold text-brand"><CheckCircle2 size={18} aria-hidden /> {t("fait")}</p>}
       </form>
     </Question>

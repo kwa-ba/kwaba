@@ -15,6 +15,7 @@ import { cn, isoDate } from "@/lib/utils";
 import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
 import FormField from "@/components/ui/FormField";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { MontantDebite } from "@/components/layout/Devise";
 import type { MoyenPaiement } from "@/types/api/paiement";
 import type { CategorieVehicule } from "./types";
@@ -63,6 +64,7 @@ function TransfertContent() {
   const [moyen, setMoyen] = useState<MoyenPaiement | null>(null);
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [envoi, setEnvoi] = useState(false);
+  const erreurTelephone = useErreurTelephone();
 
   // Back from the sign-in page: the request resumes where the traveller left it
   useEffect(() => {
@@ -135,6 +137,12 @@ function TransfertContent() {
       return;
     }
     if (!choix) return;
+    const erreurTel = erreurTelephone(telephone);
+    if (erreurTel) {
+      setErreurs({ telephone: erreurTel });
+      document.getElementById("t-telephone")?.focus();
+      return;
+    }
     setEnvoi(true);
     setErreurs({});
     try {
@@ -272,9 +280,9 @@ function TransfertContent() {
             <h2 className="font-heading font-bold text-dark text-xl">{t("destinationContact")}</h2>
             <FormField label={t("adresseDestination")} id="t-destination" value={destination} onChange={(e) => setDestination(e.target.value)}
               placeholder={t("adressePlaceholder")} error={erreurs.destination} required />
-            <FormField label={t("telephone")} id="t-telephone" type="tel" autoComplete="tel" value={telephone}
-              onChange={(e) => setTelephone(e.target.value)} placeholder="+33 6 12 34 56 78" error={erreurs.telephone}
-              hint={t("telephoneAide")} required />
+            <PhoneInput label={t("telephone")} id="t-telephone" value={telephone}
+              onChange={(v) => { setTelephone(v); setErreurs((avant) => ({ ...avant, telephone: "" })); }}
+              error={erreurs.telephone} hint={t("telephoneAide")} required />
             <div>
               <label htmlFor="t-message" className={etiquette}>{t("messageChauffeur")} <span className="normal-case font-normal text-gray-600">({t("facultatif")})</span></label>
               <textarea id="t-message" rows={2} maxLength={500} value={message} onChange={(e) => setMessage(e.target.value)}

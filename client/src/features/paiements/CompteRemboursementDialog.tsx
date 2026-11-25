@@ -7,10 +7,11 @@ import { apiErrorMessage } from "@/lib/api";
 import { enregistrerCompteRemboursement } from "./api";
 import { useConfigPaiement } from "./paiement";
 import Select from "@/components/ui/Select";
-import FormField from "@/components/ui/FormField";
+import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
+import { PAYS_PAR_DEFAUT } from "@/lib/telephone/countries";
+import { decomposerTelephone, estCodePays } from "@/lib/telephone/telephone";
 import type { PaysPaiement } from "@/types/api/paiement";
 import { useTranslations } from "next-intl";
-import { useNomsPays } from "@/lib/pays";
 import { useFormat } from "@/lib/format";
 
 interface Props {
@@ -24,8 +25,8 @@ interface Props {
 /** Asks the traveller for the Mobile Money account to refund them on (FedaPay does not give the charged number). */
 export default function CompteRemboursementDialog({ endpoint, montant, onClose, onDone }: Props) {
   const { formatPrice } = useFormat();
-  const PAYS = useNomsPays();
   const t = useTranslations("remboursementDialog");
+  const erreurTelephone = useErreurTelephone();
   const { data: config } = useConfigPaiement();
   const [pays, setPays] = useState<PaysPaiement["code"]>("TG");
   const [operateurChoisi, setOperateur] = useState("");
@@ -51,12 +52,20 @@ export default function CompteRemboursementDialog({ endpoint, montant, onClose, 
     };
   }, [onClose]);
 
+  const paysTel = estCodePays(pays) ? pays : PAYS_PAR_DEFAUT;
+
   const envoyer = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalide = erreurTelephone(numero, paysTel);
+    if (invalide || !numero) {
+      setErreurs({ numero: invalide ?? t("numeroRequis") });
+      return;
+    }
     setEnvoi(true);
     setErreurs({});
     try {
-      await enregistrerCompteRemboursement(endpoint, { pays, operateur, numero });
+      // The API keeps the country and the number without its code
+      await enregistrerCompteRemboursement(endpoint, { pays, operateur, numero: decomposerTelephone(numero, paysTel).numero });
       onDone();
     } catch (err) {
       const data = (err as { response?: { data?: Record<string, string[] | string> } }).response?.data;
@@ -89,24 +98,19 @@ export default function CompteRemboursementDialog({ endpoint, montant, onClose, 
           <div className="h-48 skeleton rounded-2xl mt-5" />
         ) : (
           <form method="post" onSubmit={envoyer} className="space-y-4 mt-5" noValidate>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="block text-xs font-bold text-dark uppercase tracking-wide mb-2">{t("pays")}</p>
-                <Select label={t("pays")} value={pays} onChange={(v) => setPays(v as PaysPaiement["code"])}
-                  options={config.pays.map((p) => ({ value: p.code, label: PAYS[p.code] ?? p.nom }))} />
-              </div>
-              <div>
-                <p className="block text-xs font-bold text-dark uppercase tracking-wide mb-2">{t("operateur")}</p>
-                <Select label={t("operateurMM")} value={operateur} onChange={setOperateur}
-                  options={operateurs.map((o) => ({ value: o.code, label: o.nom }))} />
-                {erreurs.operateur && <p className="text-xs text-red-600 mt-1.5 ml-1">{erreurs.operateur}</p>}
-              </div>
-            </div>
-            <FormField
-              label={t("numero", { indicatif: infos?.indicatif ?? "" })} id="remb-numero" inputMode="numeric" autoComplete="tel-national"
-              value={numero} onChange={(e) => setNumero(e.target.value)} error={erreurs.numero}
-              placeholder={infos ? "0".repeat(infos.chiffres) : ""} hint={infos ? t("chiffres", { nombre: infos.chiffres }) : undefined} required
+            <PhoneInput
+              label={t("numeroMobileMoney")} id="remb-numero" required
+              value={numero} onChange={(v) => { setNumero(v); setErreurs((avant) => ({ ...avant, numero: "", pays: "" })); }}
+              paysParDefaut={paysTel} paysAutorises={config.pays.map((p) => p.code).filter(estCodePays)}
+              onPaysChange={(iso) => setPays(iso as PaysPaiement["code"])}
+              error={erreurs.numero || erreurs.pays || undefined}
             />
+            <div>
+              <p className="block text-xs font-bold text-dark uppercase tracking-wide mb-2">{t("operateur")}</p>
+              <Select label={t("operateurMM")} value={operateur} onChange={setOperateur}
+                options={operateurs.map((o) => ({ value: o.code, label: o.nom }))} />
+              {erreurs.operateur && <p className="text-xs text-red-600 mt-1.5 ml-1">{erreurs.operateur}</p>}
+            </div>
             {erreurs.general && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-xl p-3">{erreurs.general}</p>}
             <button type="submit" disabled={envoi} className="w-full bg-secondary hover:bg-secondary-600 text-white font-bold py-3.5 rounded-2xl disabled:opacity-60">
               {envoi ? t("enregistrement") : t("recevoir")}

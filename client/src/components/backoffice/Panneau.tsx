@@ -58,13 +58,16 @@ export default function Panneau({ ouvert, titre, onFermer, onValider, envoi, lib
 
 const champClasse = "w-full px-3 py-2.5 bg-surface border border-gray-200 rounded-xl text-base sm:text-sm text-dark focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary";
 
+/** Label of a back-office field, also given to the fields that bring their own label (PhoneInput). */
+export const LIBELLE_ADMIN = "block text-xs font-bold text-dark uppercase tracking-wide mb-1.5";
+
 /** Labelled field with its error below it. */
 export function Champ({ label, erreur, aide, children, className }: {
   label: string; erreur?: string; aide?: string; children: React.ReactNode; className?: string;
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="block text-xs font-bold text-dark uppercase tracking-wide mb-1.5">{label}</span>
+      <span className={LIBELLE_ADMIN}>{label}</span>
       {children}
       {aide && !erreur && <span className="block text-xs text-gray-500 mt-1">{aide}</span>}
       {erreur && <span role="alert" className="block text-xs text-red-600 mt-1">{erreur}</span>}
