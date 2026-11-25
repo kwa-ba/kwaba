@@ -111,6 +111,7 @@ OBJECT_NAMES = {
 ACTIONS: dict[str, ActionSpec] = {
     'connexion': ActionSpec('Connexion', CONNECTIONS, ROUTINE, summary=_email),
     'connexion_google': ActionSpec('Connexion Google', CONNECTIONS, ROUTINE, summary=_email),
+    'connexion_apple': ActionSpec('Connexion Apple', CONNECTIONS, ROUTINE, summary=_email),
     'inscription': ActionSpec('Inscription', CONNECTIONS, ROUTINE, summary=_email),
     'email_verifie': ActionSpec('Email vérifié', CONNECTIONS, ROUTINE, summary=_email),
     'connexion_echec': ActionSpec('Échec de connexion', CONNECTIONS, IMPORTANT, summary=_email),

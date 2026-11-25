@@ -6,6 +6,8 @@ python-dotenv>=1.2.4,<2.0
 Pillow>=13.0,<14.0
 gunicorn>=27.0.1,<28.0
 djangorestframework-simplejwt>=5.5.1,<6.0
+# Sign in with Apple (ADR-045): identity tokens and client secret, imported directly
+PyJWT>=2.11,<3
 pika>=1.4.4,<2.0
 requests>=2.34.2,<3.0
 tzdata>=2026.6

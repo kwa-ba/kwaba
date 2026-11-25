@@ -49,6 +49,10 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
+    def find_by_apple_id(self, apple_id: str) -> Optional[User]:
+        pass
+
+    @abstractmethod
     def delete(self, user_id: uuid.UUID) -> None:
         pass
 

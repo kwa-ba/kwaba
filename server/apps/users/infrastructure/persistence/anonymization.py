@@ -1,8 +1,10 @@
 """Anonymisation of a deleted account (ADR-039): what identifies the person is erased, the row stays."""
 import uuid
 
+from django.db import transaction
 from django.utils import timezone
 
+from apps.users.infrastructure.external import AppleSignIn
 from shared.media.files import delete_after_commit
 
 from .account_deletion_models import AccountDeletionCodeModel
@@ -24,11 +26,16 @@ def anonymize_account(user_id: uuid.UUID) -> None:
 
     account = UserModel.objects.select_for_update().get(pk=user_id)
     delete_after_commit(account.avatar)
+    # Apple asks for the person's Apple token to be revoked (ADR-045): after the commit, a failure changes nothing here
+    apple_token = account.apple_refresh_token
+    transaction.on_commit(lambda: AppleSignIn.revoke(apple_token))
     account.email = deleted_email(account.pk)
     account.first_name = DELETED_FIRST_NAME
     account.last_name = DELETED_LAST_NAME
     account.phone = None
     account.google_id = None
+    account.apple_id = None
+    account.apple_refresh_token = ''
     account.avatar = None
     account.candidature_hote = ''
     account.candidature_motif = ''

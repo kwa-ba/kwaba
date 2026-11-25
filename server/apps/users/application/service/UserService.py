@@ -24,6 +24,7 @@ from apps.users.application.dto.dto import (
 from apps.users.application.events.UserRegistered import UserRegistered
 from apps.users.application.events.WelcomeEmailRequested import WelcomeEmailRequested
 from apps.users.application.ports import EventPublisher
+from apps.users.application.ports.AppleSignIn import AppleUserInfo
 from apps.users.domain.value_objects import Email, PasswordHash, PhoneNumber
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,39 @@ class UserService:
         if not user:
             raise UserNotFoundException(email)
         return user
+
+    def apple_authenticate(self, info: AppleUserInfo, first_name: str, last_name: str) -> UserResponseDTO:
+        """Sign in with Apple (ADR-045): the account of this Apple identifier, or the one of the address Apple
+        verified (linked, with the same rule as Google), or a new traveller with the names the app sends (Apple
+        gives them only at the very first sign-in)."""
+        if not info.email_verified:
+            raise ValueError("L'adresse email Apple n'est pas vérifiée.")
+
+        user = self._repository.find_by_apple_id(info.apple_id)
+        if user:
+            return UserResponseDTO.from_entity(user)
+
+        user = self._repository.find_by_email(info.email)
+        if user:
+            never_verified = not user.is_verified
+            user.apple_id = info.apple_id
+            user.is_verified = True
+            user = self._repository.update(user, champs=('apple_id', 'is_verified'))
+            if never_verified:
+                # Nobody had proved owning this address: its password may have been chosen by someone else
+                self._repository.oublier_mot_de_passe(user.id)
+            return UserResponseDTO.from_entity(user)
+
+        user = User(
+            email=Email(info.email),
+            first_name=first_name.strip()[:150] or 'Voyageur',
+            last_name=last_name.strip()[:150],
+            password_hash=PasswordHash(make_password(None)),
+            role=UserRole.VOYAGEUR,
+            is_verified=True,
+            apple_id=info.apple_id,
+        )
+        return UserResponseDTO.from_entity(self._repository.save(user))
 
     def google_authenticate(self, dto: GoogleAuthDTO, verifier) -> UserResponseDTO:
         info = verifier.verify(dto.id_token)

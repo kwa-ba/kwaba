@@ -8,6 +8,7 @@ from apps.users.infrastructure.http.controllers.TwoFactorController import (
     TwoFactorConfirmView, TwoFactorSetupView, TwoFactorStatusView, TwoFactorVerifyView,
 )
 from apps.users.infrastructure.http.controllers.AccountDeletionController import AccountDeletionCodeView
+from apps.users.infrastructure.http.controllers.AppleAuthController import AppleAuthView
 from apps.users.infrastructure.http.controllers.PasswordChangeController import PasswordChangeView
 from apps.users.infrastructure.http.controllers.UserController import CandidatureHoteView, MeView
 
@@ -23,6 +24,7 @@ urlpatterns = [
     path('users/me/candidature/', CandidatureHoteView.as_view(), name='user-candidature'),
     path('users/me/deletion-code/', AccountDeletionCodeView.as_view(), name='user-deletion-code'),
     path('auth/google/',      GoogleAuthView.as_view(),  name='auth-google'),
+    path('auth/apple/',       AppleAuthView.as_view(),   name='auth-apple'),
     path('auth/password-reset/',         PasswordResetRequestView.as_view(), name='auth-password-reset'),
     path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
     path('auth/password-change/', PasswordChangeView.as_view(), name='auth-password-change'),

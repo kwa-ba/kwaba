@@ -456,6 +456,20 @@ MOBILE_REFRESH_DAYS = int(os.getenv('MOBILE_REFRESH_DAYS', '60'))
 # application is refused; without a configured ID, Google sign-in is disabled.
 GOOGLE_CLIENT_IDS = _env_list('GOOGLE_CLIENT_ID', '')
 
+# Sign in with Apple (ADR-045): identifiers of the app allowed as audience of Apple's identity tokens (com.kwaba.app,
+# com.kwaba.app.preprod), separated by commas; empty: Apple sign-in disabled.
+APPLE_CLIENT_IDS = _env_list('APPLE_CLIENT_ID', '')
+# "Sign in with Apple" key of the Apple Developer account, to revoke a person's Apple tokens when they delete their
+# account (required by Apple). Without them, sign-in works but nothing can be revoked.
+APPLE_TEAM_ID = os.getenv('APPLE_TEAM_ID', '')
+APPLE_KEY_ID = os.getenv('APPLE_KEY_ID', '')
+# Content of the .p8 file; "\\n" accepted for the line breaks of an environment variable
+APPLE_PRIVATE_KEY = os.getenv('APPLE_PRIVATE_KEY', '').replace('\\n', '\n')
+# Fernet key of the Apple refresh tokens stored in the database; derived from SECRET_KEY like the two-factor one
+APPLE_TOKEN_ENCRYPTION_KEY = os.getenv('APPLE_TOKEN_ENCRYPTION_KEY') or base64.urlsafe_b64encode(hmac.new(
+    SECRET_KEY.encode(), b'kwaba-apple-token-key', hashlib.sha256,
+).digest()).decode()
+
 # Cloudflare Turnstile captcha at sign-in and sign-up ("I am human" box). Keys created in the
 # Cloudflare dashboard (Turnstile), without hosting the domain at Cloudflare. Without a secret key: disabled.
 TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '')

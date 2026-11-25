@@ -25,6 +25,7 @@ class User:
     phone: Optional[PhoneNumber] = None
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     google_id: Optional[str] = None
+    apple_id: Optional[str] = None
     avatar_url: Optional[str] = None
     created_at: datetime.datetime = field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
