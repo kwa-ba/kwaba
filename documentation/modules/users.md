@@ -30,6 +30,29 @@ Jetons JWT : accès de 15 minutes, renouvellement (`POST /api/v1/auth/refresh/`)
 
 La session longue (ADR-043) est donnée à la connexion par mot de passe, par Google, par le code de vérification et au changement du mot de passe. Un refresh de session longue déjà renouvelé, présenté de nouveau après le délai de grâce (`JWT_REFRESH_GRACE_SECONDS`, 60 s), ferme toutes les sessions du compte (journal : `refresh_reused`). Pendant le délai de grâce, la même paire revient, sans rien fermer.
 
+## Se connecter avec Apple (ADR-045)
+
+`POST /api/v1/auth/apple/`, appelé par l'application après le bouton Apple :
+
+```json
+{"identity_token": "<JWT d'Apple>", "authorization_code": "<code>", "first_name": "Ama", "last_name": "Kossi"}
+```
+
+- `200 {"access", "refresh", "user"}`, comme `auth/google/` (session longue de l'application) ;
+- `401` : jeton invalide, expiré, émis pour une autre application, adresse non vérifiée, ou connexion Apple non configurée ; `403 {"code": "inactive"}` : compte désactivé ; `400` : jeton absent.
+- Le compte est retrouvé par l'identifiant Apple (`apple_id`), sinon par l'adresse (rattachée), sinon créé (voyageur vérifié). Apple n'envoie le prénom et le nom qu'à la toute première connexion : l'application les transmet.
+- `authorization_code` sert à obtenir un jeton Apple, gardé chiffré et révoqué quand le compte est supprimé (exigence d'Apple).
+
+Réglages :
+
+| Réglage | Rôle |
+|---|---|
+| `APPLE_CLIENT_ID` | Identifiants de l'application acceptés (`com.kwaba.app,com.kwaba.app.preprod`) ; vide : connexion Apple indisponible |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Clé « Sign in with Apple » du compte Apple Developer (secrète, Vault) : sans elle, rien n'est révocable, obligatoire avant la soumission |
+| `APPLE_TOKEN_ENCRYPTION_KEY` | Chiffrement des jetons Apple ; dérivée de `SECRET_KEY` si absente |
+
+Apple ne livre les e-mails aux adresses relais (`…@privaterelay.appleid.com`) que si `kwa-ba.com` est déclaré dans son portail.
+
 ## Changement du mot de passe
 
 `POST /api/v1/auth/password-change/`, connecté, `{"old_password": "…", "new_password": "…"}` :

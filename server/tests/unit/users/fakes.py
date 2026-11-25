@@ -27,6 +27,9 @@ class FakeUserRepository(UserRepository):
     def find_by_google_id(self, google_id):
         return self._first(lambda u: u.google_id == google_id)
 
+    def find_by_apple_id(self, apple_id):
+        return self._first(lambda u: u.apple_id == apple_id)
+
     def save(self, user):
         self.rows[user.id] = dataclasses.replace(user)
         return dataclasses.replace(user)

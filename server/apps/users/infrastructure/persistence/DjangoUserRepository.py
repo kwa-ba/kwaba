@@ -23,6 +23,7 @@ class DjangoUserRepository(UserRepository):
             phone=PhoneNumber.of(model.phone),
             avatar_url=model.avatar.url if model.avatar else None,
             google_id=model.google_id,
+            apple_id=model.apple_id,
             role=UserRole(model.role),
             is_verified=model.is_verified,
             is_active=model.is_active,
@@ -56,6 +57,7 @@ class DjangoUserRepository(UserRepository):
             id=user.id,
             email=str(user.email).strip().lower(),
             google_id=user.google_id,
+            apple_id=user.apple_id,
             first_name=user.first_name,
             last_name=user.last_name,
             phone=PhoneNumber.to_str(user.phone),
@@ -76,6 +78,7 @@ class DjangoUserRepository(UserRepository):
         valeurs = {
             'email': str(user.email),
             'google_id': user.google_id,
+            'apple_id': user.apple_id,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'phone': PhoneNumber.to_str(user.phone),
@@ -104,6 +107,10 @@ class DjangoUserRepository(UserRepository):
 
     def anonymize(self, user_id: uuid.UUID) -> None:
         anonymize_account(user_id)
+
+    def find_by_apple_id(self, apple_id: str) -> Optional[User]:
+        model = UserModel.objects.filter(apple_id=apple_id).first()
+        return self._to_entity(model) if model else None
 
     def find_by_google_id(self, google_id: str) -> Optional[User]:
         try:
