@@ -18,6 +18,14 @@ proxy_cache_path /var/cache/nginx/photos levels=1:2 keys_zone=photos:10m max_siz
 # CSP reports: public address that ends up in the logs
 limit_req_zone $binary_remote_addr zone=rapports_csp:1m rate=10r/m;
 
+# Requests per client address (ADR-044), on top of Django's limits per address and per account. Wide on purpose: mobile
+# operators share one public address between many customers. The locations are in kwa-ba-site.inc.
+limit_req_zone $binary_remote_addr zone=admin:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=30r/m;
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_req_status 429;
+limit_req_log_level warn;
+
 # Signature links: the token in the address gives access to the contract, it stays out of the logs. Same format as
 # nginx's default one.
 map $request_uri $uri_journal {
@@ -28,8 +36,10 @@ map $http_referer $referer_journal {
     "~^(?<avant>.*/(?:contrat|contrats/signature)/)[^/?]+(?<apres>.*)$" "$avant***$apres";
     default $http_referer;
 }
+# Last two fields: site or mobile app, and its version (X-Kwaba-Client, X-Kwaba-Version; empty for the site)
 log_format journal '$remote_addr - $remote_user [$time_local] "$request_method $uri_journal $server_protocol" '
-                   '$status $body_bytes_sent "$referer_journal" "$http_user_agent" "$http_x_forwarded_for"';
+                   '$status $body_bytes_sent "$referer_journal" "$http_user_agent" "$http_x_forwarded_for" '
+                   '"$http_x_kwaba_client" "$http_x_kwaba_version"';
 
 server_tokens off;
 gzip on;

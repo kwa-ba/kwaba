@@ -6,5 +6,13 @@ server {
     server_name ${KWABA_DOMAIN};
     access_log /var/log/nginx/access.log journal;
 
+    # Visitor's address from the X-Forwarded-For of Caddy, for the rate limits and the logs (ADR-044). Only private
+    # addresses are trusted: no port is published in this mode, only Caddy reaches nginx through the Docker network.
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
     include /etc/nginx/conf.d/kwa-ba-site.inc;
 }
