@@ -1,5 +1,6 @@
 """Sign in with Apple (ADR-045): identity tokens checked with Apple's public keys; Apple refresh tokens obtained from the
-authorization code, kept encrypted and revoked when the account is deleted."""
+authorization code, kept encrypted and revoked when the account is deleted. The iOS apps and the site (its Services ID,
+also listed in APPLE_CLIENT_ID) send the same tokens."""
 import json
 import logging
 import time
@@ -69,15 +70,24 @@ def _fernet() -> Fernet:
     return Fernet(settings.APPLE_TOKEN_ENCRYPTION_KEY.encode())
 
 
-def encrypted_refresh_token(client_id: str, authorization_code: str) -> str:
+def web_redirect_uri() -> str:
+    """Return address of the site's Apple sign-in (Services ID): the home page of the site, declared in Apple's portal.
+    The site sends it with a code obtained in the browser, and Apple asks for the same one at the exchange."""
+    return settings.FRONTEND_URL.rstrip('/') + '/'
+
+
+def encrypted_refresh_token(client_id: str, authorization_code: str, redirect_uri: str = '') -> str:
     """The authorization code exchanged for a refresh token, encrypted with the app it belongs to; '' when the
-    revocation is not configured or Apple refuses (the sign-in still goes on)."""
+    revocation is not configured or Apple refuses (the sign-in still goes on). `redirect_uri`: only for a code of the
+    site, and only the site's own address (never an address chosen by the caller)."""
     if not (revocation_configured() and authorization_code):
         return ''
+    data = {'client_id': client_id, 'client_secret': _client_secret(client_id), 'code': authorization_code,
+            'grant_type': 'authorization_code'}
+    if redirect_uri and redirect_uri == web_redirect_uri():
+        data['redirect_uri'] = redirect_uri
     try:
-        response = requests.post(TOKEN_URL, timeout=TIMEOUT_SECONDS, data={
-            'client_id': client_id, 'client_secret': _client_secret(client_id), 'code': authorization_code,
-            'grant_type': 'authorization_code'})
+        response = requests.post(TOKEN_URL, timeout=TIMEOUT_SECONDS, data=data)
         refresh_token = response.json().get('refresh_token') if response.status_code == 200 else None
     except (requests.RequestException, ValueError):
         refresh_token = None

@@ -117,6 +117,22 @@ class TestRevocableToken:
                             audience=AppleSignIn.ISSUER)
         assert (secret['iss'], secret['sub']) == ('TEAM123456', APP)
 
+    def test_the_code_of_the_site_is_exchanged_with_its_return_address(self, team_key, apple_api, settings):
+        settings.FRONTEND_URL = 'https://kwa-ba.com'
+
+        AppleSignIn.encrypted_refresh_token('com.kwaba.web', 'code-web', 'https://kwa-ba.com/')
+
+        _, sent = apple_api[0]
+        assert (sent['client_id'], sent['redirect_uri']) == ('com.kwaba.web', 'https://kwa-ba.com/')
+
+    def test_a_foreign_return_address_is_not_sent(self, team_key, apple_api, settings):
+        settings.FRONTEND_URL = 'https://kwa-ba.com'
+
+        AppleSignIn.encrypted_refresh_token('com.kwaba.web', 'code-web', 'https://pirate.example/')
+
+        _, sent = apple_api[0]
+        assert 'redirect_uri' not in sent
+
     def test_a_refused_code_keeps_nothing(self, team_key, monkeypatch):
         monkeypatch.setattr(AppleSignIn.requests, 'post',
                             lambda url, timeout, data: SimpleNamespace(status_code=400, json=lambda: {}))

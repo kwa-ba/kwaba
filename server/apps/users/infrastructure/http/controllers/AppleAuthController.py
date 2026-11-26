@@ -1,4 +1,5 @@
-"""Sign in with Apple (ADR-045): POST auth/apple/ {identity_token, authorization_code, first_name, last_name}."""
+"""Sign in with Apple (ADR-045): POST auth/apple/ {identity_token, authorization_code, first_name, last_name}, plus
+redirect_uri from the site (code obtained in the browser)."""
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,7 +31,8 @@ class AppleAuthView(APIView):
         if not result.is_active:
             return Response({'detail': 'Compte désactivé.', 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
 
-        encrypted = AppleSignIn.encrypted_refresh_token(info.client_id, str(request.data.get('authorization_code') or ''))
+        encrypted = AppleSignIn.encrypted_refresh_token(info.client_id, str(request.data.get('authorization_code') or ''),
+                                                        str(request.data.get('redirect_uri') or ''))
         if encrypted:
             UserModel.objects.filter(pk=result.id).update(apple_refresh_token=encrypted)
         activity.record('connexion_apple', request, actor=result.id, email=str(result.email))
