@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'apps.terrain.apps.TerrainConfig',
     'apps.correcteur.apps.CorrecteurConfig',
     'shared.export.apps.ExportConfig',
+    'shared.language.apps.LanguageConfig',
     'apps.agenda.apps.AgendaConfig',
     'apps.finance.apps.FinanceConfig',
 ]
@@ -91,6 +92,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # Language of the answer from Accept-Language (ADR-046), before anything that may answer in it
+    'shared.language.middleware.LanguageMiddleware',
     # Mobile app too old for the API: 426 (APP_MIN_VERSION)
     'shared.securite.app_version.AppVersionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -154,6 +157,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 
 LANGUAGE_CODE = 'fr-fr'
+# Languages of Django's and DRF's own messages; ours come from shared/language (ADR-046)
+LANGUAGES = [('fr', 'Français'), ('en', 'English')]
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
