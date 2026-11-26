@@ -4,6 +4,7 @@ import { getApiBaseUrl } from "@/lib/api-url";
 import { fetchBackendUser } from "@/lib/api/auth/me";
 import { renouvelerUneFois } from "@/lib/api/auth/renouvellement";
 import { verifyTwoFactor } from "@/lib/api/auth/two-factor";
+import { appleProvider } from "@/lib/providers/auth/apple";
 import { credentialsProvider } from "@/lib/providers/auth/credentials";
 import { emailCodeProvider } from "@/lib/providers/auth/email-code";
 import { googleProvider } from "@/lib/providers/auth/google";
@@ -55,7 +56,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [credentialsProvider, googleProvider, emailCodeProvider],
+  providers: [credentialsProvider, googleProvider, appleProvider, emailCodeProvider],
   trustHost: true,
 
   callbacks: {

@@ -4,6 +4,8 @@ export interface ConfigPublique {
   contactEmail: string;
   /** OAuth client of the Google sign-in; empty: the Google button is hidden */
   googleClientId: string;
+  /** Services ID of the Apple sign-in (ADR-045, also listed in APPLE_CLIENT_ID of server.env); empty: the Apple button is hidden */
+  appleServicesId: string;
 }
 
 export const CONTACT_EMAIL_DEFAUT = "info@kwa-ba.com";
@@ -16,5 +18,6 @@ export function lireConfigPublique(): ConfigPublique {
   return {
     contactEmail: process.env.CONTACT_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || CONTACT_EMAIL_DEFAUT,
     googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+    appleServicesId: process.env.APPLE_SERVICES_ID || "",
   };
 }

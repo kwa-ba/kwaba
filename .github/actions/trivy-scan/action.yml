@@ -2,7 +2,7 @@ name: Trivy scan
 description: >-
   Scanne une image Docker : vulnérabilités (OS et paquets Python) et secrets embarqués. Échoue sur toute
   vulnérabilité HIGH ou CRITICAL qui a un correctif disponible, et sur tout secret HIGH ou CRITICAL.
-  Le rapport complet va dans le résumé du job.
+  Le rapport complet va dans le résumé du job et dans son journal.
 
 inputs:
   image-ref:
@@ -32,6 +32,8 @@ runs:
       env:
         IMAGE_REF: ${{ inputs.image-ref }}
       run: |
+        # Also in the job log: the summary is not always shown, and the log is what `gh run view --log` returns
+        cat trivy-report.txt 2>/dev/null || echo "Pas de rapport (le scan n'a pas pu démarrer)."
         {
           echo "### Trivy : \`${IMAGE_REF}\`"
           echo '```'

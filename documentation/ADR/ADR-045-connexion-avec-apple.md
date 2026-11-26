@@ -37,3 +37,4 @@ négatifs (inconvénients)
 
 Impacts futurs
 - « Se connecter avec Apple » sur le site demanderait un identifiant de services Apple et une adresse de retour : non prévu.
+- **Mise à jour du 26 novembre 2026 (Fadel)** : le site le propose aussi, sur la connexion et l'inscription. Fenêtre d'Apple (Apple JS, `usePopup`), même route `auth/apple/` par next-auth (`apple-id-token`). L'identifiant de services du site (`APPLE_SERVICES_ID` de `client.env`) s'ajoute à `APPLE_CLIENT_ID` ; l'adresse de retour est la page d'accueil du site, déclarée dans le portail d'Apple, et l'API ne renvoie à Apple que celle-ci (`web_redirect_uri`) à l'échange du code. Bouton caché tant que `APPLE_SERVICES_ID` est vide. Pas de bouton Apple dans l'application Android.

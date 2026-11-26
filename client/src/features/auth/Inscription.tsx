@@ -8,7 +8,7 @@ import { firstErrorMessage } from "@/lib/api";
 import { inscrire } from "./api";
 import { cn } from "@/lib/utils";
 import AuthShell from "./AuthShell";
-import GoogleButton from "./GoogleButton";
+import FournisseursConnexion from "./FournisseursConnexion";
 import Captcha, { type CaptchaHandle } from "./Captcha";
 import FormField from "@/components/ui/FormField";
 import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
@@ -122,7 +122,7 @@ function RegisterForm() {
       <h1 className="font-heading font-bold text-3xl text-dark mb-2">{t("creerCompte")}</h1>
       <p className="text-gray-500 text-sm mb-8">{t("inscriptionTexte")}</p>
 
-      <GoogleButton label={t("inscriptionGoogle")} callbackUrl="/" onError={setError} />
+      <FournisseursConnexion mode="inscription" callbackUrl="/" onError={setError} />
 
       <form method="post" className="space-y-4" onSubmit={handleSubmit}>
         {error && (

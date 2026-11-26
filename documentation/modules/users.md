@@ -51,6 +51,8 @@ Réglages :
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Clé « Sign in with Apple » du compte Apple Developer (secrète, Vault) : sans elle, rien n'est révocable, obligatoire avant la soumission |
 | `APPLE_TOKEN_ENCRYPTION_KEY` | Chiffrement des jetons Apple ; dérivée de `SECRET_KEY` si absente |
 
+**Site** (mise à jour du 26/11) : bouton « Continuer avec Apple » sur la connexion et l'inscription, caché tant que `APPLE_SERVICES_ID` (`client.env`) est vide. Il envoie en plus `redirect_uri` (page d'accueil du site, déclarée pour l'identifiant de services dans le portail d'Apple), que l'API ne transmet à Apple que si c'est exactement `FRONTEND_URL/`. L'identifiant de services s'ajoute à `APPLE_CLIENT_ID` (`com.kwaba.app,com.kwaba.app.preprod,<services>`).
+
 Apple ne livre les e-mails aux adresses relais (`…@privaterelay.appleid.com`) que si `kwa-ba.com` est déclaré dans son portail.
 
 ## Changement du mot de passe

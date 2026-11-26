@@ -6,7 +6,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import AuthShell from "./AuthShell";
-import GoogleButton from "./GoogleButton";
+import FournisseursConnexion from "./FournisseursConnexion";
 import Captcha, { type CaptchaHandle } from "./Captcha";
 import FormField from "@/components/ui/FormField";
 import { safeCallback } from "@/lib/redirection";
@@ -98,7 +98,7 @@ function LoginForm() {
         </div>
       )}
 
-      <GoogleButton label={t("continuerGoogle")} callbackUrl={callbackUrl} onError={setError} />
+      <FournisseursConnexion mode="connexion" callbackUrl={callbackUrl} onError={setError} />
 
       <form method="post" className="space-y-5" onSubmit={handleSubmit}>
         {error && (

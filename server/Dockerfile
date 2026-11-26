@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Day of the build (build-arg of the CI): the Debian security updates are fetched again at least once a day instead
+# of coming from the layer cache (libzstd CVE-2026-124851, 26/11/2026: fixed in trixie-security, missed by a cached layer)
+ARG SECURITE_DEBIAN_DU=local
+RUN echo "Debian security updates of ${SECURITE_DEBIAN_DU}" && apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
