@@ -7,6 +7,7 @@ import pika
 from django.conf import settings
 from pika.exceptions import ChannelClosedByBroker
 
+from shared.language.api import DEFAULT, in_language
 from shared.notifications.application.service.NotificationService import NotificationService
 from shared.notifications.infrastructure.email.DjangoEmailSender import DjangoEmailSender
 
@@ -112,7 +113,9 @@ class RabbitMQConsumer:
         handler_name = self.ROUTING_KEYS.get(routing_key)
         if handler_name is None:
             raise ValueError(f"Routing key non gérée : {routing_key}")
-        getattr(self, handler_name)(data)
+        # The email templates are in French: dates and Django's texts too, even when sent during an English request
+        with in_language(DEFAULT):
+            getattr(self, handler_name)(data)
 
     def handle_verification_email(self, data: dict) -> None:
         self._service.send_verification_email(
