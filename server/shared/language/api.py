@@ -12,7 +12,7 @@ from . import catalog
 logger = logging.getLogger(__name__)
 
 __all__ = ['DEFAULT', 'current_language', 'in_language', 'language_of_header', 'languages', 'supported', 't',
-           't_lazy', 'variables']
+           't_lazy', 'variables', 'number']
 
 DEFAULT = catalog.REFERENCE
 
@@ -53,6 +53,16 @@ def in_language(language: str | None):
     """Texts, dates and Django's own messages in this language for the block (an email to its recipient)."""
     with translation.override(supported(language) or DEFAULT):
         yield
+
+
+# Thousands separator of each language: "25 000" in French, "25,000" in English
+THOUSANDS = {'fr': ' ', 'en': ','}
+
+
+def number(value: int, *, language: str | None = None) -> str:
+    """A whole amount written the way of the language (FCFA amounts: no decimals)."""
+    separator = THOUSANDS.get(supported(language) or current_language(), ' ')
+    return f'{int(value):,}'.replace(',', separator)
 
 
 def t(key: str, *, language: str | None = None, **values) -> str:
