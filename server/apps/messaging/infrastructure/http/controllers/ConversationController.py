@@ -22,6 +22,7 @@ from apps.messaging.infrastructure.container import messaging_service
 from apps.messaging.infrastructure.http.permissions import IsVerified
 from apps.messaging.infrastructure.lookups.DjangoBookingLookup import DjangoBookingLookup
 from apps.messaging.infrastructure.lookups.DjangoHebergementLookup import DjangoHebergementLookup
+from shared.language.api import t
 
 
 def _parse_uuid(value) -> Optional[uuid.UUID]:
@@ -111,11 +112,11 @@ class ConversationListCreateView(WriteGuardsMixin, APIView):
     def post(self, request):
         hebergement_id = _parse_uuid(request.data.get('hebergement_id'))
         if hebergement_id is None:
-            return Response({'detail': 'hebergement_id invalide ou manquant.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('messaging.listing_id_invalid')}, status=status.HTTP_400_BAD_REQUEST)
 
         # Listing not verified yet or hidden: its host cannot be contacted yet
         if not DjangoHebergementLookup().is_published(hebergement_id):
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('messaging.accommodation_not_found')}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             conversation, created = messaging_service().start_conversation(request.user.id, hebergement_id)
@@ -139,12 +140,12 @@ class ConversationWithGuestView(WriteGuardsMixin, APIView):
     def post(self, request):
         reservation_id = _parse_uuid(request.data.get('reservation_id'))
         if reservation_id is None:
-            return Response({'detail': 'reservation_id invalide ou manquant.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('messaging.booking_id_invalid')}, status=status.HTTP_400_BAD_REQUEST)
 
         # Anti-abuse: a host can only write to a traveller who booked AND paid one of their listings
         reservation = DjangoBookingLookup().confirmed_for_host(reservation_id, request.user.id)
         if reservation is None:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('messaging.booking_not_found')}, status=status.HTTP_404_NOT_FOUND)
 
         hebergement_id, guest_id = reservation
         try:
@@ -189,7 +190,7 @@ class ConversationMessagesView(WriteGuardsMixin, APIView):
         after_id = _parse_positive_int(after_raw) if after_raw is not None else None
         limit = _parse_positive_int(limit_raw) if limit_raw is not None else None
         if (after_raw is not None and after_id is None) or (limit_raw is not None and not limit):
-            return Response({'detail': 'Paramètres after/limit invalides.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('messaging.pagination_invalid')}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             messages = messaging_service().get_messages(request.user.id, conversation_id, after_id, limit)
@@ -225,7 +226,7 @@ class ConversationReadView(APIView):
         up_to_raw = request.data.get('up_to_id')
         up_to_id = _parse_positive_int(up_to_raw) if up_to_raw is not None else None
         if up_to_raw is not None and up_to_id is None:
-            return Response({'detail': 'up_to_id invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('messaging.up_to_id_invalid')}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             last_read_id = messaging_service().mark_as_read(request.user.id, conversation_id, up_to_id)

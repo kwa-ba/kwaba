@@ -4,6 +4,7 @@ from typing import Optional
 import uuid
 
 from apps.messaging.domain.exceptions import InvalidMessageException
+from shared.language.api import t
 
 
 @dataclass
@@ -30,10 +31,10 @@ class Message:
     def compose(conversation_id: uuid.UUID, sender_id: uuid.UUID, raw_content: str) -> 'Message':
         content = (raw_content or '').strip()
         if not content:
-            raise InvalidMessageException("Le message ne peut pas être vide.")
+            raise InvalidMessageException(t('messaging.empty'))
         if len(content) > Message.MAX_LENGTH:
             raise InvalidMessageException(
-                f"Le message ne peut pas dépasser {Message.MAX_LENGTH} caractères."
+                t('messaging.too_long', max=Message.MAX_LENGTH)
             )
         return Message(conversation_id=conversation_id, sender_id=sender_id, content=content)
 

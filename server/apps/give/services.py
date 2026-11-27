@@ -19,6 +19,7 @@ from apps.paiements import api as paiements
 
 from . import montants
 from .models import DonModel, OrganisationModel, ReversementModel
+from shared.language.api import number, t
 
 logger = logging.getLogger('apps.give')
 
@@ -38,14 +39,13 @@ def donner(*, donateur, organisation: OrganisationModel, projet=None, montant: i
            partage_identite: bool = False) -> tuple[DonModel, str]:
     """Saves the donation and creates the transaction at the provider. Returns the donation and the payment address."""
     if not organisation.publiee:
-        raise DonErreur("Cette organisation ne reçoit pas de dons pour le moment.")
+        raise DonErreur(t('give.organisation_closed'))
     if projet and (projet.organisation_id != organisation.pk or not projet.actif):
-        raise DonErreur("Ce projet ne reçoit pas de dons pour le moment.")
+        raise DonErreur(t('give.project_closed'))
     if not montants.MONTANT_MIN <= montant <= montants.MONTANT_MAX:
-        raise DonErreur(f"Le don doit être compris entre {montants.MONTANT_MIN} et {montants.MONTANT_MAX:,} FCFA."
-                        .replace(',', ' '))
+        raise DonErreur(t('give.amount_range', min=number(montants.MONTANT_MIN), max=number(montants.MONTANT_MAX)))
     if not paiements.paiement_actif():
-        raise DonErreur("Les dons en ligne sont momentanément indisponibles.")
+        raise DonErreur(t('give.online_unavailable'))
 
     calcul = montants.calculer(montant, couvre_frais)
     try:

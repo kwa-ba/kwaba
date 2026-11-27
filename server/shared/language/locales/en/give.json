@@ -1,0 +1,8 @@
+{
+  "organisation_closed": "This organisation is not receiving donations at the moment.",
+  "project_closed": "This project is not receiving donations at the moment.",
+  "amount_range": "The donation must be between {min} and {max} FCFA.",
+  "online_unavailable": "Online donations are temporarily unavailable.",
+  "organisation_not_found": "Organisation not found.",
+  "donation_not_found": "Donation not found."
+}

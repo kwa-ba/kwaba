@@ -1,10 +1,11 @@
 from rest_framework.permissions import BasePermission
+from shared.language.api import t_lazy
 
 
 class IsVerified(BasePermission):
     """Anti-abuse: only a verified email address can start a thread or send a message."""
 
-    message = "Vérifiez votre adresse email pour utiliser la messagerie."
+    message = t_lazy('messaging.verify_email_first')
 
     def has_permission(self, request, view):
         return bool(

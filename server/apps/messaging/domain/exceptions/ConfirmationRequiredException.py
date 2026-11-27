@@ -1,4 +1,7 @@
+from shared.language.api import t
+
+
 class ConfirmationRequiredException(Exception):
     def __init__(self, categories):
-        super().__init__("Ce message risque d'être mal reçu. Confirmez-vous son envoi ?")
+        super().__init__(t('messaging.confirm_sending'))
         self.categories = tuple(categories)

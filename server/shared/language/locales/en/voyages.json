@@ -1,0 +1,18 @@
+{
+  "not_found": "Trip not found.",
+  "organiser_only": "Only the organiser of the trip can do this.",
+  "return_after_arrival": "The return date must be after the arrival date.",
+  "both_dates_or_none": "Enter both dates, or none.",
+  "invitation_invalid": "This invitation link is no longer valid.",
+  "max_members": "This trip has reached {count} members.",
+  "organiser_cannot_leave": "The organiser cannot leave the trip: delete it instead.",
+  "accommodation_not_found": "Accommodation not found.",
+  "accommodation_already_proposed": "This accommodation is already proposed to the group.",
+  "proposal_not_found": "Proposal not found.",
+  "proposal_author_only": "Only the author of the proposal or the organiser can withdraw it.",
+  "step_not_found": "Step not found.",
+  "step_author_only": "Only the author of the step or the organiser can delete it.",
+  "booking_not_found": "Booking not found.",
+  "booking_sharer_only": "Only the person who shared it or the organiser can remove it.",
+  "no_group_payment": "No payment is asked of the group for this booking."
+}

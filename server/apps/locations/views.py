@@ -13,6 +13,7 @@ from apps.transferts import api as transferts
 
 from . import services
 from .models import CategorieVehiculeModel, LieuRemiseModel, LocationModel, ParametresLocationModel
+from shared.language.api import t
 
 
 def _photos(request, categorie) -> list[str]:
@@ -88,17 +89,17 @@ class DevisView(APIView):
     def get(self, request):
         params = ParametresLocationModel.courants()
         if not params or not services.active():
-            return Response({'detail': "La location de voitures n'est pas encore disponible."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('locations.not_available_yet')}, status=status.HTTP_400_BAD_REQUEST)
         q = request.query_params
         formule = q.get('formule', '')
         categorie = services.categories_proposees().filter(pk=_entier(q.get('categorie'))).first()
         lieu_prise = LieuRemiseModel.objects.filter(pk=_entier(q.get('lieu_prise')), actif=True).first()
         lieu_retour = LieuRemiseModel.objects.filter(pk=_entier(q.get('lieu_retour')), actif=True).first() or lieu_prise
         if (not categorie and formule != 'chauffeur_seul') or not lieu_prise:
-            return Response({'detail': 'Véhicule ou lieu inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('locations.vehicle_or_place_unknown')}, status=status.HTTP_400_BAD_REQUEST)
         debut, fin = _heure(lieu_prise, q.get('debut')), _heure(lieu_prise, q.get('fin'))
         if not debut or not fin:
-            return Response({'detail': 'Dates invalides.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('locations.dates_invalid')}, status=status.HTTP_400_BAD_REQUEST)
         try:
             services.verifier_dates(params, debut, fin)
             devis = services.chiffrer(params, categorie, formule, lieu_prise, lieu_retour, debut, fin,
@@ -240,7 +241,7 @@ class LocationCreationSerializer(serializers.Serializer):
 
     def validate_reservation(self, valeur):
         if valeur and not reservations.appartient_au_voyageur(valeur, self.context['request'].user.id):
-            raise serializers.ValidationError("Réservation introuvable.")
+            raise serializers.ValidationError(t('locations.booking_not_found'))
         return valeur
 
     def validate(self, data):
@@ -292,7 +293,7 @@ class LocationView(APIView):
     def get(self, request, pk):
         location = _de_l_utilisateur(pk, request.user)
         if not location:
-            return Response({'detail': 'Location introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('locations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         # Return page after payment: the transaction is read again at the provider
         if paiements.synchroniser_dernier_paiement('location', location.pk):
             location = _de_l_utilisateur(pk, request.user)
@@ -301,13 +302,13 @@ class LocationView(APIView):
     def delete(self, request, pk):
         location = _de_l_utilisateur(pk, request.user)
         if not location:
-            return Response({'detail': 'Location introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('locations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             rembourse = services.annuler(location, par='voyageur')
         except services.LocationErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         numero_requis = paiements.numero_remboursement_requis('location', location.pk)
-        return Response({'detail': 'Location annulée.', 'rembourse': rembourse, 'numero_requis': numero_requis})
+        return Response({'detail': t('locations.cancelled'), 'rembourse': rembourse, 'numero_requis': numero_requis})
 
 
 class PayerLocationView(APIView):
@@ -317,7 +318,7 @@ class PayerLocationView(APIView):
         verifier_ouverture()
         location = _de_l_utilisateur(pk, request.user)
         if not location:
-            return Response({'detail': 'Location introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('locations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             url = services.demarrer_paiement(location, request.data.get('moyen') or location.moyen,
                                              to_app=paiements.asked_from_app(request.data))
@@ -332,12 +333,12 @@ class CompteRemboursementLocationView(APIView):
     def put(self, request, pk):
         location = _de_l_utilisateur(pk, request.user)
         if not location:
-            return Response({'detail': 'Location introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('locations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         serializer = paiements.CompteRemboursementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if not paiements.indiquer_numero_remboursement('location', location.pk, **serializer.validated_data):
-            return Response({'detail': "Aucun remboursement n'attend de numéro pour cette location."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'detail': 'Numéro enregistré : le remboursement va être envoyé.'})
+            return Response({'detail': t('locations.no_refund_awaiting_number')}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': t('locations.refund_number_saved')})
 
 
 class AvisChauffeurLocationSerializer(serializers.Serializer):
@@ -356,7 +357,7 @@ class AvisChauffeurLocationView(APIView):
     def post(self, request, pk):
         location = _de_l_utilisateur(pk, request.user)
         if not location or location.statut != 'terminee' or not location.chauffeur_partenaire_id:
-            return Response({'detail': 'Location introuvable ou pas encore terminée.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('locations.not_found_or_not_over')}, status=status.HTTP_404_NOT_FOUND)
         serializer = AvisChauffeurLocationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -364,4 +365,4 @@ class AvisChauffeurLocationView(APIView):
                                        objet_id=location.pk, voyageur_id=request.user.pk, **serializer.validated_data)
         except transferts.NoteRefusee as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'detail': 'Merci pour votre avis.'}, status=status.HTTP_201_CREATED)
+        return Response({'detail': t('locations.thanks_for_review')}, status=status.HTTP_201_CREATED)

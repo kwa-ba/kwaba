@@ -10,6 +10,7 @@ from apps.paiements import api as paiements
 
 from . import montants, services
 from .models import DonModel, OrganisationModel, ProjetModel, ReversementModel
+from shared.language.api import t
 
 
 class ProjetSerializer(serializers.ModelSerializer):
@@ -151,7 +152,7 @@ class OrganisationView(APIView):
     def get(self, request, slug):
         organisation = services.organisations_publiees().filter(slug=slug).first()
         if not organisation:
-            return Response({'detail': 'Organisation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('give.organisation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(OrganisationDetailSerializer(organisation, context={'request': request}).data)
 
 
@@ -203,6 +204,6 @@ class DonView(APIView):
     def get(self, request, pk):
         don = _dons_de(request.user).filter(pk=pk).first()
         if not don:
-            return Response({'detail': 'Don introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('give.donation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         services.synchroniser(don)
         return Response(DonSerializer(don, context={'request': request}).data)

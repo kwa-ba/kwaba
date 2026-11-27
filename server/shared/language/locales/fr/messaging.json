@@ -1,0 +1,22 @@
+{
+  "own_listing": "Vous êtes l'hôte de cet hébergement : impossible de vous contacter vous-même.",
+  "confirm_sending": "Ce message risque d'être mal reçu. Confirmez-vous son envoi ?",
+  "conversation_not_found": "Conversation introuvable.",
+  "accommodation_not_found": "Hébergement introuvable.",
+  "message_refused": "Ce message ne respecte pas les règles de la messagerie.",
+  "suspended": "Votre messagerie est suspendue : vous pouvez lire vos conversations mais pas écrire.",
+  "not_participant": "Vous ne participez pas à cette conversation.",
+  "own_message": "Vous ne pouvez pas signaler votre propre message.",
+  "contest_length": "Expliquez votre contestation en {min} à {max} caractères.",
+  "contest_closed": "Cette sanction ne peut plus être contestée.",
+  "empty": "Le message ne peut pas être vide.",
+  "too_long": "Le message ne peut pas dépasser {max} caractères.",
+  "report_reason_invalid": "Motif de signalement invalide.",
+  "report_details_too_long": "Le détail ne peut pas dépasser {max} caractères.",
+  "verify_email_first": "Vérifiez votre adresse email pour utiliser la messagerie.",
+  "listing_id_invalid": "hebergement_id invalide ou manquant.",
+  "booking_id_invalid": "reservation_id invalide ou manquant.",
+  "booking_not_found": "Réservation introuvable.",
+  "pagination_invalid": "Paramètres after/limit invalides.",
+  "up_to_id_invalid": "up_to_id invalide."
+}

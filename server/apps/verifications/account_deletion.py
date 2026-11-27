@@ -8,12 +8,13 @@ from apps.hebergements import api as hebergements
 from shared.media.files import delete_after_commit
 
 from .models import PieceIdentiteModel, VisitInvitationModel
+from shared.language.api import t
 
 
 def blockers(user_id: uuid.UUID) -> dict[str, str]:
     listings = hebergements.ids_annonces_de(user_id)
     if listings and agenda.confirmed_for_targets(listings):
-        return {'upcoming_visit': "Un agent doit visiter votre logement : contactez Kwa-Ba pour annuler la visite."}
+        return {'upcoming_visit': t('verifications.deletion_upcoming_visit')}
     return {}
 
 

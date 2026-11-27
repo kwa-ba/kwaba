@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from apps.messaging.domain.exceptions import InvalidReportException
+from shared.language.api import t
 
 REASONS = ('insult', 'hate', 'threat', 'harassment', 'spam', 'scam', 'other')
 PENDING, CONFIRMED, REJECTED = 'pending', 'confirmed', 'rejected'
@@ -43,10 +44,10 @@ class MessageReport:
         reason = (reason or '').strip()
         details = (details or '').strip()
         if reason not in REASONS:
-            raise InvalidReportException("Motif de signalement invalide.")
+            raise InvalidReportException(t('messaging.report_reason_invalid'))
         if len(details) > MessageReport.DETAILS_MAX_LENGTH:
             raise InvalidReportException(
-                f"Le détail ne peut pas dépasser {MessageReport.DETAILS_MAX_LENGTH} caractères.")
+                t('messaging.report_details_too_long', max=MessageReport.DETAILS_MAX_LENGTH))
         return reason, details
 
     @property

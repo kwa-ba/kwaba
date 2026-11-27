@@ -1,0 +1,13 @@
+{
+  "phone_for_visit": "Ajoutez votre numéro de téléphone dans votre profil : l'agent Kwa-Ba vous appellera pour la visite.",
+  "too_many_pending_listings": "Vous avez déjà {count} annonces en attente. Attendez la vérification de votre identité avant d'en ajouter d'autres.",
+  "hosts_only": "Réservé aux hôtes.",
+  "choose_document_type": "Choisissez le type de pièce.",
+  "no_file": "Aucun fichier reçu.",
+  "identity_already_verified": "Votre identité est déjà vérifiée.",
+  "file_too_big": "Le fichier dépasse 10 Mo.",
+  "not_an_image": "Ce fichier n'est pas une image valide.",
+  "accepted_formats": "Formats acceptés : JPEG, PNG, WebP ou PDF.",
+  "image_too_large": "Image trop grande (40 mégapixels maximum).",
+  "deletion_upcoming_visit": "Un agent doit visiter votre logement : contactez Kwa-Ba pour annuler la visite."
+}

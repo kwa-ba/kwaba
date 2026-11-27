@@ -1,0 +1,6 @@
+{
+  "unknown": "Unknown document.",
+  "not_found": "Document not found.",
+  "after_payment": "Documents are available once the payment is received.",
+  "deposit_not_settled": "No document yet: the deposit is not settled."
+}

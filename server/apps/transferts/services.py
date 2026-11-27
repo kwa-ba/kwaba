@@ -20,6 +20,7 @@ from apps.paiements import api as paiements
 
 from . import tarifs
 from .models import AeroportModel, ChauffeurModel, TarifTransfertModel, TransfertModel, VersementChauffeurModel
+from shared.language.api import t
 
 logger = logging.getLogger('apps.transferts')
 
@@ -36,12 +37,12 @@ def heure_locale(aeroport: AeroportModel, arrivee_naive: datetime) -> datetime:
 def devis(aeroport: AeroportModel, arrivee: datetime, passagers: int, bagages: int) -> list[dict]:
     """Vehicle options with their price, for a given arrival (timezone-aware datetime)."""
     options = []
-    for t in TarifTransfertModel.objects.filter(aeroport=aeroport, actif=True):
-        cat = tarifs.CATEGORIES[t.categorie]
-        prix = tarifs.calculer(t.prix)
-        motif = tarifs.capacite_suffisante(t.categorie, passagers, bagages)
+    for tarif in TarifTransfertModel.objects.filter(aeroport=aeroport, actif=True):
+        cat = tarifs.CATEGORIES[tarif.categorie]
+        prix = tarifs.calculer(tarif.prix)
+        motif = tarifs.capacite_suffisante(tarif.categorie, passagers, bagages)
         options.append({
-            'categorie': t.categorie, 'nom': cat['nom'], 'description': cat['description'],
+            'categorie': tarif.categorie, 'nom': cat['nom'], 'description': cat['description'],
             'passagers': cat['passagers'], 'bagages': cat['bagages'],
             'prix': prix.prix, 'disponible': motif is None, 'motif': motif or '',
         })
@@ -52,13 +53,13 @@ def creer(*, voyageur, aeroport: AeroportModel, arrivee: datetime, categorie: st
           **champs) -> TransfertModel:
     if arrivee - timezone.now() < tarifs.DELAI_MIN_RESERVATION:
         heures = int(tarifs.DELAI_MIN_RESERVATION.total_seconds() // 3600)
-        raise TransfertErreur(f"Réservez votre transfert au moins {heures} heures avant votre arrivée.")
+        raise TransfertErreur(t('transferts.book_hours_before', hours=heures))
     tarif = TarifTransfertModel.objects.filter(aeroport=aeroport, categorie=categorie, actif=True).first()
     if not tarif:
-        raise TransfertErreur("Ce véhicule n'est pas proposé dans cet aéroport.")
+        raise TransfertErreur(t('transferts.vehicle_not_at_airport'))
     motif = tarifs.capacite_suffisante(categorie, passagers, bagages)
     if motif:
-        raise TransfertErreur(f"Ce véhicule ne convient pas : {motif}.")
+        raise TransfertErreur(t('transferts.vehicle_unsuitable', reason=motif))
 
     if not paiements.reservation_possible():
         raise TransfertErreur(paiements.INDISPONIBLE)
@@ -76,9 +77,9 @@ def creer(*, voyageur, aeroport: AeroportModel, arrivee: datetime, categorie: st
 def demarrer_paiement(transfert: TransfertModel, moyen: str, *, to_app: bool = False) -> str:
     """`to_app`: started from the mobile app, which the provider sends back to (ADR-041)."""
     if transfert.statut != 'en_attente_paiement':
-        raise paiements.PaiementErreur("Ce transfert n'attend pas de paiement.")
+        raise paiements.PaiementErreur(t('transferts.not_awaiting_payment'))
     if transfert.expire_le and transfert.expire_le <= timezone.now():
-        raise paiements.PaiementErreur("Le délai de paiement est dépassé. Refaites la réservation du transfert.")
+        raise paiements.PaiementErreur(t('transferts.payment_time_over'))
     if transfert.moyen != moyen:
         transfert.moyen = moyen
         transfert.save(update_fields=['moyen'])
@@ -143,9 +144,9 @@ def annuler(transfert: TransfertModel, par: str) -> int:
     with transaction.atomic():
         transfert = TransfertModel.objects.select_for_update().get(pk=transfert.pk)
         if transfert.statut in ('annule', 'termine'):
-            raise TransfertErreur("Ce transfert ne peut plus être annulé.")
+            raise TransfertErreur(t('transferts.cannot_cancel'))
         if par == 'voyageur' and transfert.arrivee <= timezone.now():
-            raise TransfertErreur("L'heure d'arrivée est passée : ce transfert ne peut plus être annulé.")
+            raise TransfertErreur(t('transferts.cannot_cancel_arrival_passed'))
 
         rembourse = 0
         if paiements.paiement_reussi('transfert', transfert.pk):

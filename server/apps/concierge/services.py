@@ -20,6 +20,7 @@ from config.site import module_actif
 
 from . import outils
 from .models import ConversationModel, MessageModel
+from shared.language.api import t
 
 logger = logging.getLogger('apps.concierge')
 
@@ -107,7 +108,7 @@ def verifier_quota(utilisateur):
         valeur, _ = incrementer(f"concierge:{utilisateur.pk}:{periode}", secondes)
         if valeur > maximum:
             raise ConciergeErreur(
-                f"Vous avez atteint la limite de {maximum} messages par {periode}. Réessayez un peu plus tard."
+                t('concierge.limit_per_hour', max=maximum) if periode == 'heure' else t('concierge.limit_per_day', max=maximum)
             )
 
 

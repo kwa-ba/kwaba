@@ -1,0 +1,18 @@
+{
+  "not_found": "Voyage introuvable.",
+  "organiser_only": "Seul l'organisateur du voyage peut faire cela.",
+  "return_after_arrival": "La date de retour doit être après la date d'arrivée.",
+  "both_dates_or_none": "Indiquez les deux dates, ou aucune.",
+  "invitation_invalid": "Ce lien d'invitation n'est plus valable.",
+  "max_members": "Ce voyage a atteint {count} membres.",
+  "organiser_cannot_leave": "L'organisateur ne peut pas quitter le voyage : supprimez-le plutôt.",
+  "accommodation_not_found": "Logement introuvable.",
+  "accommodation_already_proposed": "Ce logement est déjà proposé au groupe.",
+  "proposal_not_found": "Proposition introuvable.",
+  "proposal_author_only": "Seul l'auteur de la proposition ou l'organisateur peut la retirer.",
+  "step_not_found": "Étape introuvable.",
+  "step_author_only": "Seul l'auteur de l'étape ou l'organisateur peut la supprimer.",
+  "booking_not_found": "Réservation introuvable.",
+  "booking_sharer_only": "Seul la personne qui l'a partagée ou l'organisateur peut la retirer.",
+  "no_group_payment": "Aucun paiement demandé au groupe pour cette réservation."
+}

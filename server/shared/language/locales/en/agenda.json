@@ -1,0 +1,18 @@
+{
+  "already_booked": "A visit is already planned for this listing.",
+  "no_agent_in_city": "No agent offers visits in this city at the moment.",
+  "slot_unavailable": "This time slot is no longer available: choose another one.",
+  "choose_future_date": "Choose a date to come.",
+  "appointment_not_found": "Appointment not found.",
+  "appointment_not_planned": "This appointment is no longer planned.",
+  "move_until_24h": "An appointment can be moved until 24 h before the visit.",
+  "choose_a_listing": "Choose at least one listing.",
+  "max_grouped_listings": "A grouped visit covers {count} listings at most.",
+  "listing_twice": "A listing appears twice.",
+  "grouped_need_position": "Each listing of a grouped visit must have its position on the map.",
+  "not_same_site": "These listings are not on the same site (more than {meters} m apart): book a visit for each.",
+  "slot_just_taken": "This time slot has just been taken: choose another one.",
+  "daily_limit": "The limit of visits for this day is reached.",
+  "book_24h_ahead": "A visit is booked at least 24 h ahead.",
+  "book_within_14_days": "A visit is booked within the next 14 days."
+}
