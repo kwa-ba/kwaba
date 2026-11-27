@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from rest_framework import serializers
 
 from apps.paiements import api as paiements
+from shared.language.api import t
 
 
 def valider(data: dict, instance, host_id) -> dict:
@@ -18,24 +19,23 @@ def valider(data: dict, instance, host_id) -> dict:
     conditions = paiements.conditions_hote(host_id) or {}
     if conditions.get('categorie') == 'hotel':
         raise serializers.ValidationError(
-            {'deposit_option': "Un hôtel ou une résidence ne perçoit pas de caution par la plateforme."})
+            {'deposit_option': t('hebergements.deposit_not_for_hotels')})
     regles = paiements.deposit_rules()
     if option == paiements.DEPOSIT_ENHANCED_GUARANTEE:
         if not isinstance(fee, int) or fee <= 0:
             raise serializers.ValidationError(
-                {'guarantee_fee': 'Indiquez le forfait de la garantie renforcée, en francs CFA.'})
+                {'guarantee_fee': t('hebergements.deposit_guarantee_amount')})
         return {**champs, 'guarantee_fee': fee}
     if not regles.escrow_open and option != getattr(instance, 'deposit_option', None):
         raise serializers.ValidationError(
-            {'deposit_option': "La caution séquestrée n'est pas encore ouverte : choisissez la garantie renforcée "
-                               "ou aucune caution."})
+            {'deposit_option': t('hebergements.deposit_escrow_not_open')})
     try:
         rate = Decimal(str(rate))
     except (InvalidOperation, TypeError):
         rate = None
     if rate is None or not 0 < rate <= regles.rate_max:
         raise serializers.ValidationError(
-            {'deposit_rate': f'Choisissez un taux de caution entre 1 et {regles.rate_max:g} % du prix des nuitées.'})
+            {'deposit_rate': t('hebergements.deposit_rate_range', max=f'{regles.rate_max:g}')})
     return {**champs, 'deposit_rate': rate}
 
 

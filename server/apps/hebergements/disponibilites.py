@@ -9,6 +9,7 @@ from django.db.models import Q
 
 from .models import BlocageModel, HebergementModel
 from .occupations import reservations
+from shared.language.api import t
 
 
 def verrouiller(hebergement_id) -> None:
@@ -72,13 +73,13 @@ def conflit(hebergement_id, debut: date, fin: date, exclure=None, type_logement=
         type_logement = TypeLogementModel.objects.get(pk=type_par_defaut_id(hebergement_id))
     occupation = Occupation([type_logement], debut, fin, exclure)
     if occupation.ferme(type_logement.id):
-        return "L'hôte a fermé ces dates à la réservation."
+        return t('hebergements.dates_closed_by_host')
     restantes = occupation.restantes(type_logement.id)
     if restantes >= nb:
         return None
     if restantes == 0:
-        return "Ces dates sont déjà réservées pour cet hébergement."
-    return f"Il ne reste que {restantes} logement{'s' if restantes > 1 else ''} de ce type disponible{'s' if restantes > 1 else ''} à ces dates."
+        return t('hebergements.dates_booked')
+    return t('hebergements.units_available_other' if restantes > 1 else 'hebergements.units_available_one', count=restantes)
 
 
 def periodes_indisponibles(hebergement_id, debut: date, fin: date, detail: bool = False, type_logement=None) -> list[dict]:

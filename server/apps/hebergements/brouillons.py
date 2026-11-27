@@ -15,6 +15,7 @@ from apps.verifications import api as verifications
 from . import soumission
 from .models import BrouillonAnnonceModel, HebergementPhotoModel
 from .serializers import HebergementCreateSerializer, HebergementSerializer
+from shared.language.api import t
 
 # Only the fields of the listing form are kept, checked for real when the draft is submitted
 CHAMPS = frozenset(HebergementCreateSerializer.Meta.fields)
@@ -40,10 +41,10 @@ class BrouillonSerializer(serializers.ModelSerializer):
 
     def validate_donnees(self, value):
         if not isinstance(value, dict):
-            raise serializers.ValidationError("Objet attendu.")
+            raise serializers.ValidationError(t('hebergements.object_expected'))
         value = {cle: valeur for cle, valeur in value.items() if cle in CHAMPS}
         if len(json.dumps(value)) > TAILLE_MAX:
-            raise serializers.ValidationError("Brouillon trop volumineux.")
+            raise serializers.ValidationError(t('hebergements.draft_too_big'))
         return value
 
 
@@ -57,9 +58,9 @@ class BrouillonsView(APIView):
 
     def post(self, request):
         if not users.peut_gerer_annonces(request.user):
-            return Response({'detail': 'Seuls les hôtes peuvent créer une annonce.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.hosts_only_create')}, status=status.HTTP_403_FORBIDDEN)
         if BrouillonAnnonceModel.objects.filter(host_id=request.user.pk).count() >= MAX_BROUILLONS:
-            return Response({'detail': f"{MAX_BROUILLONS} brouillons au plus : terminez ou supprimez-en un."},
+            return Response({'detail': t('hebergements.max_drafts', count=MAX_BROUILLONS)},
                             status=status.HTTP_400_BAD_REQUEST)
         serializer = BrouillonSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -96,7 +97,7 @@ class BrouillonDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         reponses = request.data.get('donnees', {})
         if not isinstance(reponses, dict):
-            return Response({'donnees': ["Objet attendu."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'donnees': [t('hebergements.object_expected')]}, status=status.HTTP_400_BAD_REQUEST)
         modifications = {'donnees': {**brouillon.donnees, **reponses}}
         if 'etape' in request.data:
             modifications['etape'] = request.data['etape']
@@ -133,7 +134,7 @@ class BrouillonSoumissionView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         if not users.peut_gerer_annonces(request.user):
-            return Response({'detail': 'Seuls les hôtes peuvent créer une annonce.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.hosts_only_create')}, status=status.HTTP_403_FORBIDDEN)
         # Locked: a double click cannot create the listing twice
         brouillon = BrouillonAnnonceModel.objects.select_for_update().filter(pk=pk, host_id=request.user.pk).first()
         if not brouillon:
@@ -141,7 +142,7 @@ class BrouillonSoumissionView(APIView):
 
         bloquants = soumission.bloquants(soumission.conditions(request.user, brouillon.donnees))
         if bloquants:
-            return Response({'detail': "Il reste des étapes à terminer.", 'code': 'conditions', 'bloquants': bloquants},
+            return Response({'detail': t('hebergements.steps_left'), 'code': 'conditions', 'bloquants': bloquants},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
             verifications.verifier_limite_annonces(request.user)

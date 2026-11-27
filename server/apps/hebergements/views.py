@@ -32,6 +32,7 @@ from apps.favoris import api as favoris
 from apps.users import api as users
 from apps.verifications import api as verifications
 from config.site import module_actif
+from shared.language.api import t
 
 MAX_FENETRE_JOURS = 548  # 18 months of calendar per request
 MAX_NUITS = 90  # same limit as a booking
@@ -192,20 +193,20 @@ class HebergementListView(APIView):
     def post(self, request):
         if not users.peut_gerer_annonces(request.user):
             return Response(
-                {'detail': 'Seuls les hôtes peuvent publier un hébergement.'},
+                {'detail': t('hebergements.hosts_only_publish')},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         # With the wizard, a listing is sent through its checks (brouillons.BrouillonSoumissionView): not around them
         if module_actif('assistant_hote') and request.user.role != 'admin':
             return Response(
-                {'detail': "Créez votre annonce avec l'assistant.", 'code': 'assistant_requis'},
+                {'detail': t('hebergements.use_the_wizard'), 'code': 'assistant_requis'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if contrats.preinscription_requise(request.user):
             return Response(
-                {'detail': "Acceptez d'abord la pré-inscription pour créer votre annonce.", 'code': 'preinscription_requise'},
+                {'detail': t('hebergements.accept_preregistration_first'), 'code': 'preinscription_requise'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -318,7 +319,7 @@ class HebergementDetailView(APIView):
         verificateur = request.user.is_authenticated and request.user.role in verifications.ROLES_VERIFICATEURS
         # Listing not verified yet (or hidden): visible only to its host and the agents
         if not obj or not (obj.est_publiee or proprietaire or verificateur):
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         # The page shows the unit types (a hotel's rooms) to choose from
         contexte = {**_context(request, proprietaire=proprietaire), 'avec_types': True}
         return Response(HebergementSerializer(obj, context=contexte).data)
@@ -326,9 +327,9 @@ class HebergementDetailView(APIView):
     def patch(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if obj.host_id != request.user.id:
-            return Response({'detail': 'Non autorisé.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.not_allowed')}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = HebergementCreateSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
@@ -346,9 +347,9 @@ class HebergementDetailView(APIView):
     def delete(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if obj.host_id != request.user.id:
-            return Response({'detail': 'Non autorisé.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.not_allowed')}, status=status.HTTP_403_FORBIDDEN)
         try:
             archiver(obj)
         except ArchivageImpossible as e:
@@ -365,11 +366,11 @@ class PhotoUploadView(APIView):
 
     def post(self, request):
         if not users.peut_gerer_annonces(request.user):
-            return Response({'detail': 'Seuls les hôtes peuvent envoyer des photos.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.hosts_only_photos')}, status=status.HTTP_403_FORBIDDEN)
 
         uploaded = request.FILES.get('file')
         if not uploaded:
-            return Response({'file': ['Aucun fichier reçu.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'file': [t('hebergements.no_file')]}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             content, width, height = normalize_photo(uploaded)
@@ -388,7 +389,7 @@ class PhotoDetailView(APIView):
     def delete(self, request, pk):
         photo = HebergementPhotoModel.objects.filter(pk=pk, owner_id=request.user.pk).first()
         if not photo:
-            return Response({'detail': 'Photo introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.photo_not_found')}, status=status.HTTP_404_NOT_FOUND)
         photo.image.delete(save=False)
         photo.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -446,18 +447,18 @@ class DevisView(APIView):
     def get(self, request, pk):
         hebergement = _annonce_consultable(request, pk)
         if not hebergement:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         nuits, nb_unites = _entier(request.query_params.get('nuits')), _entier(request.query_params.get('nb_unites', 1))
         if nuits is None or not 1 <= nuits <= MAX_NUITS:
-            return Response({'detail': f'Nombre de nuits invalide (de 1 à {MAX_NUITS}).'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.nights_invalid', max=MAX_NUITS)}, status=status.HTTP_400_BAD_REQUEST)
         type_id = request.query_params.get('type_logement')
         type_logement = TypeLogementModel.objects.filter(
             pk=_uuid(type_id) if type_id else types_logement.type_par_defaut_id(hebergement.id),
             hebergement_id=hebergement.id, actif=True).first()
         if type_logement is None:
-            return Response({'detail': 'Type de logement inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.unit_type_unknown')}, status=status.HTTP_400_BAD_REQUEST)
         if nb_unites is None or not 1 <= nb_unites <= type_logement.quantite:
-            return Response({'detail': "Nombre d'unités invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.units_invalid')}, status=status.HTTP_400_BAD_REQUEST)
         caution = deposit_settings(hebergement)
         montants = paiements.devis_sejour(type_logement.prix_nuit, hebergement.host_id, nuits, voyageur=request.user,
                                           nb_unites=nb_unites, type_annonce=hebergement.type, deposit_settings=caution)
@@ -475,16 +476,16 @@ class DisponibiliteView(APIView):
     def get(self, request, pk):
         hebergement = _annonce_consultable(request, pk)
         if not hebergement:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         est_hote = request.user.is_authenticated and request.user.id == hebergement.host_id
 
         today = timezone.localdate()
         debut = _parse_date(request.query_params.get('debut'), today)
         fin = _parse_date(request.query_params.get('fin'), today + timedelta(days=365))
         if not debut or not fin or fin <= debut:
-            return Response({'detail': 'Période invalide (format AAAA-MM-JJ).'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.period_invalid')}, status=status.HTTP_400_BAD_REQUEST)
         if (fin - debut).days > MAX_FENETRE_JOURS:
-            return Response({'detail': f'Période limitée à {MAX_FENETRE_JOURS} jours.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.period_max_days', days=MAX_FENETRE_JOURS)}, status=status.HTTP_400_BAD_REQUEST)
 
         # ?type_logement=: the full nights of that unit type (otherwise: nights when no type has a unit left)
         type_logement = None
@@ -492,7 +493,7 @@ class DisponibiliteView(APIView):
             type_logement = TypeLogementModel.objects.filter(
                 pk=_uuid(request.query_params['type_logement']), hebergement_id=hebergement.id, actif=True).first()
             if type_logement is None:
-                return Response({'detail': 'Type de logement inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': t('hebergements.unit_type_unknown')}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'debut': debut,
             'fin': fin,
@@ -506,9 +507,9 @@ class BlocageCreateView(APIView):
     def post(self, request, pk):
         hebergement = HebergementModel.objects.filter(pk=pk).first()
         if not hebergement:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if hebergement.host_id != request.user.id:
-            return Response({'detail': 'Non autorisé.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('hebergements.not_allowed')}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = BlocageSerializer(data=request.data)
         if not serializer.is_valid():
@@ -517,7 +518,7 @@ class BlocageCreateView(APIView):
         # Without a unit type, the whole establishment is closed; with one, only that type
         type_logement = serializer.validated_data.get('type_logement')
         if type_logement is not None and type_logement.hebergement_id != hebergement.id:
-            return Response({'type_logement': ["Ce type n'appartient pas à cet établissement."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'type_logement': [t('hebergements.type_not_in_listing')]}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             # Unit types first, then the establishment: the same order as a booking (its type, then the insert that
@@ -529,21 +530,21 @@ class BlocageCreateView(APIView):
                 # Some rooms only (sold elsewhere): possible next to bookings, within the rooms still free every night
                 libres = stock.Occupation([type_logement], debut, fin).restantes(type_logement.id)
                 if libres < quantite:
-                    return Response({'quantite': [f"Il ne reste que {libres} unité(s) libre(s) de ce type sur ces dates."]},
+                    return Response({'quantite': [t('hebergements.units_left', count=libres)]},
                                     status=status.HTTP_409_CONFLICT)
                 blocage = serializer.save(hebergement=hebergement)
                 return Response(BlocageSerializer(blocage).data, status=status.HTTP_201_CREATED)
             # Nights already booked are not closed: the host must first handle the booking
             if a_des_reservations(hebergement.id, debut, fin, type_logement=type_logement):
                 return Response(
-                    {'detail': 'Cette période contient une réservation. Contactez le voyageur avant de fermer ces dates.'},
+                    {'detail': t('hebergements.period_has_booking')},
                     status=status.HTTP_409_CONFLICT,
                 )
             deja = BlocageModel.objects.filter(hebergement=hebergement, debut__lt=fin, fin__gt=debut)
             if type_logement is not None:
                 deja = deja.filter(Q(type_logement=type_logement) | Q(type_logement__isnull=True))
             if deja.exists():
-                return Response({'detail': 'Une partie de ces dates est déjà fermée.'}, status=status.HTTP_409_CONFLICT)
+                return Response({'detail': t('hebergements.dates_partly_closed')}, status=status.HTTP_409_CONFLICT)
             blocage = serializer.save(hebergement=hebergement)
         return Response(BlocageSerializer(blocage).data, status=status.HTTP_201_CREATED)
 
@@ -554,7 +555,7 @@ class BlocageDetailView(APIView):
     def delete(self, request, pk):
         blocage = BlocageModel.objects.filter(pk=pk, hebergement__host_id=request.user.pk).first()
         if not blocage:
-            return Response({'detail': 'Blocage introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.block_not_found')}, status=status.HTTP_404_NOT_FOUND)
         blocage.delete()
         signaler_liberation(blocage.hebergement_id, blocage.debut, blocage.fin)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -574,20 +575,20 @@ class TypesLogementView(APIView):
     def get(self, request, pk):
         hebergement = self._etablissement(request, pk)
         if not hebergement:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         types = hebergement.types.all()
         return Response({'results': TypeLogementSerializer(types, many=True).data})
 
     def post(self, request, pk):
         hebergement = self._etablissement(request, pk)
         if not hebergement:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         serializer = TypeLogementSerializer(data=request.data)
         if not serializer.is_valid():
             _signaler_coordonnees(request, serializer, hebergement.pk)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         if hebergement.types.count() >= MAX_TYPES:
-            return Response({'detail': f'{MAX_TYPES} types de logement au plus par établissement.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('hebergements.max_types', count=MAX_TYPES)}, status=status.HTTP_400_BAD_REQUEST)
         with transaction.atomic():
             type_logement = serializer.save(hebergement=hebergement)
             types_logement.recalculer_etablissement(hebergement)
@@ -603,7 +604,7 @@ class TypeLogementDetailView(APIView):
     def patch(self, request, pk):
         type_logement = _type_du_proprietaire(request, pk)
         if not type_logement:
-            return Response({'detail': 'Type de logement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.unit_type_not_found')}, status=status.HTTP_404_NOT_FOUND)
         serializer = TypeLogementSerializer(type_logement, data=request.data, partial=True)
         if not serializer.is_valid():
             _signaler_coordonnees(request, serializer, type_logement.hebergement_id)
@@ -616,10 +617,10 @@ class TypeLogementDetailView(APIView):
             reservees = types_logement.unites_reservees_max(type_logement)
             if quantite < reservees:
                 return Response({'quantite': [
-                    f"{reservees} logements de ce type sont déjà réservés certaines nuits : la quantité ne peut pas être inférieure."]},
+                    t('hebergements.quantity_below_booked', count=reservees)]},
                     status=status.HTTP_409_CONFLICT)
             if serializer.validated_data.get('actif') is False and not hebergement.types.filter(actif=True).exclude(pk=pk).exists():
-                return Response({'actif': ["L'établissement doit garder au moins un type de logement proposé."]},
+                return Response({'actif': [t('hebergements.keep_one_type')]},
                                 status=status.HTTP_400_BAD_REQUEST)
             serializer.save()
             types_logement.recalculer_etablissement(hebergement)
@@ -630,13 +631,13 @@ class TypeLogementDetailView(APIView):
     def delete(self, request, pk):
         type_logement = _type_du_proprietaire(request, pk)
         if not type_logement:
-            return Response({'detail': 'Type de logement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.unit_type_not_found')}, status=status.HTTP_404_NOT_FOUND)
         hebergement = type_logement.hebergement
         if not hebergement.types.filter(actif=True).exclude(pk=pk).exists():
-            return Response({'detail': "L'établissement doit garder au moins un type de logement proposé."},
+            return Response({'detail': t('hebergements.keep_one_type')},
                             status=status.HTTP_400_BAD_REQUEST)
         if reservations().type_reserve(type_logement.pk):
-            return Response({'detail': "Ce type a déjà des réservations : désactivez-le plutôt."}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('hebergements.type_has_bookings')}, status=status.HTTP_409_CONFLICT)
         with transaction.atomic():
             type_logement.delete()
         types_logement.recalculer_etablissement(hebergement)
