@@ -27,5 +27,15 @@
   "not_found_or_not_over": "Rental not found or not over yet.",
   "thanks_for_review": "Thank you for your review.",
   "deletion_upcoming_rentals": "You have a rental coming up or under way: cancel it or wait for the vehicle to be returned.",
-  "deletion_open_deposit": "A deposit is still to be returned to you: wait until it is."
+  "deletion_open_deposit": "A deposit is still to be returned to you: wait until it is.",
+  "formula_sans_chauffeur": "Car only",
+  "formula_avec_chauffeur": "With a driver",
+  "formula_chauffeur_seul": "Driver for your vehicle",
+  "email_confirmed": "Booking confirmed: {city}",
+  "email_driver_review": "Your Kwa-Ba driver: your review",
+  "your_driver": "your driver",
+  "email_driver_assigned": "Your driver in {city}",
+  "email_vehicle_assigned": "Your vehicle in {city}",
+  "email_deposit_returned": "Your deposit returned: {reference}",
+  "reminder_what": "your rental \"{name}\", from {start} to {end}"
 }

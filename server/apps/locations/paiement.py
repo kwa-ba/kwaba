@@ -10,15 +10,21 @@ from apps.paiements.api import ProduitPaye, Relance, VersementErreur, ligne_a_ve
 
 from . import services
 from .models import LocationModel, VersementChauffeurLocationModel, VersementPartenaireModel
+from shared.language.api import t
 
 FUSEAU = ZoneInfo('Africa/Lome')
 
 
 def _decrire(loc) -> dict:
     return {'voyageur': loc.voyageur, 'montant': loc.prix, 'url': f"{settings.FRONTEND_URL}/location/{loc.id}",
-            'quoi': f"votre location « {loc.libelle} », "
-                    f"du {formats.date_format(loc.debut.astimezone(FUSEAU), 'j F')} "
-                    f"au {formats.date_format(loc.fin.astimezone(FUSEAU), 'j F Y')}"}
+            'quoi': t('locations.reminder_what', name=_name(loc),
+                      start=formats.date_format(loc.debut.astimezone(FUSEAU), 'j F'),
+                      end=formats.date_format(loc.fin.astimezone(FUSEAU), 'j F Y'))}
+
+
+def _name(loc) -> str:
+    """The category, or the formula "driver for your vehicle" in the active language."""
+    return loc.categorie.nom if loc.categorie_id else t('locations.formula_chauffeur_seul')
 
 
 def _decrire_paiement(location_id) -> dict | None:
