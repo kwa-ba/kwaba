@@ -9,5 +9,12 @@
   "not_an_image": "Ce fichier n'est pas une image valide.",
   "accepted_formats": "Formats acceptés : JPEG, PNG, WebP ou PDF.",
   "image_too_large": "Image trop grande (40 mégapixels maximum).",
-  "deletion_upcoming_visit": "Un agent doit visiter votre logement : contactez Kwa-Ba pour annuler la visite."
+  "deletion_upcoming_visit": "Un agent doit visiter votre logement : contactez Kwa-Ba pour annuler la visite.",
+  "email_book_visit": "Réservez la visite de votre logement : {name}",
+  "email_photos_removed": "Photos retirées de votre annonce « {name} »",
+  "email_identity_verified": "Votre identité est vérifiée",
+  "email_identity_refused": "Votre pièce d'identité n'a pas pu être vérifiée",
+  "email_listing_verified": "Votre logement est vérifié : {name}",
+  "email_listing_not_published": "Votre annonce n'est pas encore publiée : {name}",
+  "email_listing_unpublished": "Votre annonce n'est plus publiée : {name}"
 }

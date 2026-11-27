@@ -1,0 +1,14 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Good news: your identity is verified.
+{% if contrat_a_signer %}
+Last step before the visit: sign your host agreement online from your host space (two minutes, from your phone).
+{% elif nb_annonces %}
+A Kwa-Ba agent will now call you to arrange the visit of your accommodation. Your listing will be visible to travellers right after.
+{% else %}
+Publish your accommodation from your host space: a Kwa-Ba agent will then call you to visit it.
+{% endif %}
+{{ url_espace }}
+
+The Kwa-Ba team
+{% endautoescape %}

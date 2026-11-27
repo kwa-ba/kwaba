@@ -1,0 +1,13 @@
+{% autoescape off %}Hello {{ prenom }},
+
+We could not verify the identity document you sent us:
+
+  {{ motif }}
+
+Send a new document from your host space. The refused document has been deleted.
+{{ url_espace }}
+
+A question? Simply reply to this email.
+
+The Kwa-Ba team
+{% endautoescape %}

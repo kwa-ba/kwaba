@@ -1,0 +1,13 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Our agent visited your accommodation "{{ hebergement }}", but we cannot publish the listing yet:
+
+  {{ motif }}
+
+Fix this point from your host space: the listing will go back to verification.
+{{ url_espace }}
+
+A question? Simply reply to this email.
+
+The Kwa-Ba team
+{% endautoescape %}

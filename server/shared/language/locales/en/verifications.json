@@ -9,5 +9,12 @@
   "not_an_image": "This file is not a valid image.",
   "accepted_formats": "Accepted formats: JPEG, PNG, WebP or PDF.",
   "image_too_large": "Image too large (40 megapixels maximum).",
-  "deletion_upcoming_visit": "An agent is due to visit your accommodation: contact Kwa-Ba to cancel the visit."
+  "deletion_upcoming_visit": "An agent is due to visit your accommodation: contact Kwa-Ba to cancel the visit.",
+  "email_book_visit": "Book the visit of your accommodation: {name}",
+  "email_photos_removed": "Photos removed from your listing \"{name}\"",
+  "email_identity_verified": "Your identity is verified",
+  "email_identity_refused": "Your identity document could not be verified",
+  "email_listing_verified": "Your accommodation is verified: {name}",
+  "email_listing_not_published": "Your listing is not published yet: {name}",
+  "email_listing_unpublished": "Your listing is no longer published: {name}"
 }
