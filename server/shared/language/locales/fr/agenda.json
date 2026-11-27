@@ -1,0 +1,18 @@
+{
+  "already_booked": "Une visite est déjà prévue pour cette annonce.",
+  "no_agent_in_city": "Aucun agent ne propose de visite dans cette ville pour le moment.",
+  "slot_unavailable": "Ce créneau n'est plus disponible : choisissez-en un autre.",
+  "choose_future_date": "Choisissez une date à venir.",
+  "appointment_not_found": "Rendez-vous introuvable.",
+  "appointment_not_planned": "Ce rendez-vous n'est plus prévu.",
+  "move_until_24h": "Un rendez-vous se déplace jusqu'à 24 h avant la visite.",
+  "choose_a_listing": "Choisissez au moins une annonce.",
+  "max_grouped_listings": "Une visite groupée compte {count} annonces au plus.",
+  "listing_twice": "Une annonce apparaît deux fois.",
+  "grouped_need_position": "Chaque annonce d'une visite groupée doit avoir sa position sur la carte.",
+  "not_same_site": "Ces annonces ne sont pas sur le même site (plus de {meters} m) : réservez une visite pour chacune.",
+  "slot_just_taken": "Ce créneau vient d'être pris : choisissez-en un autre.",
+  "daily_limit": "La limite de visites de cette journée est atteinte.",
+  "book_24h_ahead": "Une visite se réserve au moins 24 h à l'avance.",
+  "book_within_14_days": "Une visite se réserve dans les 14 prochains jours."
+}

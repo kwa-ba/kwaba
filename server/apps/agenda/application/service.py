@@ -20,6 +20,7 @@ from .ports import (
     AgendaRepository, AppointmentRepository, Clock, DigestRepository, Notifier, PeopleLookup, SettingsRepository,
     StoredSettings, TransactionManager,
 )
+from shared.language.api import t
 
 logger = logging.getLogger('apps.agenda')
 
@@ -166,7 +167,7 @@ class AgendaService:
         ids = [t.id for t in targets]
         self.appointments.lock_targets(ids)
         if self.appointments.confirmed_for_targets(ids):
-            raise AlreadyBooked("Une visite est déjà prévue pour cette annonce.")
+            raise AlreadyBooked(t('agenda.already_booked'))
 
     def book(self, request: BookingRequest) -> Appointment:
         length = r.duration(len(request.targets), self.rules)
@@ -176,7 +177,7 @@ class AgendaService:
             self._check_targets_free(request.targets)
             candidates = self._candidates(request.city, request.agent_id)
             if not candidates:
-                raise SlotUnavailable("Aucun agent ne propose de visite dans cette ville pour le moment.")
+                raise SlotUnavailable(t('agenda.no_agent_in_city'))
             possible, error = [], None
             for agenda, appointments in self._with_appointments(self._lock(candidates), request.start):
                 try:
@@ -187,7 +188,7 @@ class AgendaService:
             if not possible:
                 if isinstance(error, SlotUnavailable):
                     raise error
-                raise SlotUnavailable("Ce créneau n'est plus disponible : choisissez-en un autre.")
+                raise SlotUnavailable(t('agenda.slot_unavailable'))
             agenda = r.choose(possible, request.start)
             appointment = self.appointments.add(self._new(agenda, request, length, ORIGIN_HOST))
             self.notifier.confirmed(appointment, agenda)
@@ -198,7 +199,7 @@ class AgendaService:
         r.check_same_site(request.targets, self.rules)
         now = self.clock.now()
         if request.start <= now:
-            raise InvalidRule("Choisissez une date à venir.")
+            raise InvalidRule(t('agenda.choose_future_date'))
         with self.tx.atomic():
             self._check_targets_free(request.targets)
             agenda, = self._lock([self.agenda(agent_id)])
@@ -211,13 +212,13 @@ class AgendaService:
     def get(self, appointment_id: uuid.UUID) -> Appointment:
         appointment = self.appointments.get(appointment_id)
         if appointment is None:
-            raise AppointmentNotFound("Rendez-vous introuvable.")
+            raise AppointmentNotFound(t('agenda.appointment_not_found'))
         return appointment
 
     def _confirmed(self, appointment_id: uuid.UUID) -> Appointment:
         appointment = self.get(appointment_id)
         if appointment.status != CONFIRMED:
-            raise ActionNotAllowed("Ce rendez-vous n'est plus prévu.")
+            raise ActionNotAllowed(t('agenda.appointment_not_planned'))
         return appointment
 
     def move(self, appointment_id: uuid.UUID, requester_id: uuid.UUID, start: datetime) -> Appointment:
@@ -225,9 +226,9 @@ class AgendaService:
         with self.tx.atomic():
             appointment = self._confirmed(appointment_id)
             if appointment.requester_id != requester_id:
-                raise AppointmentNotFound("Rendez-vous introuvable.")
+                raise AppointmentNotFound(t('agenda.appointment_not_found'))
             if appointment.start - self.rules.notice < now:
-                raise ActionNotAllowed("Un rendez-vous se déplace jusqu'à 24 h avant la visite.")
+                raise ActionNotAllowed(t('agenda.move_until_24h'))
             agenda, = self._lock([self.agendas.for_agent(appointment.agent_id)])
             (agenda, appointments), = self._with_appointments([agenda], start)
             length = appointment.end - appointment.start
@@ -250,7 +251,7 @@ class AgendaService:
             if by == BY_AGENT and appointment.agent_id != author_id:
                 raise ActionNotAllowed("Seul l'agent de cette visite ou un administrateur peut l'annuler.")
             if by == BY_HOST and appointment.requester_id != author_id:
-                raise AppointmentNotFound("Rendez-vous introuvable.")
+                raise AppointmentNotFound(t('agenda.appointment_not_found'))
             appointment = self.appointments.save(replace(
                 appointment, status=CANCELLED, cancelled_at=self.clock.now(), cancelled_by=by,
                 cancellation_reason=reason[:500], sequence=appointment.sequence + 1))

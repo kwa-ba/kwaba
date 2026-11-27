@@ -5,6 +5,7 @@ from datetime import date, datetime, time, timedelta
 
 from .entities import BLOCK, EXTRA, Agenda, Appointment, Target, WeeklySlot
 from .exceptions import DailyLimitReached, InvalidRule, SlotUnavailable
+from shared.language.api import t
 
 
 @dataclass(frozen=True)
@@ -33,9 +34,9 @@ def covers(agenda: Agenda, city: str) -> bool:
 
 def duration(listing_count: int, rules: Rules) -> timedelta:
     if listing_count < 1:
-        raise InvalidRule("Choisissez au moins une annonce.")
+        raise InvalidRule(t('agenda.choose_a_listing'))
     if listing_count > rules.max_listings:
-        raise InvalidRule(f"Une visite groupée compte {rules.max_listings} annonces au plus.")
+        raise InvalidRule(t('agenda.max_grouped_listings', count=rules.max_listings))
     return rules.visit_duration + (listing_count - 1) * rules.extra_listing
 
 
@@ -49,16 +50,15 @@ def check_same_site(targets: list[Target], rules: Rules) -> None:
     if len(targets) <= 1:
         return
     if len({t.id for t in targets}) != len(targets):
-        raise InvalidRule("Une annonce apparaît deux fois.")
+        raise InvalidRule(t('agenda.listing_twice'))
     if any(t.latitude is None or t.longitude is None for t in targets):
-        raise InvalidRule("Chaque annonce d'une visite groupée doit avoir sa position sur la carte.")
+        raise InvalidRule(t('agenda.grouped_need_position'))
     positions = [(float(t.latitude), float(t.longitude)) for t in targets]
     for i, a in enumerate(positions):
         for b in positions[i + 1:]:
             if distance_m(a, b) > rules.same_site_distance_m:
                 raise InvalidRule(
-                    f"Ces annonces ne sont pas sur le même site (plus de {rules.same_site_distance_m} m) : "
-                    "réservez une visite pour chacune.")
+                    t('agenda.not_same_site', meters=rules.same_site_distance_m))
 
 
 def check_weekly_slots(slots: list[WeeklySlot]) -> None:
@@ -132,10 +132,10 @@ def _check_occupancy(agenda, appointments, start, length, rules, exclude) -> Non
     blocked_until = start + length + rules.margin
     for a in appointments:
         if a.active and a.id != exclude and _overlaps(start, blocked_until, a.start, a.blocked_until):
-            raise SlotUnavailable("Ce créneau vient d'être pris : choisissez-en un autre.")
+            raise SlotUnavailable(t('agenda.slot_just_taken'))
     day = local_day(agenda, start)
     if visits_on_day(agenda, appointments, day, exclude) >= day_limit(agenda, day, rules):
-        raise DailyLimitReached("La limite de visites de cette journée est atteinte.")
+        raise DailyLimitReached(t('agenda.daily_limit'))
 
 
 def fits_windows(agenda: Agenda, start: datetime, length: timedelta) -> bool:
@@ -147,11 +147,11 @@ def check(agenda: Agenda, appointments: list[Appointment], start: datetime, leng
           rules: Rules, check_availability: bool = True, exclude=None) -> None:
     if check_availability:
         if start < now + rules.notice:
-            raise SlotUnavailable("Une visite se réserve au moins 24 h à l'avance.")
+            raise SlotUnavailable(t('agenda.book_24h_ahead'))
         if start > now + rules.horizon:
-            raise SlotUnavailable("Une visite se réserve dans les 14 prochains jours.")
+            raise SlotUnavailable(t('agenda.book_within_14_days'))
         if not fits_windows(agenda, start, length):
-            raise SlotUnavailable("Ce créneau n'est plus disponible : choisissez-en un autre.")
+            raise SlotUnavailable(t('agenda.slot_unavailable'))
     _check_occupancy(agenda, appointments, start, length, rules, exclude)
 
 
