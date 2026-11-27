@@ -1,0 +1,11 @@
+{
+  "own_review": "Vous ne pouvez pas signaler votre propre avis.",
+  "already_reported": "Vous avez déjà signalé cet avis.",
+  "booking_not_found": "Réservation introuvable.",
+  "details_required": "Précisez ce qui pose problème.",
+  "accommodation_not_found": "Hébergement introuvable.",
+  "already_reviewed": "Vous avez déjà laissé un avis pour ce séjour.",
+  "host_only_reply": "Seul l'hôte de ce logement peut répondre.",
+  "already_replied": "Vous avez déjà répondu à cet avis.",
+  "comment_too_short": "Décrivez votre séjour en au moins 20 caractères."
+}
