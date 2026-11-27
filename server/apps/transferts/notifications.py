@@ -4,10 +4,11 @@ from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
-from django.utils import formats, timezone
+from django.utils import timezone
 
 from apps.paiements import api as paiements
 from apps.users import api as users
+from shared.language.api import day_and_time, in_language, t
 from shared.notifications.api import push
 
 from . import tarifs
@@ -16,24 +17,29 @@ from .models import TransfertModel, VersementChauffeurModel
 logger = logging.getLogger('apps.transferts.notifications')
 
 
-def _heure(t: TransfertModel) -> str:
-    return formats.date_format(t.arrivee.astimezone(ZoneInfo(t.aeroport.fuseau)), 'l j F Y à H\\hi')
+def _heure(transfert: TransfertModel) -> str:
+    return day_and_time(transfert.arrivee.astimezone(ZoneInfo(transfert.aeroport.fuseau)))
 
 
-def _course(t: TransfertModel) -> dict:
+def _course(transfert: TransfertModel) -> dict:
     return {
-        'reference': t.reference, 'aeroport': f"{t.aeroport.nom} ({t.aeroport.code})", 'arrivee': _heure(t),
-        'vol': t.numero_vol, 'destination': t.destination, 'passagers': t.passagers, 'bagages': t.bagages,
-        'vehicule': tarifs.CATEGORIES[t.categorie]['nom'], 'attente': tarifs.ATTENTE_INCLUSE_MINUTES,
-        'voyageur': f"{t.voyageur.first_name} {t.voyageur.last_name}".strip(), 'telephone_voyageur': t.telephone,
-        'url': f"{settings.FRONTEND_URL}/transfert/{t.id}",
+        'reference': transfert.reference, 'aeroport': f"{transfert.aeroport.nom} ({transfert.aeroport.code})",
+        'arrivee': _heure(transfert), 'vol': transfert.numero_vol, 'destination': transfert.destination,
+        'passagers': transfert.passagers, 'bagages': transfert.bagages,
+        'vehicule': tarifs.vehicle(transfert.categorie)['nom'], 'attente': tarifs.ATTENTE_INCLUSE_MINUTES,
+        'voyageur': f"{transfert.voyageur.first_name} {transfert.voyageur.last_name}".strip(),
+        'telephone_voyageur': transfert.telephone,
+        'url': f"{settings.FRONTEND_URL}/transfert/{transfert.id}",
     }
 
 
-def confirme(t: TransfertModel):
-    paiements.envoyer_email('emails/transferts/transfert_confirme.txt', f"Transfert confirmé : {t.aeroport.ville}", [t.voyageur.email], {
-        **_course(t), 'prenom': t.voyageur.first_name, 'montant': paiements.fcfa(t.prix),
-    }, pieces_jointes=paiements.documents_joints(t))
+def confirme(transfert: TransfertModel):
+    with in_language(transfert.voyageur.language):
+        paiements.envoyer_email(
+            'emails/transferts/transfert_confirme.txt', t('transferts.email_confirmed', city=transfert.aeroport.ville),
+            [transfert.voyageur.email], {**_course(transfert), 'prenom': transfert.voyageur.first_name,
+                                         'montant': paiements.fcfa(transfert.prix)},
+            pieces_jointes=paiements.documents_joints(transfert))
 
 
 def a_attribuer(t: TransfertModel, urgent: bool = False):
@@ -50,22 +56,29 @@ def a_attribuer(t: TransfertModel, urgent: bool = False):
     })
 
 
-def chauffeur_au_voyageur(t: TransfertModel):
-    c = t.chauffeur
-    paiements.envoyer_email('emails/transferts/chauffeur_assigne.txt', f"Votre chauffeur à {t.aeroport.ville}", [t.voyageur.email], {
-        **_course(t), 'prenom': t.voyageur.first_name, 'chauffeur': f"{c.prenom} {c.nom}",
-        'telephone_chauffeur': c.telephone, 'vehicule': c.vehicule, 'immatriculation': c.immatriculation,
-        'assistance': settings.ASSISTANCE_CONTACT, 'niveau': c.get_niveau_display(), 'photo': bool(c.photo_validee),
-    })
-    push(t.voyageur_id, category='bookings_payments', title='Votre chauffeur est attribué',
-         body=f"{c.prenom} vous attendra à l'aéroport de {t.aeroport.ville}.", data={'screen': 'transfer', 'id': str(t.id)})
+def chauffeur_au_voyageur(transfert: TransfertModel):
+    c, city = transfert.chauffeur, transfert.aeroport.ville
+    with in_language(transfert.voyageur.language):
+        paiements.envoyer_email(
+            'emails/transferts/chauffeur_assigne.txt', t('transferts.email_driver_assigned', city=city),
+            [transfert.voyageur.email], {
+                **_course(transfert), 'prenom': transfert.voyageur.first_name, 'chauffeur': f"{c.prenom} {c.nom}",
+                'telephone_chauffeur': c.telephone, 'vehicule': c.vehicule, 'immatriculation': c.immatriculation,
+                'assistance': settings.ASSISTANCE_CONTACT, 'niveau': t(f'transferts.driver_level_{c.niveau}'),
+                'photo': bool(c.photo_validee),
+            })
+        push(transfert.voyageur_id, category='bookings_payments', title=t('transferts.push_driver_assigned'),
+             body=t('transferts.push_driver_assigned_body', name=c.prenom, city=city),
+             data={'screen': 'transfer', 'id': str(transfert.id)})
 
 
-def avis_au_voyageur(t: TransfertModel):
+def avis_au_voyageur(transfert: TransfertModel):
     """The ride is done: the traveller is asked once how their driver was (seen by the team only)."""
-    paiements.envoyer_email('emails/transferts/avis_chauffeur.txt', f"Votre chauffeur à {t.aeroport.ville} : votre avis",
-                            [t.voyageur.email], {**_course(t), 'prenom': t.voyageur.first_name,
-                                                 'chauffeur': t.chauffeur.prenom})
+    with in_language(transfert.voyageur.language):
+        paiements.envoyer_email(
+            'emails/transferts/avis_chauffeur.txt', t('transferts.email_driver_review', city=transfert.aeroport.ville),
+            [transfert.voyageur.email], {**_course(transfert), 'prenom': transfert.voyageur.first_name,
+                                         'chauffeur': transfert.chauffeur.prenom})
 
 
 def course_au_chauffeur(t: TransfertModel):

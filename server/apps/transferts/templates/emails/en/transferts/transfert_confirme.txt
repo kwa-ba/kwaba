@@ -1,0 +1,19 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your airport transfer is paid ({{ montant }}).
+
+  Airport: {{ aeroport }}
+  Arrival: {{ arrivee }}, flight {{ vol }}
+  Destination: {{ destination }}
+  Vehicle: {{ vehicule }} · {{ passagers }} passenger{{ passagers|pluralize }}, {{ bagages }} bag{{ bagages|pluralize }}
+  Reference: {{ reference }}
+
+We send you your driver's name, number and vehicle at the latest the day before your arrival.
+They will wait for you at the arrivals exit with a sign bearing your name; {{ attente }} minutes of waiting are included after landing.
+
+Free cancellation up to 24 hours before arrival.
+Follow your transfer: {{ url }}
+
+Have a good trip,
+The Kwa-Ba team
+{% endautoescape %}

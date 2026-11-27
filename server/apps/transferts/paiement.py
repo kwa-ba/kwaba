@@ -10,14 +10,16 @@ from apps.paiements.api import ProduitPaye, Relance, VersementErreur, ligne_a_ve
 
 from . import services
 from .models import TransfertModel, VersementChauffeurModel
+from shared.language.api import t
 
 FUSEAU = ZoneInfo('Africa/Lome')
 
 
-def _decrire(t) -> dict:
-    return {'voyageur': t.voyageur, 'montant': t.prix, 'url': f"{settings.FRONTEND_URL}/transfert/{t.id}",
-            'quoi': f"votre transfert depuis l'aéroport de {t.aeroport.ville} "
-                    f"({formats.date_format(t.arrivee.astimezone(FUSEAU), 'j F Y')})"}
+def _decrire(transfert) -> dict:
+    return {'voyageur': transfert.voyageur, 'montant': transfert.prix,
+            'url': f"{settings.FRONTEND_URL}/transfert/{transfert.id}",
+            'quoi': t('transferts.reminder_what', city=transfert.aeroport.ville,
+                      date=formats.date_format(transfert.arrivee.astimezone(FUSEAU), 'j F Y'))}
 
 
 def _decrire_paiement(transfert_id) -> dict | None:

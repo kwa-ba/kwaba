@@ -15,6 +15,12 @@ CATEGORIES = {
 }
 CATEGORIE_CHOICES = [(code, c['nom']) for code, c in CATEGORIES.items()]
 
+
+def vehicle(code: str) -> dict:
+    """A category as shown to the traveller: its name and description in the language of the request."""
+    return {**CATEGORIES[code], 'nom': t(f'transferts.vehicle_{code}'),
+            'description': t(f'transferts.vehicle_{code}_description')}
+
 # Share of the price kept by Kwa-Ba, the rest goes to the partner driver (grid of 18 October 2026)
 COMMISSION_CHAUFFEUR = Decimal('0.15')  # default: the rate in force is set by the team (commission_chauffeur())
 
