@@ -9,6 +9,7 @@ from config.site import exiger_module
 
 from . import services
 from .models import ConversationModel
+from shared.language.api import t
 
 LONGUEUR_MAX = 2000
 
@@ -55,7 +56,7 @@ class ConversationView(APIView):
     def get(self, request, pk):
         conversation = ConversationModel.objects.filter(pk=pk, utilisateur_id=request.user.id).first()
         if not conversation:
-            return Response({'detail': 'Conversation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('concierge.conversation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response({
             'id': conversation.id, 'titre': conversation.titre,
             'messages': [{'id': m.id, 'role': m.role, 'texte': m.texte, 'cartes': m.cartes, 'cree_le': m.cree_le}
@@ -65,7 +66,7 @@ class ConversationView(APIView):
     def delete(self, request, pk):
         deleted, _ = ConversationModel.objects.filter(pk=pk, utilisateur_id=request.user.id).delete()
         if not deleted:
-            return Response({'detail': 'Conversation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('concierge.conversation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -75,15 +76,15 @@ class MessagesView(APIView):
 
     def post(self, request, pk):
         if not services.actif():
-            return Response({'detail': "Le Concierge n'est pas encore activé."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({'detail': t('concierge.not_active')}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         conversation = ConversationModel.objects.filter(pk=pk, utilisateur_id=request.user.id).first()
         if not conversation:
-            return Response({'detail': 'Conversation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('concierge.conversation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         texte = str(request.data.get('texte', '')).strip()
         if not texte:
-            return Response({'texte': ['Écrivez votre message.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'texte': [t('concierge.write_message')]}, status=status.HTTP_400_BAD_REQUEST)
         if len(texte) > LONGUEUR_MAX:
-            return Response({'texte': [f'{LONGUEUR_MAX} caractères maximum.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'texte': [t('concierge.max_length', max=LONGUEUR_MAX)]}, status=status.HTTP_400_BAD_REQUEST)
         try:
             services.verifier_quota(request.user)
         except services.ConciergeErreur as exc:

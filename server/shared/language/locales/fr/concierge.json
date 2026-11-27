@@ -1,0 +1,8 @@
+{
+  "limit_per_hour": "Vous avez atteint la limite de {max} messages par heure. Réessayez un peu plus tard.",
+  "limit_per_day": "Vous avez atteint la limite de {max} messages par jour. Réessayez un peu plus tard.",
+  "not_active": "Le Concierge n'est pas encore activé.",
+  "conversation_not_found": "Conversation introuvable.",
+  "write_message": "Écrivez votre message.",
+  "max_length": "{max} caractères maximum."
+}
