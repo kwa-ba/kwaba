@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ prenom }},
+
+A Kwa-Ba agent checked the photos you added to your listing "{{ hebergement }}". {{ nombre }} photo{{ nombre|pluralize }} {{ nombre|pluralize:"was,were" }} removed:
+
+  {{ motif }}
+
+Your other photos stay online. You can add others from your host space:
+{{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

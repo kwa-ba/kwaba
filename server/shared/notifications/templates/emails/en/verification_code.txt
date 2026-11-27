@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Your Kwa-Ba verification code is:
+
+    {{ code }}
+
+It expires in 10 minutes.
+
+If you did not create an account, ignore this email.
+
+The Kwa-Ba team
+{% endautoescape %}

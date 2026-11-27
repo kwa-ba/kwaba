@@ -27,5 +27,15 @@
   "not_found_or_not_over": "Location introuvable ou pas encore terminée.",
   "thanks_for_review": "Merci pour votre avis.",
   "deletion_upcoming_rentals": "Vous avez une location à venir ou en cours : annulez-la ou attendez le retour du véhicule.",
-  "deletion_open_deposit": "Une caution doit encore vous être rendue : attendez sa restitution."
+  "deletion_open_deposit": "Une caution doit encore vous être rendue : attendez sa restitution.",
+  "formula_sans_chauffeur": "Voiture seule",
+  "formula_avec_chauffeur": "Avec chauffeur",
+  "formula_chauffeur_seul": "Chauffeur pour votre véhicule",
+  "email_confirmed": "Réservation confirmée : {city}",
+  "email_driver_review": "Votre chauffeur Kwa-Ba : votre avis",
+  "your_driver": "votre chauffeur",
+  "email_driver_assigned": "Votre chauffeur à {city}",
+  "email_vehicle_assigned": "Votre véhicule à {city}",
+  "email_deposit_returned": "Restitution de votre caution : {reference}",
+  "reminder_what": "votre location « {name} », du {start} au {end}"
 }

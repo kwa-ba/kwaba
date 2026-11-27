@@ -15,6 +15,7 @@ class DjangoUserLookup(UserLookup):
             last_name=user.last_name,
             email=user.email,
             avatar_url=user.avatar_url,
+            language=user.language,
         )
 
     def get(self, user_id: uuid.UUID) -> Optional[UserInfo]:

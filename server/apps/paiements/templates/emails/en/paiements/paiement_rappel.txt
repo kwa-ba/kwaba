@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ prenom }},
+
+We have not received your payment yet for {{ quoi }}.
+
+You have about {{ minutes }} minutes left (until {{ avant }}, Lomé time) to pay {{ montant }} and confirm your booking:
+{{ url }}
+
+Without payment in time, it will be cancelled automatically.
+
+The Kwa-Ba team
+{% endautoescape %}

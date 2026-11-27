@@ -34,5 +34,6 @@
   "deletion_upcoming_stays": "You have a stay coming up or under way: cancel it or wait for it to end.",
   "deletion_open_deposit": "A deposit is still to be returned to you: wait until it is.",
   "only_booker_asks_payment": "Only the person who booked can ask for it to be paid.",
-  "group_payment_not_asked": "Nobody is asking the group to pay for this booking any more."
+  "group_payment_not_asked": "Nobody is asking the group to pay for this booking any more.",
+  "reminder_what": "your stay at “{name}” ({city}), from {arrival} to {departure}"
 }

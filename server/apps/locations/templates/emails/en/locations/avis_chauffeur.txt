@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your rental {{ reference }} is over. How was the ride with {{ prenom_chauffeur }}?
+
+Give your rating in one minute (punctuality, driving, friendliness): {{ url }}
+
+Your review stays between you and the Kwa-Ba team: it helps us keep the best drivers.
+
+Thank you,
+The Kwa-Ba team
+{% endautoescape %}

@@ -138,6 +138,7 @@ class Person:
     name: str
     email: str
     active_agent: bool = True
+    language: str = 'fr'
 
 
 class PeopleLookup(ABC):

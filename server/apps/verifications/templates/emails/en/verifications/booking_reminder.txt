@@ -1,0 +1,8 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Your listing "{{ listing }}" is still waiting for its verification visit: it will be published once verified.
+
+Choose a slot in two clicks: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

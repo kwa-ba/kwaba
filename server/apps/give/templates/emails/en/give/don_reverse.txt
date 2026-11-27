@@ -1,0 +1,15 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your donation {{ reference }} ({{ montant_ong }}) was paid out to {{ organisation }} on {{ date }}.
+
+  Donations of {{ mois }} paid out: {{ nb_dons }}
+  Total amount transferred to the NGO: {{ total }}
+{% if note %}
+A word from the team: {{ note }}
+{% endif %}
+The proof of the transfer is published on the NGO's page.
+See the proof: {{ url }}
+
+Thank you again for your generosity,
+The Kwa-Ba team
+{% endautoescape %}

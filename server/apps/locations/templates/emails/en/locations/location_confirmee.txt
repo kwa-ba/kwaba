@@ -1,0 +1,19 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your booking is paid ({{ montant }}). We are now assigning {% if chauffeur_seul %}your driver{% else %}your vehicle{% if avec_chauffeur %} and your driver{% endif %}{% endif %} among our verified partners: you will receive their contact details by email.
+
+  {{ categorie }}{% if exemple %} ({{ exemple }}){% endif %}, {{ formule }}
+  {% if chauffeur_seul %}Start{% else %}Pick-up{% endif %}: {{ debut }}, {{ prise }}
+  {% if chauffeur_seul %}End{% else %}Return{% endif %}: {{ fin }}, {{ retour }}
+  Duration: {{ jours }} day(s) · {{ passagers }} person(s)
+{% if avec_chauffeur %}  Driver: 7,000 FCFA per day of 10 hours at most{% if primes %}, travel allowances {{ primes }}{% endif %}; extra hour: 1,000 FCFA
+{% endif %}{% if caution_en_ligne %}  Deposit: {{ caution }}, included in your payment and held by Kwa-Ba. It is refunded {{ restitution_heures }} h after the vehicle's return, minus any damage found. You pay nothing to the owner.
+{% elif caution %}  Deposit to pay the owner when the vehicle is handed over: {{ caution }}
+{% endif %}  Reference: {{ reference }}
+
+Cancellation: full refund up to 48 hours before, 50% between 48 and 24 hours, nothing afterwards.
+
+Your booking: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

@@ -16,12 +16,19 @@ from django.utils import formats
 from . import tarifs
 from .models import PaiementModel, ProfilVersementModel, RemboursementModel, VersementModel
 from .operateurs import PAYS, nom_operateur
+from shared.language.api import in_language, number, t
 
 logger = logging.getLogger('apps.paiements.notifications')
 
 
 def _fcfa(montant: int) -> str:
-    return f"{montant:,}".replace(',', ' ') + ' FCFA'
+    """An amount the way of the active language (in_language of the recipient)."""
+    return f'{number(montant)} FCFA'
+
+
+def _langue(compte) -> str | None:
+    """Language of the recipient's emails (ADR-046); French for someone without an account."""
+    return getattr(compte, 'language', None)
 
 
 def _date(valeur) -> str:
@@ -84,15 +91,17 @@ def nom_court(compte) -> str:
 def reservation_payee_voyageur(paiement: PaiementModel):
     r = _reservation(paiement.reservation_id)
     voyageur = r.guest
-    _envoyer('reservation_payee_voyageur', f"Séjour confirmé : {tarifs._annonce(r)['name']}", [voyageur.email], {
-        **_sejour(r), 'prenom': voyageur.first_name, 'montant': _fcfa(paiement.montant),
-        'paye_par': nom_court(paiement.payeur) if paiement.payeur_id else '',
-        'url': f"{settings.FRONTEND_URL}/reservation/confirmation/{r.id}",
-        'url_remboursement': f"{settings.FRONTEND_URL}/remboursement",
-        'politique': tarifs.texte_politique(r),
-    }, pieces_jointes=_pieces('reservation', r.id))
-    push(voyageur.pk, category='bookings_payments', title='Séjour confirmé', body=tarifs._annonce(r)['name'],
-         data={'screen': 'reservation', 'id': str(r.id)})
+    with in_language(_langue(voyageur)):
+        _envoyer('reservation_payee_voyageur', t('paiements.email_stay_confirmed', name=tarifs._annonce(r)['name']),
+                 [voyageur.email], {
+                     **_sejour(r), 'prenom': voyageur.first_name, 'montant': _fcfa(paiement.montant),
+                     'paye_par': nom_court(paiement.payeur) if paiement.payeur_id else '',
+                     'url': f"{settings.FRONTEND_URL}/reservation/confirmation/{r.id}",
+                     'url_remboursement': f"{settings.FRONTEND_URL}/remboursement",
+                     'politique': tarifs.texte_politique(r),
+                 }, pieces_jointes=_pieces('reservation', r.id))
+        push(voyageur.pk, category='bookings_payments', title=t('paiements.push_stay_confirmed'),
+             body=tarifs._annonce(r)['name'], data={'screen': 'reservation', 'id': str(r.id)})
 
 
 def paiement_tiers_recu(paiement: PaiementModel):
@@ -101,9 +110,11 @@ def paiement_tiers_recu(paiement: PaiementModel):
 
     r = _reservation(paiement.reservation_id)
     payeur = paiement.payeur
-    _envoyer('paiement_tiers_recu', f"Paiement reçu : séjour de {r.guest.first_name}", [payeur.email], {
-        **_sejour(r), 'prenom': payeur.first_name, 'voyageur': r.guest.first_name, 'montant': _fcfa(paiement.montant),
-    }, pieces_jointes=[(f"recu-{r.reference}.pdf", recu_paiement(paiement), 'application/pdf')])
+    with in_language(_langue(payeur)):
+        _envoyer('paiement_tiers_recu', t('paiements.email_third_party_paid', guest=r.guest.first_name), [payeur.email], {
+            **_sejour(r), 'prenom': payeur.first_name, 'voyageur': r.guest.first_name,
+            'montant': _fcfa(paiement.montant),
+        }, pieces_jointes=[(f"recu-{r.reference}.pdf", recu_paiement(paiement), 'application/pdf')])
 
 
 def reservation_payee_hote(paiement: PaiementModel):
@@ -111,41 +122,45 @@ def reservation_payee_hote(paiement: PaiementModel):
     annonce = tarifs._annonce(r)
     voyageur, hote = r.guest, users.compte(annonce['host_id'])
     montants = tarifs.montants_de(r)
-    _envoyer('reservation_payee_hote', f"Nouvelle réservation payée : {annonce['name']}", [hote.email], {
-        **_sejour(r), 'prenom': hote.first_name, 'voyageur': f"{voyageur.first_name} {voyageur.last_name}".strip(),
-        'message': r.message, 'montant_hote': _fcfa(montants.montant_hote),
-        'date_versement': _date(tarifs.date_versement(r)),
-        'profil_complet': ProfilVersementModel.objects.filter(hote_id=hote.pk).exists(),
-        'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus",
-        'url_reservations': f"{settings.FRONTEND_URL}/hote/espace?onglet=reservations",
-    })
-    push(hote.pk, category='bookings_payments', title='Nouvelle réservation', body=annonce['name'],
-         data={'screen': 'host'})
+    with in_language(_langue(hote)):
+        _envoyer('reservation_payee_hote', t('paiements.email_new_booking_paid', name=annonce['name']), [hote.email], {
+            **_sejour(r), 'prenom': hote.first_name, 'voyageur': f"{voyageur.first_name} {voyageur.last_name}".strip(),
+            'message': r.message, 'montant_hote': _fcfa(montants.montant_hote),
+            'date_versement': _date(tarifs.date_versement(r)),
+            'profil_complet': ProfilVersementModel.objects.filter(hote_id=hote.pk).exists(),
+            'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus",
+            'url_reservations': f"{settings.FRONTEND_URL}/hote/espace?onglet=reservations",
+        })
+        push(hote.pk, category='bookings_payments', title=t('paiements.push_new_booking'), body=annonce['name'],
+             data={'screen': 'host'})
 
 
 def versement_envoye(v: VersementModel):
     r = _reservation(v.reservation_id)
     indicatif = next((p['indicatif'] for p in PAYS.values() if any(c == v.mode for c, _ in p['operateurs'])), '')
-    _envoyer('versement_envoye', f"Versement de {_fcfa(v.montant)} envoyé", [v.hote.email], {
-        'prenom': v.hote.first_name, 'montant': _fcfa(v.montant), 'montant_brut': _fcfa(v.montant_brut),
-        'commission': _fcfa(v.commission), 'operateur': nom_operateur(v.mode),
-        'numero': f"+{indicatif} {v.numero}" if indicatif else v.numero,
-        'voyageur': r.guest.first_name, 'hebergement': tarifs._annonce(r)['name'], 'reference': r.reference,
-        'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus",
-    })
+    with in_language(_langue(v.hote)):
+        _envoyer('versement_envoye', t('paiements.email_payout_sent', amount=_fcfa(v.montant)), [v.hote.email], {
+            'prenom': v.hote.first_name, 'montant': _fcfa(v.montant), 'montant_brut': _fcfa(v.montant_brut),
+            'commission': _fcfa(v.commission), 'operateur': nom_operateur(v.mode),
+            'numero': f"+{indicatif} {v.numero}" if indicatif else v.numero,
+            'voyageur': r.guest.first_name, 'hebergement': tarifs._annonce(r)['name'], 'reference': r.reference,
+            'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus",
+        })
 
 
 def remboursement_envoye(rb: RemboursementModel):
-    if rb.paiement.prestataire == 'paypal':
-        destination = 'votre compte PayPal'
-    elif rb.numero:
-        destination = f"votre compte {nom_operateur(rb.operateur)} (+{PAYS[rb.pays]['indicatif']} {rb.numero})"
-    else:
-        destination = ''
-    _envoyer('remboursement_envoye', f"Remboursement de {_fcfa(rb.montant)} envoyé", [rb.payeur.email], {
-        'prenom': rb.payeur.first_name, 'montant': _fcfa(rb.montant), 'reference': rb.reference,
-        'hebergement': rb.libelle, 'destination': destination,
-    })
+    with in_language(_langue(rb.payeur)):
+        if rb.paiement.prestataire == 'paypal':
+            destination = t('paiements.refund_to_paypal')
+        elif rb.numero:
+            destination = t('paiements.refund_to_mobile_money', operator=nom_operateur(rb.operateur),
+                            number=f"+{PAYS[rb.pays]['indicatif']} {rb.numero}")
+        else:
+            destination = ''
+        _envoyer('remboursement_envoye', t('paiements.email_refund_sent', amount=_fcfa(rb.montant)), [rb.payeur.email], {
+            'prenom': rb.payeur.first_name, 'montant': _fcfa(rb.montant), 'reference': rb.reference,
+            'hebergement': rb.libelle, 'destination': destination,
+        })
 
 
 def alerte_admin(type_: str, ligne, beneficiaire: str, *, reference: str, libelle: str, section: str = 'paiements'):
@@ -211,10 +226,11 @@ def envoyer_notifications() -> int:
 def demande_remboursement_hote(recuperation, hote):
     """GL-23: the host was paid for a stay cancelled afterwards and no payout is coming to withhold it from."""
     r = _reservation(recuperation.reservation_id)
-    _envoyer('demande_remboursement_hote', f"Séjour {r.reference if r else ''} annulé après votre versement".strip(),
-             [hote.email], {'prenom': hote.first_name, 'reference': r.reference if r else '',
-                            'montant': _fcfa(recuperation.reste), 'motif': recuperation.motif,
-                            'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus"})
+    with in_language(_langue(hote)):
+        _envoyer('demande_remboursement_hote', t('paiements.email_host_refund_asked', reference=r.reference if r else ''),
+                 [hote.email], {'prenom': hote.first_name, 'reference': r.reference if r else '',
+                                'montant': _fcfa(recuperation.reste), 'motif': recuperation.motif,
+                                'url_revenus': f"{settings.FRONTEND_URL}/hote/espace?onglet=revenus"})
 
 
 def versements_en_retard(en_retard: int, echoues: int, url: str):

@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ first_name }},
+
+{% if modification %}Your listing "{{ listing }}" was changed (address, city or photos): it is hidden until a new visit.{% else %}Your listing "{{ listing }}" is waiting for the visit of a Kwa-Ba agent in {{ city }}.{% endif %}
+
+Choose the day and time of the visit yourself among the offered slots: {{ url }}
+
+Your choice counts as confirmation. If you have several accommodations at the same place, the agent can check them during the same visit.
+
+No internet access? An agent will call you to set the visit.
+
+The Kwa-Ba team
+{% endautoescape %}

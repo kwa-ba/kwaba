@@ -12,7 +12,7 @@ from . import catalog
 logger = logging.getLogger(__name__)
 
 __all__ = ['DEFAULT', 'current_language', 'in_language', 'language_of_header', 'languages', 'supported', 't',
-           't_lazy', 'variables', 'number']
+           't_lazy', 'variables', 'number', 'day_and_time']
 
 DEFAULT = catalog.REFERENCE
 
@@ -63,6 +63,17 @@ def number(value: int, *, language: str | None = None) -> str:
     """A whole amount written the way of the language (FCFA amounts: no decimals)."""
     separator = THOUSANDS.get(supported(language) or current_language(), ' ')
     return f'{int(value):,}'.replace(',', separator)
+
+
+# A day and an hour in an email: "samedi 5 décembre 2026 à 14h30", "Saturday 5 December 2026 at 14:30"
+DAY_AND_TIME = {'fr': 'l j F Y à H\\hi', 'en': 'l j F Y \\a\\t H:i'}
+
+
+def day_and_time(value) -> str:
+    """`value` (already in the right time zone) written with the day, the date and the hour of the active language."""
+    from django.utils import formats
+
+    return formats.date_format(value, DAY_AND_TIME.get(current_language(), DAY_AND_TIME[DEFAULT]))
 
 
 def t(key: str, *, language: str | None = None, **values) -> str:

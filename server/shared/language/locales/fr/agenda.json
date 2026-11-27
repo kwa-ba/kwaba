@@ -14,5 +14,11 @@
   "slot_just_taken": "Ce créneau vient d'être pris : choisissez-en un autre.",
   "daily_limit": "La limite de visites de cette journée est atteinte.",
   "book_24h_ahead": "Une visite se réserve au moins 24 h à l'avance.",
-  "book_within_14_days": "Une visite se réserve dans les 14 prochains jours."
+  "book_within_14_days": "Une visite se réserve dans les 14 prochains jours.",
+  "email_visit_confirmed": "Visite confirmée le {when}",
+  "email_visit_moved": "Visite déplacée au {when}",
+  "email_visit_cancelled": "Votre visite est annulée",
+  "email_visit_reminder": "Rappel : visite demain à {hour}",
+  "email_agent_on_the_way": "L'agent Kwa-Ba est en route",
+  "day_at_hour": "{day} à {hour}"
 }

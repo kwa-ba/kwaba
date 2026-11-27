@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ prenom }},
+
+After reviewing the damage reported for stay {{ reference }}, the Kwa-Ba team has withheld {{ retenue }} from the guest's deposit ({{ caution }}){% if motif %}: {{ motif }}{% endif %}.
+
+This sum is paid to you on your usual payout account, by a payout separate from the stay's one.
+{% if document %}Attached you will find the withholding notice {{ document }}.
+{% endif %}
+A question? Kwa-Ba support: {{ assistance }}
+
+The Kwa-Ba team
+{% endautoescape %}

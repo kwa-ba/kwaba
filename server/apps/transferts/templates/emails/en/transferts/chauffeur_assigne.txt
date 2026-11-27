@@ -1,0 +1,17 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your driver for {{ arrivee }} is assigned:
+
+  {{ chauffeur }}, {{ niveau }} driver
+  Phone / WhatsApp: {{ telephone_chauffeur }}
+  Vehicle: {{ vehicule }}, registration {{ immatriculation }}
+
+They will wait for you at the arrivals exit of {{ aeroport }} airport with a sign bearing your name. If your flight is late, let them know on WhatsApp.
+
+A problem on arrival? Kwa-Ba support: {{ assistance }}
+
+Your transfer{% if photo %}, with your driver's photo so you can recognise them{% endif %}: {{ url }}
+
+Have a good trip,
+The Kwa-Ba team
+{% endautoescape %}

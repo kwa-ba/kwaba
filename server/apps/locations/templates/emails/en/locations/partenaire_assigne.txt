@@ -1,0 +1,24 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your {% if chauffeur_seul %}driver{% else %}vehicle{% endif %} for {{ debut }} is assigned:
+
+{% if partenaire %}  Vehicle owner: {{ partenaire }}, {{ contact }}
+  Phone / WhatsApp: {{ telephone_partenaire }}
+{% endif %}{% if vehicule %}  Vehicle: {{ vehicule }}{% if immatriculation %}, registration {{ immatriculation }}{% endif %}
+{% endif %}{% if avec_chauffeur and chauffeur %}  Your driver: {{ chauffeur }}{% if niveau_chauffeur %}, {{ niveau_chauffeur }} driver{% endif %}{% if telephone_chauffeur %}, {{ telephone_chauffeur }}{% endif %}
+{% endif %}
+  {% if chauffeur_seul %}Meeting point{% else %}Pick-up{% endif %}: {{ prise }}
+  {% if chauffeur_seul %}End of the mission{% else %}Return{% endif %}: {{ fin }}, {{ retour }}
+{% if caution_en_ligne %}  Deposit: {{ caution }}, already paid and held by Kwa-Ba: you pay nothing to the owner. It is refunded {{ restitution_heures }} h after the return, minus any damage found.
+{% elif caution %}  Deposit to pay the owner when the vehicle is handed over: {{ caution }}
+{% endif %}{% if formule_sans_chauffeur %}  Remember your driving licence and an identity document.
+{% endif %}{% if chauffeur_seul %}  Your vehicle must be in order (papers, roadworthiness test) and your insurance must cover driving by a third party.
+{% endif %}
+Everything is paid through Kwa-Ba: pay nothing on the spot, except a tip if you wish.
+A problem? Kwa-Ba support: {{ assistance }}
+
+Your booking{% if niveau_chauffeur %}, with your driver's photo{% endif %}: {{ url }}
+
+Have a good trip,
+The Kwa-Ba team
+{% endautoescape %}

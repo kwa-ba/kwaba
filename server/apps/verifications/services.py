@@ -26,7 +26,7 @@ from apps.users import api as users
 from . import positions
 from .fichiers import image_normalisee
 from .models import PhotoVisiteModel, PieceIdentiteModel, VisitInvitationModel, VisiteModel
-from shared.language.api import t
+from shared.language.api import in_language, t
 
 logger = logging.getLogger('apps.verifications')
 
@@ -40,17 +40,25 @@ class VerificationErreur(Exception):
     """Message that can be shown to the agent."""
 
 
-def _envoyer(gabarit: str, sujet: str, destinataires: list[str], contexte: dict) -> None:
-    """After the transaction is committed; a sending failure never cancels the verification."""
+def _envoyer(gabarit: str, sujet: str, destinataires: list[str], contexte: dict, language: str | None = None) -> None:
+    """After the transaction is committed; a sending failure never cancels the verification. The template is the one
+    of `language` (the recipient's), French for the team."""
     def envoyer():
         try:
-            send_mail(sujet, render_to_string(f'emails/verifications/{gabarit}.txt', contexte),
-                      settings.DEFAULT_FROM_EMAIL, destinataires)
+            with in_language(language):
+                corps = render_to_string(f'emails/verifications/{gabarit}.txt', contexte)
+            send_mail(sujet, corps, settings.DEFAULT_FROM_EMAIL, destinataires)
         except Exception:
             logger.exception("Email %s non envoyé", gabarit)
 
     if destinataires:
         transaction.on_commit(envoyer)
+
+
+def send_to_host(template: str, subject_key: str, host, context: dict, **subject_values) -> None:
+    """An email in the host's language (ADR-046): subject `subject_key`, template of their language."""
+    _envoyer(template, t(subject_key, language=host.language, **subject_values), [host.email], context,
+             language=host.language)
 
 
 def _verificateurs() -> list[str]:
@@ -125,10 +133,10 @@ def _visite_a_planifier(annonce: dict, hote, modification: bool = False) -> None
     VisitInvitationModel.objects.update_or_create(
         listing_id=annonce['id'],
         defaults={'host_id': hote.pk, 'invited_at': timezone.now(), 'reminded_at': None, 'alerted_at': None})
-    _envoyer('book_visit', f"Réservez la visite de votre logement : {annonce['name']}", [hote.email], {
+    send_to_host('book_visit', 'verifications.email_book_visit', hote, {
         'first_name': hote.first_name, 'modification': modification, 'listing': annonce['name'],
         'city': annonce['city'], 'url': f"{settings.FRONTEND_URL}/hote/espace/visite",
-    })
+    }, name=annonce['name'])
 
 
 def photos_a_controler(hebergement_id, nombre: int) -> None:
@@ -166,10 +174,10 @@ def decider_photos(hebergement_id, agent, *, retirer: list[str], motif: str = ''
         raise VerificationErreur("Cette annonce n'a plus de photos à contrôler.")
     if resultat['retirees']:
         hote = users.compte(annonce['host_id'])
-        _envoyer('photos_retirees', f"Photos retirées de votre annonce « {annonce['name']} »", [hote.email], {
+        send_to_host('photos_retirees', 'verifications.email_photos_removed', hote, {
             'prenom': hote.first_name, 'hebergement': annonce['name'], 'nombre': len(resultat['retirees']),
             'motif': motif, 'url': f"{settings.FRONTEND_URL}/hote/espace",
-        })
+        }, name=annonce['name'])
     return resultat
 
 
@@ -209,8 +217,8 @@ def decider_piece(hote, verificateur, *, decision: str, motif: str = '') -> Piec
         annonces = hebergements.annonces_en_attente([hote.pk])
         for annonce in annonces:
             _visite_a_planifier(annonce, hote)
-        _envoyer('identite_verifiee', "Votre identité est vérifiée", [hote.email],
-                 {**contexte, 'nb_annonces': len(annonces), 'contrat_a_signer': contrat_manquant(hote)})
+        send_to_host('identite_verifiee', 'verifications.email_identity_verified', hote,
+                     {**contexte, 'nb_annonces': len(annonces), 'contrat_a_signer': contrat_manquant(hote)})
     elif decision == 'refusee':
         if len(motif) < 10:
             raise VerificationErreur("Expliquez le motif du refus à l'hôte (10 caractères au moins).")
@@ -218,8 +226,7 @@ def decider_piece(hote, verificateur, *, decision: str, motif: str = '') -> Piec
         if piece.fichier:
             piece.fichier.delete(save=False)
         piece.save()
-        _envoyer('identite_refusee', "Votre pièce d'identité n'a pas pu être vérifiée", [hote.email],
-                 {**contexte, 'motif': motif})
+        send_to_host('identite_refusee', 'verifications.email_identity_refused', hote, {**contexte, 'motif': motif})
     else:
         raise VerificationErreur("Décision inconnue.")
     return piece
@@ -350,10 +357,10 @@ def decider(hebergement_id, agent, *, decision: str, controles: dict, commentair
         if users.passer_hote(hote.pk):
             activity.record('role_modifie', actor=agent, target=activity.Target('account', str(hote.pk), hote.email),
                             avant='voyageur', apres='hote', annonce_id=str(hebergement_id), annonce=annonce['name'])
-        _envoyer('annonce_verifiee', f"Votre logement est vérifié : {annonce['name']}", [hote.email], contexte)
+        send_to_host('annonce_verifiee', 'verifications.email_listing_verified', hote, contexte, name=annonce['name'])
     else:
-        _envoyer('annonce_refusee', f"Votre annonce n'est pas encore publiée : {annonce['name']}", [hote.email],
-                 {**contexte, 'motif': commentaire})
+        send_to_host('annonce_refusee', 'verifications.email_listing_not_published', hote,
+                     {**contexte, 'motif': commentaire}, name=annonce['name'])
     return visite
 
 

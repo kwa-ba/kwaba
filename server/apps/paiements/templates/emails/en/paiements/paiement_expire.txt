@@ -1,0 +1,10 @@
+{% autoescape off %}Hello {{ prenom }},
+
+We did not receive a payment in time for {{ quoi }}: the booking is cancelled and the dates are available again.
+
+{% if lien_tiers %}The payment link you sent remains valid until {{ lien_tiers }}: if the dates are still free when the payment is made, it will confirm the booking.{% else %}No amount has been charged. If a payment arrives anyway, it will be refunded to you automatically.{% endif %}
+
+You can book again whenever you wish on kwa-ba.com.
+
+The Kwa-Ba team
+{% endautoescape %}

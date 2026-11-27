@@ -38,7 +38,7 @@ def devis(aeroport: AeroportModel, arrivee: datetime, passagers: int, bagages: i
     """Vehicle options with their price, for a given arrival (timezone-aware datetime)."""
     options = []
     for tarif in TarifTransfertModel.objects.filter(aeroport=aeroport, actif=True):
-        cat = tarifs.CATEGORIES[tarif.categorie]
+        cat = tarifs.vehicle(tarif.categorie)
         prix = tarifs.calculer(tarif.prix)
         motif = tarifs.capacite_suffisante(tarif.categorie, passagers, bagages)
         options.append({

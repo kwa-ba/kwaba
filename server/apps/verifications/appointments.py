@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
+from django.utils import formats, timezone
 
 from apps.agenda import api as agenda
 from apps.hebergements import api as hebergements
@@ -13,6 +13,7 @@ from apps.users import api as users
 
 from . import services
 from .models import VisitInvitationModel
+from shared.language.api import DEFAULT, current_language, in_language
 
 MISSION_TYPE = 'logement'
 WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
@@ -238,9 +239,9 @@ def remind_hosts() -> dict:
             VisitInvitationModel.objects.filter(pk=invitation.pk).update(reminded_at=now)
             host = users.compte(listing['host_id'])
             if host:
-                services._envoyer('booking_reminder', f"Réservez la visite de votre logement : {listing['name']}",
-                                  [host.email], {'first_name': host.first_name, 'listing': listing['name'],
-                                                 'url': f"{settings.FRONTEND_URL}/hote/espace/visite"})
+                services.send_to_host('booking_reminder', 'verifications.email_book_visit', host, {
+                    'first_name': host.first_name, 'listing': listing['name'],
+                    'url': f"{settings.FRONTEND_URL}/hote/espace/visite"}, name=listing['name'])
     if to_alert:
         cities = sorted({c['city'] for _, c in to_alert})
         hosts = users.comptes(c['host_id'] for _, c in to_alert)
@@ -264,7 +265,10 @@ def _listing_urls(listing_id) -> dict:
 
 
 def _when(appointment) -> str:
+    """"lundi 7/12 à 9 h" in French, "Monday 7/12 at 09:00" in English."""
     local = appointment.start.astimezone(ZoneInfo(agenda.DEFAULT_TIMEZONE))
+    if current_language() != DEFAULT:
+        return formats.date_format(local, 'l j/m \\a\\t H:i')
     return f"{WEEKDAYS[local.weekday()]} {local.day}/{local.month:02d} à {local.hour} h{local.minute:02d}".replace(' h00', ' h')
 
 
@@ -295,9 +299,11 @@ def validated_without_visit(listing: dict, admin, reason: str, keep_visit: bool)
                                   'url': f"{settings.FRONTEND_URL}/agent/agenda/{appointment.id}",
                               })
     if host:
-        services._envoyer('validated_without_visit_host', f"Votre logement est vérifié : {listing['name']}",
-                          [host.email], {'first_name': host.first_name, 'listing': listing['name'], 'visit': visit,
-                                         **_listing_urls(listing['id'])})
+        with in_language(host.language):
+            visit = {**visit, 'when': _when(appointment)} if visit else None
+        services.send_to_host('validated_without_visit_host', 'verifications.email_listing_verified', host, {
+            'first_name': host.first_name, 'listing': listing['name'], 'visit': visit,
+            **_listing_urls(listing['id'])}, name=listing['name'])
 
 
 @transaction.atomic
@@ -324,11 +330,11 @@ def post_check(user, appointment_id, compliant: bool, reason: str):
     for target in appointment.targets:
         hebergements.enregistrer_verification(target.id, False, reason)
         if host:
-            services._envoyer('annonce_refusee', f"Votre annonce n'est plus publiée : {target.title}", [host.email], {
+            services.send_to_host('annonce_refusee', 'verifications.email_listing_unpublished', host, {
                 'prenom': host.first_name, 'hebergement': target.title, 'motif': reason,
                 'url_espace': f"{settings.FRONTEND_URL}/hote/espace",
                 'url_annonce': f"{settings.FRONTEND_URL}/hebergements/{target.id}",
-            })
+            }, name=target.title)
     services._envoyer('post_check_failed', f"[Kwa-Ba] Contrôle non conforme : {appointment.title}",
                       users.emails_actifs(['admin']), {
                           'title': appointment.title, 'city': appointment.city, 'reason': reason,

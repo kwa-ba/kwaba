@@ -6,6 +6,7 @@ from django.utils import formats, timezone
 
 from apps.paiements import api as paiements
 from apps.users import api as users
+from shared.language.api import in_language, t
 
 from . import montants
 from .models import DonModel, ReversementModel
@@ -19,14 +20,17 @@ def _mois(periode) -> str:
 
 def recu(don: DonModel):
     o = don.organisation
-    paiements.envoyer_email('emails/give/recu_don.txt', f"Merci pour votre don à {o.nom}", [don.donateur.email], {
-        'prenom': don.donateur.first_name, 'organisation': o.nom, 'projet': don.projet.titre if don.projet else '',
-        'reference': don.reference, 'date': formats.date_format(don.paye_le, 'j F Y'),
-        'montant': paiements.fcfa(don.montant), 'total': paiements.fcfa(don.total), 'frais': paiements.fcfa(don.frais),
-        'montant_ong': paiements.fcfa(don.montant_ong), 'couvre_frais': don.couvre_frais,
-        'date_reversement': formats.date_format(montants.date_reversement(timezone.localtime(don.paye_le).date()), 'j F Y'),
-        'url': f"{settings.FRONTEND_URL}/profil/dons",
-    }, pieces_jointes=paiements.documents_joints(don))
+    paid_out_by = montants.date_reversement(timezone.localtime(don.paye_le).date())
+    with in_language(don.donateur.language):
+        paiements.envoyer_email('emails/give/recu_don.txt', t('give.email_receipt', organisation=o.nom),
+                                [don.donateur.email], {
+            'prenom': don.donateur.first_name, 'organisation': o.nom, 'projet': don.projet.titre if don.projet else '',
+            'reference': don.reference, 'date': formats.date_format(don.paye_le, 'j F Y'),
+            'montant': paiements.fcfa(don.montant), 'total': paiements.fcfa(don.total),
+            'frais': paiements.fcfa(don.frais), 'montant_ong': paiements.fcfa(don.montant_ong),
+            'couvre_frais': don.couvre_frais, 'date_reversement': formats.date_format(paid_out_by, 'j F Y'),
+            'url': f"{settings.FRONTEND_URL}/profil/dons",
+        }, pieces_jointes=paiements.documents_joints(don))
 
 
 def reversement_a_effectuer(r: ReversementModel):
@@ -44,12 +48,16 @@ def reversement_a_effectuer(r: ReversementModel):
 
 def don_reverse(don: DonModel):
     r = don.reversement
-    paiements.envoyer_email('emails/give/don_reverse.txt', f"Votre don a été reversé à {r.organisation.nom}", [don.donateur.email], {
-        'prenom': don.donateur.first_name, 'organisation': r.organisation.nom, 'reference': don.reference,
-        'montant_ong': paiements.fcfa(don.montant_ong), 'mois': _mois(r.periode), 'total': paiements.fcfa(r.montant),
-        'nb_dons': r.nb_dons, 'date': formats.date_format(r.effectue_le, 'j F Y'), 'note': r.note,
-        'url': f"{settings.FRONTEND_URL}/give/{r.organisation.slug}#reversements",
-    })
+    with in_language(don.donateur.language):
+        paiements.envoyer_email(
+            'emails/give/don_reverse.txt', t('give.email_donation_paid_out', organisation=r.organisation.nom),
+            [don.donateur.email], {
+                'prenom': don.donateur.first_name, 'organisation': r.organisation.nom, 'reference': don.reference,
+                'montant_ong': paiements.fcfa(don.montant_ong), 'mois': _mois(r.periode),
+                'total': paiements.fcfa(r.montant), 'nb_dons': r.nb_dons,
+                'date': formats.date_format(r.effectue_le, 'j F Y'), 'note': r.note,
+                'url': f"{settings.FRONTEND_URL}/give/{r.organisation.slug}#reversements",
+            })
 
 
 def _traiter(qs, fonction, drapeau):

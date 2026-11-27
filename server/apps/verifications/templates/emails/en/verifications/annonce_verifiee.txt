@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Good news: our agent verified your accommodation "{{ hebergement }}". Your listing is now visible to travellers, with the "Verified by Kwa-Ba" badge.
+
+Your listing: {{ url_annonce }}
+Your host space: {{ url_espace }}
+
+If you later change the address, the city or the photos, the listing will be verified again before being published again.
+
+Welcome among the Kwa-Ba hosts,
+The Kwa-Ba team
+{% endautoescape %}

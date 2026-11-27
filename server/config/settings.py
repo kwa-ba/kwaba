@@ -108,8 +108,12 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
-        'APP_DIRS': True,
         'OPTIONS': {
+            # Emails in the language of their recipient: emails/en/… when English is active (ADR-046)
+            'loaders': [('shared.language.templates.Loader', [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ])],
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',

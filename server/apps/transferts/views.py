@@ -51,7 +51,7 @@ class TransfertSerializer(serializers.ModelSerializer):
         ]
 
     def get_vehicule(self, obj):
-        return tarifs.CATEGORIES[obj.categorie]
+        return tarifs.vehicle(obj.categorie)
 
     def get_arrivee_locale(self, obj):
         """Arrival time in the airport's time zone, without offset: it is the one of the plane ticket."""

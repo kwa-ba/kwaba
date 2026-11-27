@@ -4,7 +4,7 @@ from apps.users import api as users
 
 def _person(account) -> Person:
     return Person(id=account.id, name=account.get_full_name() or account.email, email=account.email,
-                  active_agent=account.is_active and account.role in ('agent', 'admin'))
+                  active_agent=account.is_active and account.role in ('agent', 'admin'), language=account.language)
 
 
 class DjangoPeopleLookup(PeopleLookup):

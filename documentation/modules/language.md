@@ -45,8 +45,15 @@ Celle de son destinataire, pas de la requête : un e-mail part souvent du worker
 ```python
 from shared.language.api import in_language, t
 
-with in_language(compte.language):
-    sujet = t('reservations.confirmed_subject')
+with in_language(voyageur.language):
+    _envoyer('reservation_payee_voyageur', t('paiements.email_stay_confirmed', name=annonce['name']),
+             [voyageur.email], contexte)
 ```
 
-Les e-mails destinés à l'équipe restent en français.
+Dans le bloc `in_language`, tout suit la langue du destinataire : le sujet (`t`), les montants (`number`, `paiements.fcfa` : « 25 000 » ou « 25,000 »), les dates (`day_and_time` : « samedi 5 décembre 2026 à 14h30 » ou « Saturday 5 December 2026 at 14:30 ») et le gabarit.
+
+- **Gabarits** : le chargeur `shared.language.templates.Loader` cherche d'abord `emails/<langue>/<chemin>` quand la langue active n'est pas le français (`apps/paiements/templates/emails/en/paiements/reservation_payee_voyageur.txt`), et retombe sur le gabarit français s'il n'existe pas. `tests/unit/language/test_translated_templates.py` vérifie que chaque gabarit traduit remplace un gabarit français, avec les mêmes variables.
+- **Envoi après le commit** (`transaction.on_commit`) : la langue est lue au moment de l'appel et passée à l'envoi, car le rendu se fait plus tard, hors du bloc (`verifications.services.send_to_host`, `agenda` `_send(..., language)`).
+- **Événements** : les événements d'e-mail (`users`, `messaging`, annulation de réservation) portent la langue du destinataire (`language`, `recipient_language`) ; le consommateur RabbitMQ rend l'e-mail dans cette langue.
+
+Restent en français : les e-mails destinés à l'équipe, aux agents, aux chauffeurs et aux partenaires (même quand une action d'un hôte anglophone les déclenche), et ceux des contrats, dont le texte juridique est en français.

@@ -21,5 +21,20 @@
   "refund_number_saved": "Numéro enregistré : le remboursement va être envoyé.",
   "not_found_or_not_done": "Transfert introuvable ou pas encore effectué.",
   "thanks_for_review": "Merci pour votre avis.",
-  "deletion_upcoming_transfers": "Vous avez un transfert à venir : annulez-le ou attendez le trajet."
+  "deletion_upcoming_transfers": "Vous avez un transfert à venir : annulez-le ou attendez le trajet.",
+  "vehicle_berline": "Berline",
+  "vehicle_berline_description": "Toyota Corolla ou similaire, climatisée",
+  "vehicle_confort": "SUV confort",
+  "vehicle_confort_description": "Toyota RAV4 ou similaire, plus d'espace",
+  "vehicle_van": "Minibus",
+  "vehicle_van_description": "Toyota Hiace ou similaire, pour les groupes",
+  "email_confirmed": "Transfert confirmé : {city}",
+  "email_driver_assigned": "Votre chauffeur à {city}",
+  "email_driver_review": "Votre chauffeur à {city} : votre avis",
+  "push_driver_assigned": "Votre chauffeur est attribué",
+  "push_driver_assigned_body": "{name} vous attendra à l'aéroport de {city}.",
+  "reminder_what": "votre transfert depuis l'aéroport de {city} ({date})",
+  "driver_level_standard": "Standard",
+  "driver_level_confirme": "Confirmé",
+  "driver_level_excellence": "Excellence"
 }

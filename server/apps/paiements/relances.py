@@ -17,6 +17,7 @@ from django.utils import formats, timezone
 from .notifications import _envoyer, _fcfa
 from .registre import PRODUITS
 from .services import delai_paiement
+from shared.language.api import in_language, t
 
 logger = logging.getLogger('apps.paiements.relances')
 
@@ -29,21 +30,26 @@ def _heure(moment) -> str:
 
 
 def _email(etape: int, ligne, decrire) -> None:
-    objet = decrire(ligne)
+    with in_language(getattr(decrire(ligne)['voyageur'], 'language', None)):
+        # Described again inside the traveller's language: what is booked, its dates
+        _email_in_language(etape, ligne, decrire(ligne))
+
+
+def _email_in_language(etape: int, ligne, objet: dict) -> None:
     voyageur = objet['voyageur']
     contexte = {'prenom': voyageur.first_name, 'quoi': objet['quoi'], 'montant': _fcfa(objet['montant']),
                 'url': objet['url']}
     if etape == ANNULATION:
         contexte['lien_tiers'] = objet.get('lien_tiers', '')
-        _envoyer('paiement_expire', "Réservation annulée : paiement non reçu", [voyageur.email], contexte)
+        _envoyer('paiement_expire', t('paiements.email_booking_expired'), [voyageur.email], contexte)
         return
     contexte['avant'] = _heure(ligne.expire_le)
     contexte['minutes'] = max(1, int((ligne.expire_le - timezone.now()).total_seconds() // 60))
     if etape == ATTENTE:
-        _envoyer('paiement_attente', f"Payez avant {contexte['avant']} pour confirmer votre réservation",
+        _envoyer('paiement_attente', t('paiements.email_pay_before', time=contexte['avant']),
                  [voyageur.email], contexte)
     else:
-        _envoyer('paiement_rappel', f"Plus que {contexte['minutes']} minutes pour payer votre réservation",
+        _envoyer('paiement_rappel', t('paiements.email_minutes_left', minutes=contexte['minutes']),
                  [voyageur.email], contexte)
 
 

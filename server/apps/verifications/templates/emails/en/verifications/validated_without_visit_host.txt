@@ -1,0 +1,15 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Your accommodation "{{ listing }}" is verified by the Kwa-Ba team: your listing is now visible to travellers.
+{% if visit %}{% if visit.kept %}
+A Kwa-Ba agent will still come on {{ visit.when }}, as planned, for an on-site check.
+{% elif visit.shared %}
+The visit planned on {{ visit.when }} is kept for your other listings.
+{% else %}
+The visit planned on {{ visit.when }} no longer takes place: you have nothing to do.
+{% endif %}{% endif %}
+Your listing: {{ url_listing }}
+Your host space: {{ url_space }}
+
+The Kwa-Ba team
+{% endautoescape %}

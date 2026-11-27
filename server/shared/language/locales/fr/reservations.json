@@ -34,5 +34,6 @@
   "deletion_upcoming_stays": "Vous avez un séjour à venir ou en cours : annulez-le ou attendez sa fin.",
   "deletion_open_deposit": "Une caution doit encore vous être rendue : attendez sa restitution.",
   "only_booker_asks_payment": "Seule la personne qui a réservé peut demander qu'on la paie.",
-  "group_payment_not_asked": "Personne ne demande plus au groupe de payer cette réservation."
+  "group_payment_not_asked": "Personne ne demande plus au groupe de payer cette réservation.",
+  "reminder_what": "votre séjour « {name} » ({city}), du {arrival} au {departure}"
 }

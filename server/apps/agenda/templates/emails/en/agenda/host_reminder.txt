@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+Reminder: a Kwa-Ba agent comes to check your accommodation tomorrow at {{ hour }}.
+
+{% for listing in listings %}  {{ listing }}
+{% endfor %}  {{ city }}
+
+Have your identity document ready. Your visit: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

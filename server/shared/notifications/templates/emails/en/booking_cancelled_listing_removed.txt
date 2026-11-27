@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Your booking for “{{ hebergement_name }}” ({{ city }}), from {{ check_in }} to {{ check_out }}, is cancelled: the host no longer offers this accommodation on Kwa-Ba.
+
+No amount has been charged. If a payment arrives anyway, it will be refunded to you automatically.
+
+You can find another place to stay for these dates here:
+{{ search_url }}
+
+The Kwa-Ba team
+{% endautoescape %}

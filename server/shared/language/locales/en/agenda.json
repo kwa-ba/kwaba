@@ -14,5 +14,11 @@
   "slot_just_taken": "This time slot has just been taken: choose another one.",
   "daily_limit": "The limit of visits for this day is reached.",
   "book_24h_ahead": "A visit is booked at least 24 h ahead.",
-  "book_within_14_days": "A visit is booked within the next 14 days."
+  "book_within_14_days": "A visit is booked within the next 14 days.",
+  "email_visit_confirmed": "Visit confirmed on {when}",
+  "email_visit_moved": "Visit moved to {when}",
+  "email_visit_cancelled": "Your visit is cancelled",
+  "email_visit_reminder": "Reminder: visit tomorrow at {hour}",
+  "email_agent_on_the_way": "The Kwa-Ba agent is on the way",
+  "day_at_hour": "{day} at {hour}"
 }
