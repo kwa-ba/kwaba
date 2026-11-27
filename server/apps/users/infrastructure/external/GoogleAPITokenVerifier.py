@@ -4,8 +4,9 @@ import requests
 from django.conf import settings
 
 from apps.users.application.ports.GoogleTokenVerifier import GoogleTokenVerifier, GoogleUserInfo
+from shared.language.api import t, t_lazy
 
-INVALID_TOKEN = "Token Google invalide ou expiré."
+INVALID_TOKEN = t_lazy('users.google_token_invalid')
 
 
 class GoogleAPITokenVerifier(GoogleTokenVerifier):
@@ -19,12 +20,12 @@ class GoogleAPITokenVerifier(GoogleTokenVerifier):
 
     def verify(self, id_token: str) -> GoogleUserInfo:
         if not self._client_ids:
-            raise ValueError("La connexion avec Google n'est pas disponible.")
+            raise ValueError(t('users.google_unavailable'))
 
         try:
             response = requests.get(self._URL, params={"id_token": id_token}, timeout=self._TIMEOUT_SECONDS)
         except requests.RequestException:
-            raise ValueError("Google est injoignable, réessayez dans un instant.")
+            raise ValueError(t('users.google_unreachable'))
         if response.status_code != 200:
             raise ValueError(INVALID_TOKEN)
 

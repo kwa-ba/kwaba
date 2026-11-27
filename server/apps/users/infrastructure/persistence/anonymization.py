@@ -10,6 +10,7 @@ from shared.media.files import delete_after_commit
 from .account_deletion_models import AccountDeletionCodeModel
 from .models import UserModel, VerificationCode
 from .two_factor_models import BackupCodeModel, TwoFactorModel
+from shared.language.api import t
 
 # Name shown wherever the account appears afterwards (messages, reviews, back-office)
 DELETED_FIRST_NAME = 'Compte'
@@ -59,5 +60,5 @@ def staff_account_blockers(user_id: uuid.UUID) -> dict[str, str]:
     """An administrator or a field agent leaves through the super admins, not by deleting their own account."""
     account = UserModel.objects.filter(pk=user_id).values('role', 'is_staff', 'is_superuser').first()
     if account and (account['role'] in STAFF_ROLES or account['is_staff'] or account['is_superuser']):
-        return {'staff_account': "Un compte d'administration ou d'agent se ferme auprès des super administrateurs."}
+        return {'staff_account': t('users.staff_account_blocker')}
     return {}

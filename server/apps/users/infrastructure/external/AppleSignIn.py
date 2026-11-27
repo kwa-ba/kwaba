@@ -12,6 +12,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 
 from apps.users.application.ports.AppleSignIn import AppleIdentityVerifier, AppleUserInfo
+from shared.language.api import t, t_lazy
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ KEYS_URL = 'https://appleid.apple.com/auth/keys'
 TOKEN_URL = 'https://appleid.apple.com/auth/token'
 REVOKE_URL = 'https://appleid.apple.com/auth/revoke'
 TIMEOUT_SECONDS = 5
-INVALID_TOKEN = "Jeton Apple invalide ou expiré."
+INVALID_TOKEN = t_lazy('users.apple_token_invalid')
 
 # Apple's keys change rarely: kept in memory between calls
 _keys = jwt.PyJWKClient(KEYS_URL, cache_keys=True, lifespan=3600, timeout=TIMEOUT_SECONDS)
@@ -33,11 +34,11 @@ class AppleIdentityTokenVerifier(AppleIdentityVerifier):
 
     def verify(self, identity_token: str) -> AppleUserInfo:
         if not self._client_ids:
-            raise ValueError("La connexion avec Apple n'est pas disponible.")
+            raise ValueError(t('users.apple_unavailable'))
         try:
             key = _keys.get_signing_key_from_jwt(identity_token).key
         except jwt.PyJWKClientConnectionError:
-            raise ValueError("Apple est injoignable, réessayez dans un instant.") from None
+            raise ValueError(t('users.apple_unreachable')) from None
         except jwt.PyJWTError:
             raise ValueError(INVALID_TOKEN) from None
         try:
@@ -48,7 +49,7 @@ class AppleIdentityTokenVerifier(AppleIdentityVerifier):
         except jwt.PyJWTError:
             raise ValueError(INVALID_TOKEN) from None
         if not claims.get('email'):
-            raise ValueError("Apple n'a pas transmis d'adresse email.")
+            raise ValueError(t('users.apple_no_email'))
         return AppleUserInfo(apple_id=claims['sub'], email=claims['email'], client_id=claims['aud'],
                              email_verified=str(claims.get('email_verified', 'false')).lower() == 'true')
 

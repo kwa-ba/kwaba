@@ -26,9 +26,10 @@ from apps.users.infrastructure.http.session_tokens import asks_long_session, tok
 from apps.users.infrastructure.http.serializers.auth_serializers import (
     RegisterSerializer, LoginSerializer, PasswordResetConfirmSerializer, RefreshWithGracePeriodSerializer,
 )
-from apps.users.domain.exceptions import UserAlreadyExistsException, UserNotFoundException
+from apps.users.domain.exceptions import AccountAlreadyVerified, UserAlreadyExistsException, UserNotFoundException
 from apps.users.infrastructure.persistence.models import UserModel, VerificationCode
 from apps.users.infrastructure.external.GoogleAPITokenVerifier import GoogleAPITokenVerifier
+from shared.language.api import t
 
 RESEND_COOLDOWN = timedelta(seconds=60)
 # Code attempts (email verification and reset): a code is invalidated after MAX_ESSAIS_PAR_CODE failures,
@@ -98,7 +99,7 @@ def _essais_code(email: str) -> Tentatives:
 def _trop_d_essais(attente: int, **extra) -> Response:
     minutes = attente // 60 + 1
     reponse = Response(
-        {'detail': f"Trop de tentatives. Réessayez dans {minutes} min.", 'retry_after': attente, **extra},
+        {'detail': t('users.too_many_attempts_minutes', minutes=minutes), 'retry_after': attente, **extra},
         status=status.HTTP_429_TOO_MANY_REQUESTS,
     )
     reponse['Retry-After'] = str(attente)
@@ -154,10 +155,10 @@ class RegisterView(APIView):
             result = _service().register(dto, FallbackEventBus(), _new_code())
         except UserAlreadyExistsException:
             if UserModel.objects.filter(email__iexact=data['email']).exists():
-                return Response({'email': ['Cette adresse email est déjà utilisée.']}, status=status.HTTP_409_CONFLICT)
-            return Response({'phone': ['Ce numéro de téléphone est déjà utilisé.']}, status=status.HTTP_409_CONFLICT)
+                return Response({'email': [t('users.email_taken')]}, status=status.HTTP_409_CONFLICT)
+            return Response({'phone': [t('users.phone_taken')]}, status=status.HTTP_409_CONFLICT)
         except IntegrityError:
-            return Response({'email': ['Ce compte existe déjà.']}, status=status.HTTP_409_CONFLICT)
+            return Response({'email': [t('users.account_exists')]}, status=status.HTTP_409_CONFLICT)
 
         remember_language(result.id)
         activity.record('inscription', request, actor=result.id, email=str(result.email))
@@ -188,18 +189,18 @@ class LoginView(APIView):
         except UserNotFoundException:
             check_password(data['password'], _EMPREINTE_FACTICE)
             activity.record('connexion_echec', request, email=data['email'])
-            return Response({'detail': 'Identifiants invalides.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'detail': t('users.invalid_credentials')}, status=status.HTTP_401_UNAUTHORIZED)
 
         if not check_password(data['password'], str(user.password_hash)):
             activity.record('connexion_echec', request, actor=user.id, email=data['email'])
-            return Response({'detail': 'Identifiants invalides.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'detail': t('users.invalid_credentials')}, status=status.HTTP_401_UNAUTHORIZED)
 
         if not user.is_active:
-            return Response({'detail': 'Compte désactivé.', 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('users.account_disabled'), 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
 
         if not user.is_verified:
             return Response(
-                {'detail': "Compte non vérifié. Veuillez vérifier votre adresse email.", 'code': 'unverified_email'},
+                {'detail': t('users.email_not_verified'), 'code': 'unverified_email'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -215,7 +216,7 @@ class GoogleAuthView(APIView):
     def post(self, request):
         id_token = request.data.get('id_token')
         if not id_token:
-            return Response({'detail': 'id_token requis.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('users.id_token_required')}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = _service().google_authenticate(GoogleAuthDTO(id_token=id_token), GoogleAPITokenVerifier())
@@ -223,7 +224,7 @@ class GoogleAuthView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
         if not result.is_active:
-            return Response({'detail': 'Compte désactivé.', 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('users.account_disabled'), 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
 
         activity.record('connexion_google', request, actor=result.id, email=str(result.email))
         return Response({**_tokens_for(result.id, request), 'user': _user_payload(result)}, status=status.HTTP_200_OK)
@@ -238,7 +239,7 @@ class VerifyEmailView(APIView):
         code = str(request.data.get("code", "")).strip()
 
         if not email or not code:
-            return Response({"detail": "Email et code requis."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": t('users.email_and_code_required')}, status=status.HTTP_400_BAD_REQUEST)
 
         essais = _essais_code(email)
         if not essais.essayer():
@@ -251,19 +252,20 @@ class VerifyEmailView(APIView):
             user_id = _service().verify_email(email, code, FallbackEventBus())
         except UserNotFoundException:
             # Same response as a wrong code: which addresses have an account is not revealed
-            return Response({"detail": "Code invalide ou expiré.", "code": "invalid_code"}, status=status.HTTP_400_BAD_REQUEST)
-        except ValueError as e:
-            if 'déjà' in str(e):
-                return Response({"detail": str(e), "code": "already_verified"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": t('users.invalid_code'), "code": "invalid_code"}, status=status.HTTP_400_BAD_REQUEST)
+        except AccountAlreadyVerified:
+            return Response({"detail": t('users.already_verified'), "code": "already_verified"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
             _echec_code(email, vc)
-            return Response({"detail": str(e), "code": "invalid_code"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": t('users.invalid_code'), "code": "invalid_code"}, status=status.HTTP_400_BAD_REQUEST)
 
         essais.reussite()
         activity.record('email_verifie', request, actor=user_id, email=email)
         # The code proves ownership of the email: the session is opened directly
         user = _service().get_by_id(user_id)
         return Response({
-            "detail": "Compte vérifié avec succès.",
+            "detail": t('users.account_verified'),
             **_tokens_for(user_id, request),
             "user": _user_payload(user),
         }, status=status.HTTP_200_OK)
@@ -277,16 +279,16 @@ class ResendCodeView(APIView):
         email = str(request.data.get('email', '')).strip().lower()
 
         if not email:
-            return Response({'detail': 'Email requis.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('users.email_required')}, status=status.HTTP_400_BAD_REQUEST)
 
-        envoye = Response({'detail': 'Code renvoyé.'}, status=status.HTTP_200_OK)
+        envoye = Response({'detail': t('users.code_resent')}, status=status.HTTP_200_OK)
         user_model = UserModel.objects.filter(email__iexact=email).first()
         if not user_model:
             # Same response as a successful sending: which addresses have an account is not revealed
             return envoye
 
         if user_model.is_verified:
-            return Response({'detail': 'Compte déjà vérifié.', 'code': 'already_verified'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('users.already_verified'), 'code': 'already_verified'}, status=status.HTTP_400_BAD_REQUEST)
 
         last = VerificationCode.objects.filter(user=user_model).order_by('-expires_at').first()
         if last:
@@ -294,7 +296,7 @@ class ResendCodeView(APIView):
             wait = (sent_at + RESEND_COOLDOWN - timezone.now()).total_seconds()
             if wait > 0:
                 return Response(
-                    {'detail': f'Veuillez patienter {int(wait) + 1} s avant de redemander un code.', 'retry_after': int(wait) + 1},
+                    {'detail': t('users.wait_before_new_code', seconds=int(wait) + 1), 'retry_after': int(wait) + 1},
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
 
@@ -319,11 +321,11 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         email = str(request.data.get('email', '')).strip().lower()
         if not email:
-            return Response({'email': ['Email requis.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'email': [t('users.email_required')]}, status=status.HTTP_400_BAD_REQUEST)
 
         # Same response whether the account exists or not (no email enumeration)
         generic = Response(
-            {'detail': 'Si un compte existe pour cette adresse, un code vient de vous être envoyé.'},
+            {'detail': t('users.reset_code_sent')},
             status=status.HTTP_200_OK,
         )
 
@@ -371,7 +373,7 @@ class PasswordResetConfirmView(APIView):
             ).order_by('-expires_at').first()
         if not vc or not vc.correspond(data['code']):
             _echec_code(email, vc)
-            return Response({'code': ['Code invalide ou expiré.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'code': [t('users.invalid_code')]}, status=status.HTTP_400_BAD_REQUEST)
 
         user_model.set_password(data['password'])
         user_model.is_verified = True  # the code proves ownership of the email
@@ -381,7 +383,7 @@ class PasswordResetConfirmView(APIView):
         revoquer_jetons(user_model.id)
         essais.reussite()
         activity.record('mdp_reinitialise', request, actor=user_model, email=email)
-        return Response({'detail': 'Mot de passe modifié.'}, status=status.HTTP_200_OK)
+        return Response({'detail': t('users.password_reset_done')}, status=status.HTTP_200_OK)
 
 
 class RefreshView(TokenRefreshView):
