@@ -10,6 +10,7 @@ from apps.users.infrastructure.http.controllers.AuthController import LimiteGoog
 from apps.users.infrastructure.persistence.DjangoUserRepository import DjangoUserRepository
 from apps.users.infrastructure.persistence.models import UserModel
 from shared.activity import api as activity
+from shared.language.api import t
 
 
 class AppleAuthView(APIView):
@@ -20,7 +21,7 @@ class AppleAuthView(APIView):
     def post(self, request):
         identity_token = str(request.data.get('identity_token') or '')
         if not identity_token:
-            return Response({'detail': 'identity_token requis.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('users.identity_token_required')}, status=status.HTTP_400_BAD_REQUEST)
         try:
             info = AppleSignIn.AppleIdentityTokenVerifier().verify(identity_token)
             result = UserService(DjangoUserRepository()).apple_authenticate(
@@ -29,7 +30,7 @@ class AppleAuthView(APIView):
             return Response({'detail': str(error)}, status=status.HTTP_401_UNAUTHORIZED)
 
         if not result.is_active:
-            return Response({'detail': 'Compte désactivé.', 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('users.account_disabled'), 'code': 'inactive'}, status=status.HTTP_403_FORBIDDEN)
 
         encrypted = AppleSignIn.encrypted_refresh_token(info.client_id, str(request.data.get('authorization_code') or ''),
                                                         str(request.data.get('redirect_uri') or ''))

@@ -5,13 +5,14 @@ import string
 from contextlib import contextmanager
 
 from django.utils import translation
+from django.utils.functional import lazy
 
 from . import catalog
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['DEFAULT', 'current_language', 'in_language', 'language_of_header', 'languages', 'supported', 't',
-           'variables']
+           't_lazy', 'variables']
 
 DEFAULT = catalog.REFERENCE
 
@@ -62,6 +63,19 @@ def t(key: str, *, language: str | None = None, **values) -> str:
         logger.error('Clé de langue inconnue : %s', key)
         return key
     return found.format_map(_Values(values)) if values else found
+
+
+def _text_now(key: str, values: dict) -> str:
+    return t(key, **values)
+
+
+_lazy_text = lazy(_text_now, str)
+
+
+def t_lazy(key: str, **values):
+    """Same as t(), read only when the text is used: for a module constant or a serializer's error_messages, written
+    once at start-up but shown in the language of each request."""
+    return _lazy_text(key, values)
 
 
 class _Values(dict):

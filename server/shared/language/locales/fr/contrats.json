@@ -1,0 +1,22 @@
+{
+  "invalid_link": "Lien invalide ou contrat annulé.",
+  "hosts_only": "Réservé aux hôtes.",
+  "listing_accounts_only": "Réservé aux comptes qui préparent des annonces.",
+  "host_contract_soon": "Le contrat hôte sera bientôt disponible.",
+  "phone_before_signing": "Ajoutez votre numéro de téléphone (Profil) avant de signer : il figure au contrat.",
+  "yours_already_signed": "Votre contrat est déjà signé.",
+  "updated_read_again": "Le contrat vient d'être mis à jour : relisez-le avant de signer.",
+  "tick_preregistration": "Cochez la case pour accepter la pré-inscription.",
+  "preregistration_changed": "Le texte de pré-inscription a changé : relisez-le avant de l'accepter.",
+  "signature_format": "Signature : format d'image non pris en charge.",
+  "signature_too_big": "Signature : image trop grande.",
+  "signature_unreadable": "Signature illisible.",
+  "signature_empty": "La signature est vide ou trop petite : dessinez-la dans le cadre.",
+  "signature_missing_or_heavy": "Signature manquante ou trop lourde.",
+  "signature_missing": "Signature manquante.",
+  "already_signed": "Ce contrat est déjà signé.",
+  "no_longer_to_sign": "Ce contrat n'est plus à signer.",
+  "link_expired": "Ce lien a expiré : demandez à Kwa-Ba de vous renvoyer le contrat.",
+  "tick_contract": "Cochez la case pour accepter le contrat.",
+  "type_full_name": "Tapez votre nom complet."
+}

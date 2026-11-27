@@ -6,8 +6,9 @@ the address of their own server and collect the IP address of every visitor (tra
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from shared.language.api import t_lazy
 
-MESSAGE = "Image non autorisée : utilisez une photo envoyée sur Kwa-Ba."
+MESSAGE = t_lazy('securite.image_not_allowed')
 
 
 def hote_autorise(hote: str) -> bool:

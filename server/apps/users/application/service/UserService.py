@@ -6,6 +6,7 @@ from django.contrib.auth.hashers import check_password, is_password_usable, make
 from apps.users.domain.entities.User import User, UserRole
 from apps.users.domain.repositories.UserRepository import UserRepository
 from apps.users.domain.exceptions import (
+    AccountAlreadyVerified,
     NoPasswordToChange,
     UserAlreadyExistsException,
     UserNotFoundException,
@@ -26,6 +27,7 @@ from apps.users.application.events.WelcomeEmailRequested import WelcomeEmailRequ
 from apps.users.application.ports import EventPublisher
 from apps.users.application.ports.AppleSignIn import AppleUserInfo
 from apps.users.domain.value_objects import Email, PasswordHash, PhoneNumber
+from shared.language.api import t
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +127,7 @@ class UserService:
         verified (linked, with the same rule as Google), or a new traveller with the names the app sends (Apple
         gives them only at the very first sign-in)."""
         if not info.email_verified:
-            raise ValueError("L'adresse email Apple n'est pas vérifiée.")
+            raise ValueError(t('users.apple_email_not_verified'))
 
         user = self._repository.find_by_apple_id(info.apple_id)
         if user:
@@ -157,7 +159,7 @@ class UserService:
         info = verifier.verify(dto.id_token)
 
         if not info.email_verified:
-            raise ValueError("L'adresse email Google n'est pas vérifiée.")
+            raise ValueError(t('users.google_email_not_verified'))
 
         user = self._repository.find_by_google_id(info.google_id)
 
@@ -205,7 +207,7 @@ class UserService:
             raise UserNotFoundException(email)
 
         if user_model.is_verified:
-            raise ValueError("Compte déjà vérifié.")
+            raise AccountAlreadyVerified("Compte déjà vérifié.")
 
         vc = VerificationCode.objects.filter(user=user_model, expires_at__gt=timezone.now()).order_by('-expires_at').first()
         if not vc or not vc.correspond(code):

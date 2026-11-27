@@ -1,0 +1,7 @@
+{
+  "prelaunch": "Kwa-Ba ouvre bientôt : les réservations et les paiements ne sont pas encore ouverts.",
+  "complaint_attachment_too_big": "La pièce jointe ne doit pas dépasser 5 Mo.",
+  "complaint_attachment_type": "Pièce jointe acceptée : photo (JPEG, PNG, WebP) ou PDF.",
+  "complaint_email_required": "Indiquez votre adresse email pour recevoir la réponse.",
+  "complaint_not_sent": "L'envoi a échoué. Réessayez ou écrivez-nous directement par email."
+}

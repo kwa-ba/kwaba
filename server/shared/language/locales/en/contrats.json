@@ -1,0 +1,22 @@
+{
+  "invalid_link": "Invalid link or cancelled contract.",
+  "hosts_only": "For hosts only.",
+  "listing_accounts_only": "For accounts preparing listings only.",
+  "host_contract_soon": "The host contract will be available soon.",
+  "phone_before_signing": "Add your phone number (Profile) before signing: it appears in the contract.",
+  "yours_already_signed": "Your contract is already signed.",
+  "updated_read_again": "The contract has just been updated: read it again before signing.",
+  "tick_preregistration": "Tick the box to accept the pre-registration.",
+  "preregistration_changed": "The pre-registration text has changed: read it again before accepting it.",
+  "signature_format": "Signature: image format not supported.",
+  "signature_too_big": "Signature: image too large.",
+  "signature_unreadable": "Unreadable signature.",
+  "signature_empty": "The signature is empty or too small: draw it in the box.",
+  "signature_missing_or_heavy": "Signature missing or too heavy.",
+  "signature_missing": "Signature missing.",
+  "already_signed": "This contract is already signed.",
+  "no_longer_to_sign": "This contract can no longer be signed.",
+  "link_expired": "This link has expired: ask Kwa-Ba to send you the contract again.",
+  "tick_contract": "Tick the box to accept the contract.",
+  "type_full_name": "Type your full name."
+}

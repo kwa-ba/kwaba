@@ -15,9 +15,10 @@ from shared.activity import api as activity
 
 from apps.users.infrastructure.http.refresh_lock import locked_refresh, remember_replacing_pair, replacing_pair
 from apps.users.infrastructure.http.session_tokens import SessionRefreshToken, was_renewed_already
+from shared.language.api import t, t_lazy
 
 
-NOM_REFUSE = "Un nom tient sur une ligne, sans caractère invisible."
+NOM_REFUSE = t_lazy('users.name_one_line')
 
 
 def nom_interdit(valeur: str) -> bool:
@@ -40,7 +41,7 @@ class RegisterSerializer(serializers.Serializer):
     def validate_first_name(self, value):
         value = value.strip()
         if not value:
-            raise serializers.ValidationError('Le prénom est requis.')
+            raise serializers.ValidationError(t('users.first_name_required'))
         if nom_interdit(value):
             raise serializers.ValidationError(NOM_REFUSE)
         return value
@@ -48,7 +49,7 @@ class RegisterSerializer(serializers.Serializer):
     def validate_last_name(self, value):
         value = value.strip()
         if not value:
-            raise serializers.ValidationError('Le nom est requis.')
+            raise serializers.ValidationError(t('users.last_name_required'))
         if nom_interdit(value):
             raise serializers.ValidationError(NOM_REFUSE)
         return value
@@ -61,13 +62,13 @@ class RegisterSerializer(serializers.Serializer):
             cleaned = '+' + cleaned[2:]
         if not re.match(r'^\+\d{8,15}$', cleaned):
             raise serializers.ValidationError(
-                'Numéro invalide. Utilisez le format international, ex : +228 90 00 00 00.'
+                t('users.phone_international')
             )
         return cleaned
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError({'password_confirm': 'Les mots de passe ne correspondent pas.'})
+            raise serializers.ValidationError({'password_confirm': t('users.passwords_differ')})
         try:
             validate_password(data['password'])
         except DjangoValidationError as e:
@@ -85,7 +86,7 @@ class LoginSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email    = serializers.EmailField()
-    code     = serializers.RegexField(r'^\d{6}$', error_messages={'invalid': 'Le code contient 6 chiffres.'})
+    code     = serializers.RegexField(r'^\d{6}$', error_messages={'invalid': t_lazy('users.code_six_digits')})
     password = serializers.CharField(min_length=8, write_only=True)
     password_confirm = serializers.CharField(min_length=8, write_only=True)
 
@@ -94,7 +95,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError({'password_confirm': 'Les mots de passe ne correspondent pas.'})
+            raise serializers.ValidationError({'password_confirm': t('users.passwords_differ')})
         try:
             validate_password(data['password'])
         except DjangoValidationError as e:
@@ -154,7 +155,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data['new_password'] == data['old_password']:
-            raise serializers.ValidationError({'new_password': ["Choisissez un mot de passe différent de l'actuel."]})
+            raise serializers.ValidationError({'new_password': [t('users.new_password_same')]})
         try:
             validate_password(data['new_password'], user=self.context.get('user'))
         except DjangoValidationError as e:

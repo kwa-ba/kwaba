@@ -21,6 +21,7 @@ from apps.users import api as users
 from . import preinscription, services
 from .models import TYPES, ContratModel, ModeleContratModel
 from .pdf import contrat_pdf
+from shared.language.api import t, t_lazy
 
 LimiteLecture = limite_ip('contrat', 120, 3600)
 LimiteSignature = limite_ip('contrat_signature', 20, 3600)
@@ -70,7 +71,7 @@ class SignaturePubliqueView(APIView):
     def get(self, request, jeton):
         contrat = services.par_jeton(jeton)
         if not contrat:
-            return Response({'detail': 'Lien invalide ou contrat annulé.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('contrats.invalid_link')}, status=status.HTTP_404_NOT_FOUND)
         return Response(_public(contrat))
 
 
@@ -82,7 +83,7 @@ class SignaturePubliquePdfView(APIView):
     def get(self, request, jeton):
         contrat = services.par_jeton(jeton)
         if not contrat:
-            return Response({'detail': 'Lien invalide ou contrat annulé.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('contrats.invalid_link')}, status=status.HTTP_404_NOT_FOUND)
         return _pdf(contrat)
 
 
@@ -95,7 +96,7 @@ class SignerPubliqueView(APIView):
     def post(self, request, jeton):
         contrat = services.par_jeton(jeton)
         if not contrat:
-            return Response({'detail': 'Lien invalide ou contrat annulé.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('contrats.invalid_link')}, status=status.HTTP_404_NOT_FOUND)
         return _signer(request, contrat, 'lien personnel')
 
 
@@ -121,7 +122,7 @@ def _apercu_hote(user) -> dict | None:
 
 
 class EstHote(IsAuthenticated):
-    message = "Réservé aux hôtes."
+    message = t_lazy('contrats.hosts_only')
 
     def has_permission(self, request, view):
         return super().has_permission(request, view) and users.hote_ou_candidat(request.user)
@@ -129,7 +130,7 @@ class EstHote(IsAuthenticated):
 
 class PeutGererAnnonces(IsAuthenticated):
     """Hosts, candidates and admins, who may prepare a listing too."""
-    message = "Réservé aux comptes qui préparent des annonces."
+    message = t_lazy('contrats.listing_accounts_only')
 
     def has_permission(self, request, view):
         return super().has_permission(request, view) and users.peut_gerer_annonces(request.user)
@@ -142,7 +143,7 @@ class ContratHoteView(APIView):
     def get(self, request):
         apercu = _apercu_hote(request.user)
         if not apercu:
-            return Response({'detail': 'Le contrat hôte sera bientôt disponible.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('contrats.host_contract_soon')}, status=status.HTTP_404_NOT_FOUND)
         return Response(apercu)
 
 
@@ -153,16 +154,16 @@ class SignerHoteView(APIView):
 
     def post(self, request):
         if not request.user.phone:
-            return Response({'detail': 'Ajoutez votre numéro de téléphone (Profil) avant de signer : il figure au contrat.'},
+            return Response({'detail': t('contrats.phone_before_signing')},
                             status=status.HTTP_400_BAD_REQUEST)
         apercu = _apercu_hote(request.user)
         if not apercu:
-            return Response({'detail': 'Le contrat hôte sera bientôt disponible.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('contrats.host_contract_soon')}, status=status.HTTP_404_NOT_FOUND)
         if apercu['statut'] == 'signe':
-            return Response({'detail': 'Votre contrat est déjà signé.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('contrats.yours_already_signed')}, status=status.HTTP_400_BAD_REQUEST)
         # The text may have changed since the host read it: they sign what they read, or read again
         if str(request.data.get('version')) != str(apercu['version']):
-            return Response({'detail': 'Le contrat vient d\'être mis à jour : relisez-le avant de signer.', 'code': 'version'},
+            return Response({'detail': t('contrats.updated_read_again'), 'code': 'version'},
                             status=status.HTTP_409_CONFLICT)
         try:
             contrat = services.contrat_hote(request.user)
@@ -359,14 +360,14 @@ class PreinscriptionView(APIView):
 
     def post(self, request):
         if request.data.get('accepte') is not True:
-            return Response({'accepte': ["Cochez la case pour accepter la pré-inscription."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'accepte': [t('contrats.tick_preregistration')]}, status=status.HTTP_400_BAD_REQUEST)
         # The host accepts the text they read: a newer version must be read first
         if request.data.get('version') != preinscription.VERSION:
-            return Response({'detail': "Le texte de pré-inscription a changé : relisez-le avant de l'accepter.",
+            return Response({'detail': t('contrats.preregistration_changed'),
                              'code': 'version_perimee'}, status=status.HTTP_409_CONFLICT)
         langue = request.data.get('langue')
         if langue not in preinscription.LANGUES:
-            return Response({'langue': ['Langue inconnue.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'langue': [t('language.unknown')]}, status=status.HTTP_400_BAD_REQUEST)
         preinscription.accepter(request.user, langue=langue, ip=ip_client(request),
                                 user_agent=request.META.get('HTTP_USER_AGENT', ''))
         return Response({'acceptee': True}, status=status.HTTP_201_CREATED)

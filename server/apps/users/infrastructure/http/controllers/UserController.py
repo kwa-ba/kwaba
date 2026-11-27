@@ -56,7 +56,7 @@ class MeView(APIView):
         if 'language' in request.data and not language:
             return Response({'language': [t('language.unknown')]}, status=status.HTTP_400_BAD_REQUEST)
         noms = {champ: str(request.data.get(champ) or '').strip() for champ in ('first_name', 'last_name')}
-        trop_longs = {champ: ['150 caractères maximum.'] for champ, valeur in noms.items() if len(valeur) > 150}
+        trop_longs = {champ: [t('users.name_too_long')] for champ, valeur in noms.items() if len(valeur) > 150}
         if trop_longs:
             return Response(trop_longs, status=status.HTTP_400_BAD_REQUEST)
         refuses = {champ: [NOM_REFUSE] for champ, valeur in noms.items() if nom_interdit(valeur)}
@@ -71,7 +71,7 @@ class MeView(APIView):
         if raw_phone:
             raw_phone = ''.join(ch for ch in str(raw_phone) if ch not in ' .-()')
             if UserModel.objects.filter(phone=raw_phone).exclude(id=request.user.id).exists():
-                return Response({'phone': ['Ce numéro est déjà utilisé par un autre compte.']}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'phone': [t('users.phone_used_by_another')]}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             dto = UpdateProfileDTO(
@@ -87,9 +87,9 @@ class MeView(APIView):
         except UserNotFoundException as e:
             return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
         except ValueError:
-            return Response({'phone': ['Numéro invalide. Format attendu : +22890000000.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'phone': [t('users.phone_expected_format')]}, status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError:
-            return Response({'phone': ['Ce numéro est déjà utilisé par un autre compte.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'phone': [t('users.phone_used_by_another')]}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         return delete_own_account(request)
@@ -102,7 +102,7 @@ class CandidatureHoteView(APIView):
     def post(self, request):
         utilisateur = request.user
         if utilisateur.candidature_hote == 'refusee':
-            return Response({'detail': "Votre candidature a été refusée. Contactez Kwa-Ba pour en savoir plus.",
+            return Response({'detail': t('users.application_declined'),
                              'code': 'candidature_refusee'}, status=status.HTTP_403_FORBIDDEN)
         ouverte = UserModel.objects.filter(pk=utilisateur.pk, role='voyageur').exclude(candidature_hote='ouverte').update(
             candidature_hote='ouverte')

@@ -15,6 +15,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from shared.securite import captcha
+from shared.language.api import t
 
 logger = logging.getLogger('shared.securite')
 
@@ -41,9 +42,9 @@ class ReclamationSerializer(serializers.Serializer):
         if fichier is None:
             return None
         if fichier.size > TAILLE_MAX:
-            raise serializers.ValidationError('La pièce jointe ne doit pas dépasser 5 Mo.')
+            raise serializers.ValidationError(t('site.complaint_attachment_too_big'))
         if fichier.content_type not in TYPES_ACCEPTES:
-            raise serializers.ValidationError('Pièce jointe acceptée : photo (JPEG, PNG, WebP) ou PDF.')
+            raise serializers.ValidationError(t('site.complaint_attachment_type'))
         return fichier
 
     def validate(self, data):
@@ -51,7 +52,7 @@ class ReclamationSerializer(serializers.Serializer):
         if user.is_authenticated:
             data['email'] = user.email
         elif not data.get('email'):
-            raise serializers.ValidationError({'email': 'Indiquez votre adresse email pour recevoir la réponse.'})
+            raise serializers.ValidationError({'email': t('site.complaint_email_required')})
         return data
 
 
@@ -87,6 +88,6 @@ class ReclamationView(APIView):
             email.send()
         except Exception:
             logger.exception('Réclamation : envoi impossible')
-            return Response({'detail': "L'envoi a échoué. Réessayez ou écrivez-nous directement par email."},
+            return Response({'detail': t('site.complaint_not_sent')},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response({'envoye': True}, status=status.HTTP_201_CREATED)

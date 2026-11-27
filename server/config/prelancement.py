@@ -8,9 +8,10 @@ PRELANCEMENT=False only needs a restart of the API: the verified listings then b
 from django.conf import settings
 from rest_framework import status
 from rest_framework.exceptions import APIException
+from shared.language.api import t_lazy
 
 CODE = 'prelancement'
-MESSAGE = "Kwa-Ba ouvre bientôt : les réservations et les paiements ne sont pas encore ouverts."
+MESSAGE = t_lazy('site.prelaunch')
 
 
 def actif() -> bool:

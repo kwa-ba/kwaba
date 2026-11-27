@@ -17,6 +17,7 @@ from apps.users.infrastructure.messaging.FallbackEventBus import FallbackEventBu
 from apps.users.infrastructure.persistence.DjangoUserRepository import DjangoUserRepository
 from shared.activity import api as activity
 from shared.securite.limites import Tentatives, limite_ip
+from shared.language.api import t
 
 LimiteChangementMotDePasse = limite_ip('changement_mot_de_passe', 30, 3600)
 # Same budget as the sign-in: a stolen session cannot try passwords endlessly
@@ -36,16 +37,15 @@ class PasswordChangeView(APIView):
 
         tries = Tentatives(f'changement_mdp:{user.pk}', MAX_TRIES, WINDOW)
         if not tries.essayer():
-            return Response({'detail': 'Trop de tentatives. Réessayez plus tard.', 'code': 'too_many_attempts',
+            return Response({'detail': t('users.too_many_attempts'), 'code': 'too_many_attempts',
                              'retry_after': tries.attente}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         try:
             UserService(DjangoUserRepository()).change_password(
                 user.pk, serializer.validated_data['old_password'], serializer.validated_data['new_password'])
         except NoPasswordToChange:
-            return Response({'detail': "Votre compte se connecte avec Google : créez un mot de passe avec « Mot de "
-                                       "passe oublié ».", 'code': 'no_password'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('users.no_password'), 'code': 'no_password'}, status=status.HTTP_400_BAD_REQUEST)
         except WrongCurrentPassword:
-            return Response({'old_password': ['Mot de passe actuel incorrect.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'old_password': [t('users.wrong_current_password')]}, status=status.HTTP_400_BAD_REQUEST)
         tries.reussite()
 
         revoquer_jetons(user.pk)

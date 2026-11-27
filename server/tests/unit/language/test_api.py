@@ -56,3 +56,11 @@ def test_the_language_of_a_block(texts):
         assert api.current_language() == 'en'
         assert api.t('demo.hello', name='Ama') == 'Hello Ama'
     assert api.current_language() == 'fr'
+
+
+def test_a_lazy_text_is_read_in_the_language_of_its_use(texts):
+    constant = api.t_lazy('demo.hello', name='Ama')
+
+    with api.in_language('en'):
+        assert str(constant) == 'Hello Ama'
+    assert str(constant) == 'Bonjour Ama'

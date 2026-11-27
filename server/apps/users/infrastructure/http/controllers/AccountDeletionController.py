@@ -13,6 +13,7 @@ from apps.users.infrastructure.persistence.DjangoDeletionCodeStore import Django
 from apps.users.infrastructure.persistence.DjangoUserRepository import DjangoUserRepository
 from shared.activity import api as activity
 from shared.securite.limites import Tentatives, limite_ip
+from shared.language.api import t
 
 # Same limits as the other emailed codes: a few sendings per address, ten tries per account and per hour
 LimiteEnvoiCodeSuppression = limite_ip('envoi_code_suppression', 10, 3600)
@@ -27,7 +28,7 @@ def _service() -> AccountDeletionService:
 def _blocked(error: AccountDeletionBlocked) -> Response:
     return Response({
         'code': 'account_deletion_blocked',
-        'detail': 'Votre compte ne peut pas encore être supprimé.',
+        'detail': t('users.deletion_blocked'),
         'blockers': [{'code': code, 'detail': detail} for code, detail in error.blockers.items()],
     }, status=status.HTTP_409_CONFLICT)
 
@@ -48,17 +49,17 @@ def delete_own_account(request) -> Response:
     """DELETE users/me/ with {"code": "123456"}."""
     code = str(request.data.get('code') or '').strip()
     if not code:
-        return Response({'code': ['Saisissez le code reçu par email.']}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'code': [t('users.enter_emailed_code')]}, status=status.HTTP_400_BAD_REQUEST)
 
     tries = Tentatives(f'code_suppression:{request.user.id}', MAX_TRIES_PER_HOUR, 3600)
     if not tries.essayer():
-        return Response({'detail': 'Trop de tentatives. Réessayez plus tard.', 'code': 'too_many_attempts',
+        return Response({'detail': t('users.too_many_attempts'), 'code': 'too_many_attempts',
                          'retry_after': tries.attente}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     user_id = request.user.id
     try:
         _service().delete(user_id, code)
     except InvalidDeletionCode:
-        return Response({'code': ['Code invalide ou expiré.']}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'code': [t('users.invalid_code')]}, status=status.HTTP_400_BAD_REQUEST)
     except AccountDeletionBlocked as error:
         return _blocked(error)
     tries.reussite()
