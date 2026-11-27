@@ -17,6 +17,7 @@ from apps.users import api as users
 from . import deposit, fedapay, paypal, services, tarifs
 from .models import ProfilVersementModel, VersementModel
 from .operateurs import PAYS, operateurs_ouverts, pays_ouverts
+from shared.language.api import t, t_lazy
 
 logger = logging.getLogger('apps.paiements')
 
@@ -87,7 +88,7 @@ class WebhookFedaPayView(APIView):
 # --- Host --------------------------------------------------------------------------------
 
 class EstHote(IsAuthenticated):
-    message = "Réservé aux hôtes."
+    message = t_lazy('paiements.hosts_only')
 
     def has_permission(self, request, view):
         return super().has_permission(request, view) and users.peut_gerer_annonces(request.user)
@@ -97,10 +98,10 @@ def _valider_compte(data):
     """Operator available in the country, number with the right number of digits."""
     pays = data['pays']
     if data['operateur'] not in operateurs_ouverts(pays):
-        raise serializers.ValidationError({'operateur': "Cet opérateur n'est pas disponible dans le pays choisi."})
+        raise serializers.ValidationError({'operateur': t('paiements.operator_not_in_country')})
     attendu = PAYS[pays]['chiffres']
     if len(data['numero']) != attendu:
-        raise serializers.ValidationError({'numero': f"Le numéro doit comporter {attendu} chiffres (sans l'indicatif +{PAYS[pays]['indicatif']})."})
+        raise serializers.ValidationError({'numero': t('paiements.number_digits', digits=attendu, code=PAYS[pays]['indicatif'])})
     return data
 
 
@@ -132,7 +133,7 @@ class ProfilVersementSerializer(serializers.ModelSerializer):
     def validate_titulaire(self, valeur):
         valeur = ' '.join(valeur.split())
         if len(valeur) < 3:
-            raise serializers.ValidationError("Indiquez le nom complet du titulaire du compte.")
+            raise serializers.ValidationError(t('paiements.holder_name_required'))
         return valeur
 
     def validate(self, data):

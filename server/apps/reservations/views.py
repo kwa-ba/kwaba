@@ -15,6 +15,7 @@ from apps.users import api as users
 from . import calendrier, paiement
 from .models import ReservationModel
 from .serializers import ReservationSerializer, ReservationCreateSerializer
+from shared.language.api import t
 
 
 class ReservationListCreateView(APIView):
@@ -57,7 +58,7 @@ class ReservationCalendrierView(APIView):
         reservation = ReservationModel.objects.filter(pk=pk, guest_id=request.user.pk, status='confirmed').first()
         annonce = hebergements.fiche(reservation.hebergement_id, archivees=True) if reservation else None
         if not annonce:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         langue = request.query_params.get('langue')
         content = calendrier.evenement(reservation, annonce, langue if langue in ('fr', 'en') else 'fr')
         return export.ics_response(content, calendrier.nom_fichier(reservation))
@@ -75,23 +76,23 @@ class ReservationDetailView(APIView):
     def get(self, request, pk):
         obj = self._get_object(pk, request.user)
         if not obj:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReservationSerializer(obj, context={'request': request}).data)
 
     def delete(self, request, pk):
         obj = self._get_object(pk, request.user)
         if not obj:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if obj.check_in <= timezone.localdate():
             return Response(
-                {'detail': 'Un séjour déjà commencé ou passé ne peut plus être annulé.'},
+                {'detail': t('reservations.cannot_cancel_started')},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if obj.status not in ('confirmed', 'pending'):
-            return Response({'detail': 'Cette réservation ne peut pas être annulée.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('reservations.cannot_cancel')}, status=status.HTTP_400_BAD_REQUEST)
         try:
             rembourse = paiement.annuler(obj, par='voyageur')
         except paiements.PaiementErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         numero_requis = paiements.numero_remboursement_requis('reservation', obj.pk)
-        return Response({'detail': 'Réservation annulée.', 'rembourse': rembourse, 'numero_requis': numero_requis})
+        return Response({'detail': t('reservations.cancelled'), 'rembourse': rembourse, 'numero_requis': numero_requis})

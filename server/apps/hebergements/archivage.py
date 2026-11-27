@@ -5,6 +5,7 @@ from shared.notifications.api import demander_email
 
 from .models import HebergementModel
 from .occupations import reservations
+from shared.language.api import t
 
 
 class ArchivageImpossible(Exception):
@@ -17,7 +18,7 @@ def archiver(hebergement: HebergementModel) -> None:
         maintenant = timezone.now()
         if reservations().sejour_paye_a_venir(hebergement.pk):
             raise ArchivageImpossible(
-                "Cette annonce a des séjours payés à venir ou en cours : elle ne peut pas être supprimée. Masquez-la plutôt."
+                t('hebergements.archive_paid_stays')
             )
         en_attente = reservations().annuler_en_attente(hebergement.pk)
         HebergementModel.objects.filter(pk=hebergement.pk).update(archivee_le=maintenant, is_available=False)

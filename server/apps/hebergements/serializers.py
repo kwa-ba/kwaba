@@ -12,6 +12,7 @@ from apps.users import api as users
 from . import positions
 from .deposit import valider as valider_caution
 from .models import BlocageModel, HebergementModel, TypeLogementModel
+from shared.language.api import t
 
 # Amenities a host can tick, by category (labels and icons: client/src/components/hebergement/AmenityBadge.tsx).
 # Stored in the `amenities` JSON list: adding one needs no migration.
@@ -226,7 +227,7 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'latitude': [self.POSITION_MANQUANTE]})
         formule = data.get('petit_dejeuner', getattr(self.instance, 'petit_dejeuner', ''))
         if formule == 'option' and not data.get('petit_dejeuner_prix', getattr(self.instance, 'petit_dejeuner_prix', None)):
-            raise serializers.ValidationError({'petit_dejeuner_prix': ["Indiquez le prix du petit-déjeuner par personne."]})
+            raise serializers.ValidationError({'petit_dejeuner_prix': [t('hebergements.breakfast_price_required')]})
         if formule != 'option' and 'petit_dejeuner' in data:
             data['petit_dejeuner_prix'] = None
         self._legendes(data)
@@ -273,21 +274,21 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
 
     def validate_price_per_night(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Le prix doit être supérieur à 0.")
+            raise serializers.ValidationError(t('hebergements.price_positive'))
         return value
 
     def validate_max_guests(self, value):
         # At 0, no booking is possible anymore (at least 1 traveller per booking)
         if value < 1:
-            raise serializers.ValidationError("Le logement doit accueillir au moins 1 voyageur.")
+            raise serializers.ValidationError(t('hebergements.at_least_one_guest'))
         return value
 
     def validate_amenities(self, value):
         unknown = [a for a in value if a not in AMENITIES]
         if unknown:
-            raise serializers.ValidationError(f"Équipements inconnus : {', '.join(unknown)}")
+            raise serializers.ValidationError(t('hebergements.amenities_unknown', amenities=', '.join(unknown)))
         if any(oui in value and non in value for oui, non in REGLES):
-            raise serializers.ValidationError("Une règle de la maison ne peut pas être à la fois autorisée et interdite.")
+            raise serializers.ValidationError(t('hebergements.rule_allowed_and_forbidden'))
         return value
 
     def validate_image_url(self, value):
@@ -297,11 +298,11 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
 
     def validate_images(self, value):
         if not isinstance(value, list) or not all(isinstance(u, str) for u in value):
-            raise serializers.ValidationError("Liste d'URL attendue.")
+            raise serializers.ValidationError(t('hebergements.url_list_expected'))
         if not all(url_image_autorisee(u) for u in value):
             raise serializers.ValidationError(IMAGE_REFUSEE)
         if len(value) > MAX_PHOTOS_ANNONCE:
-            raise serializers.ValidationError(f"{MAX_PHOTOS_ANNONCE} photos au plus par annonce.")
+            raise serializers.ValidationError(t('hebergements.max_photos', count=MAX_PHOTOS_ANNONCE))
         return value
 
     def validate_types_chambres(self, value):
@@ -317,11 +318,11 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
                     'capacite': int(u.get('capacite') or 0),
                 }
             except (TypeError, ValueError):
-                raise serializers.ValidationError("Types de chambres invalides.")
+                raise serializers.ValidationError(t('hebergements.room_types_invalid'))
             if propre['prix_nuit'] < 0 or propre['prix_nuit'] > 10_000_000:
-                raise serializers.ValidationError("Prix par nuit invalide.")
+                raise serializers.ValidationError(t('hebergements.night_price_invalid'))
             if propre['quantite'] > 500 or propre['capacite'] > 50 or propre['quantite'] < 0 or propre['capacite'] < 0:
-                raise serializers.ValidationError("500 chambres et 50 personnes par chambre au plus.")
+                raise serializers.ValidationError(t('hebergements.rooms_limit'))
             if propre['nom']:
                 self._sans_coordonnees(propre['nom'])
             propres.append(propre)
@@ -355,14 +356,14 @@ class HebergementCreateSerializer(serializers.ModelSerializer):
         if not isinstance(value, dict) or len(value) > 20 or not all(
                 isinstance(url, str) and isinstance(piece, str) and (piece in PIECES or PIECE_NUMEROTEE.match(piece))
                 for url, piece in value.items()):
-            raise serializers.ValidationError("Pièces des photos invalides.")
+            raise serializers.ValidationError(t('hebergements.photo_rooms_invalid'))
         return value
 
     def validate_declarations(self, value):
         if value is None:
             return value
         if not isinstance(value, dict) or set(value) - set(DECLARATIONS) or not all(isinstance(v, bool) for v in value.values()):
-            raise serializers.ValidationError("Déclarations invalides.")
+            raise serializers.ValidationError(t('hebergements.declarations_invalid'))
         return value
 
 
@@ -384,22 +385,22 @@ class TypeLogementSerializer(serializers.ModelSerializer):
 
     def validate_capacite(self, value):
         if not 1 <= value <= 50:
-            raise serializers.ValidationError("De 1 à 50 voyageurs par logement.")
+            raise serializers.ValidationError(t('hebergements.guests_range'))
         return value
 
     def validate_prix_nuit(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Le prix doit être supérieur à 0.")
+            raise serializers.ValidationError(t('hebergements.price_positive'))
         return value
 
     def validate_quantite(self, value):
         if not 1 <= value <= 500:
-            raise serializers.ValidationError("De 1 à 500 logements identiques.")
+            raise serializers.ValidationError(t('hebergements.units_range'))
         return value
 
     def validate_photos(self, value):
         if not isinstance(value, list) or not all(isinstance(u, str) for u in value):
-            raise serializers.ValidationError("Liste d'URL attendue.")
+            raise serializers.ValidationError(t('hebergements.url_list_expected'))
         if not all(url_image_autorisee(u) for u in value):
             raise serializers.ValidationError(IMAGE_REFUSEE)
         return value[:10]
@@ -417,17 +418,17 @@ class BlocageSerializer(serializers.ModelSerializer):
     def validate(self, data):
         today = timezone.localdate()
         if data['fin'] <= data['debut']:
-            raise serializers.ValidationError({'fin': 'La fin doit être après le début.'})
+            raise serializers.ValidationError({'fin': t('hebergements.end_after_start')})
         if data.get('quantite'):
             type_logement = data.get('type_logement')
             if type_logement is None:
-                raise serializers.ValidationError({'quantite': ["Choisissez le type de chambre dont fermer une partie."]})
+                raise serializers.ValidationError({'quantite': [t('hebergements.choose_type_to_close')]})
             if data['quantite'] > type_logement.quantite:
-                raise serializers.ValidationError({'quantite': [f"Ce type compte {type_logement.quantite} unité(s)."]})
+                raise serializers.ValidationError({'quantite': [t('hebergements.type_unit_count', count=type_logement.quantite)]})
         if data['debut'] < today:
-            raise serializers.ValidationError({'debut': 'Impossible de bloquer des dates passées.'})
+            raise serializers.ValidationError({'debut': t('hebergements.cannot_block_past')})
         if data['fin'] > today + timedelta(days=730):
-            raise serializers.ValidationError({'fin': 'Le calendrier est limité à deux ans.'})
+            raise serializers.ValidationError({'fin': t('hebergements.calendar_two_years')})
         return data
 
 

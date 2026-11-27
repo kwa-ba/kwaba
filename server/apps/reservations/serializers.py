@@ -6,6 +6,7 @@ from apps.hebergements import api as hebergements
 from apps.paiements import api as paiements
 from shared.securite import coordonnees, fraude
 from apps.users import api as users
+from shared.language.api import number, t
 
 # Bookings waiting for payment one traveller can hold at the same time: each one holds its dates for 30 minutes
 MAX_EN_ATTENTE = 3
@@ -148,40 +149,39 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         hebergement = hebergements.fiche(data['hebergement_id'])
         if not hebergement:
-            raise serializers.ValidationError({'hebergement': "Hébergement introuvable."})
+            raise serializers.ValidationError({'hebergement': t('reservations.accommodation_not_found')})
         check_in, check_out = data['check_in'], data['check_out']
         request = self.context.get('request')
         if request and ReservationModel.objects.filter(
                 guest_id=request.user.id, status='pending', expire_le__gt=timezone.now()).count() >= MAX_EN_ATTENTE:
             raise serializers.ValidationError(
-                f"Vous avez déjà {MAX_EN_ATTENTE} réservations en attente de paiement : payez-en une, ou attendez "
-                "qu'elles expirent (30 minutes après leur création).")
+                t('reservations.too_many_pending', count=MAX_EN_ATTENTE))
 
         if check_in < timezone.localdate():
-            raise serializers.ValidationError({'check_in': "La date d'arrivée ne peut pas être dans le passé."})
+            raise serializers.ValidationError({'check_in': t('reservations.arrival_in_past')})
         if check_in >= check_out:
-            raise serializers.ValidationError({'check_out': "La date de départ doit être après la date d'arrivée."})
+            raise serializers.ValidationError({'check_out': t('reservations.departure_after_arrival')})
         if (check_out - check_in).days > 90:
-            raise serializers.ValidationError({'check_out': "La durée maximale d'un séjour est de 90 nuits."})
+            raise serializers.ValidationError({'check_out': t('reservations.max_90_nights')})
         type_logement = (hebergements.fiche_type(data['type_logement_id']) if data.get('type_logement_id')
                          else hebergements.type_par_defaut(hebergement['id']))
         if not type_logement or type_logement['hebergement_id'] != hebergement['id'] or not type_logement['actif']:
             raise serializers.ValidationError(
-                {'type_logement': "Ce type de logement n'est pas proposé par cet établissement."})
+                {'type_logement': t('reservations.type_not_offered')})
         nb_unites = data.get('nb_unites', 1)
         if nb_unites > type_logement['quantite']:
             raise serializers.ValidationError(
-                {'nb_unites': f"Cet établissement propose {type_logement['quantite']} logement(s) de ce type au plus."})
+                {'nb_unites': t('reservations.max_units_of_type', count=type_logement['quantite'])})
         data['type_logement_id'], data['nb_unites'] = type_logement['id'], nb_unites
         if data.get('guests_count', 1) < 1:
-            raise serializers.ValidationError({'guests_count': "Au moins 1 voyageur."})
+            raise serializers.ValidationError({'guests_count': t('reservations.at_least_one_guest')})
         capacite = type_logement['capacite'] * nb_unites
         if data.get('guests_count', 1) > capacite:
-            raise serializers.ValidationError({'guests_count': f"Ce logement accueille au maximum {capacite} voyageurs."})
+            raise serializers.ValidationError({'guests_count': t('reservations.max_guests', count=capacite)})
         if not hebergements.est_publiee(hebergement['id']):
-            raise serializers.ValidationError({'hebergement': "Cet hébergement n'est plus disponible."})
+            raise serializers.ValidationError({'hebergement': t('reservations.accommodation_unavailable')})
         if request and hebergement['host_id'] == request.user.id:
-            raise serializers.ValidationError({'hebergement': "Vous ne pouvez pas réserver votre propre hébergement."})
+            raise serializers.ValidationError({'hebergement': t('reservations.own_listing')})
 
         # Same rule as the displayed calendar: units left night by night, dates closed by the host.
         # The unit-type lock (held by the view's transaction until create) prevents two simultaneous bookings from
@@ -199,8 +199,7 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
                                            deposit_settings=hebergement['deposit']).total
             if total != total_attendu:
                 raise serializers.ValidationError({'total_attendu': [
-                    f"Le prix a changé : le total est maintenant de {total:,} FCFA. Vérifiez le récapitulatif avant de payer."
-                    .replace(',', ' ')]})
+                    t('reservations.price_changed', total=number(total))]})
         return data
 
     def create(self, validated_data):

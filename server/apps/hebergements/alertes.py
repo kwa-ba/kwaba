@@ -19,6 +19,7 @@ from shared.securite.limites import limite_ip
 
 from . import stock
 from .models import AlerteDisponibiliteModel, HebergementModel, TypeLogementModel
+from shared.language.api import t
 
 logger = logging.getLogger('apps.hebergements')
 
@@ -59,13 +60,13 @@ class AlerteSerializer(serializers.Serializer):
     def validate(self, data):
         aujourd_hui = timezone.localdate()
         if data['debut'] < aujourd_hui:
-            raise serializers.ValidationError({'debut': "La date d'arrivée est passée."})
+            raise serializers.ValidationError({'debut': t('hebergements.arrival_past')})
         if data['fin'] <= data['debut']:
-            raise serializers.ValidationError({'fin': "Le départ doit suivre l'arrivée."})
+            raise serializers.ValidationError({'fin': t('hebergements.departure_after_arrival')})
         if (data['fin'] - data['debut']).days > MAX_NUITS:
-            raise serializers.ValidationError({'fin': f"{MAX_NUITS} nuits au plus."})
+            raise serializers.ValidationError({'fin': t('hebergements.max_nights', nights=MAX_NUITS)})
         if data['debut'] > aujourd_hui + timedelta(days=540):
-            raise serializers.ValidationError({'debut': "Date trop lointaine."})
+            raise serializers.ValidationError({'debut': t('hebergements.date_too_far')})
         return data
 
 
@@ -81,7 +82,7 @@ class AlerteCreateView(APIView):
     def post(self, request, pk):
         hebergement = HebergementModel.objects.publiees().filter(pk=pk).first()
         if hebergement is None:
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.not_found')}, status=status.HTTP_404_NOT_FOUND)
         donnees = AlerteSerializer(data=request.data)
         donnees.is_valid(raise_exception=True)
         d = donnees.validated_data
@@ -90,18 +91,18 @@ class AlerteCreateView(APIView):
         if d.get('type_logement'):
             type_logement = TypeLogementModel.objects.filter(pk=d['type_logement'], hebergement=hebergement, actif=True).first()
             if type_logement is None:
-                return Response({'type_logement': ['Type de logement inconnu.']}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'type_logement': [t('hebergements.unit_type_unknown')]}, status=status.HTTP_400_BAD_REQUEST)
 
         connecte = request.user.is_authenticated
         email = request.user.email if connecte else d.get('email', '')
         if not email:
-            return Response({'email': ['Indiquez votre adresse email.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'email': [t('hebergements.email_required')]}, status=status.HTTP_400_BAD_REQUEST)
         email = email.strip().lower()
 
         alerte = AlerteDisponibiliteModel(hebergement=hebergement, type_logement=type_logement, date_debut=d['debut'],
                                           date_fin=d['fin'], nb_unites=d['nb_unites'])
         if _disponible(alerte):
-            return Response({'detail': "Ces dates sont disponibles : vous pouvez réserver dès maintenant.", 'code': 'disponible'},
+            return Response({'detail': t('hebergements.dates_available'), 'code': 'disponible'},
                             status=status.HTTP_409_CONFLICT)
 
         ouvertes = AlerteDisponibiliteModel.objects.filter(email=email, statut__in=OUVERTES)
@@ -109,7 +110,7 @@ class AlerteCreateView(APIView):
                                     date_fin=d['fin']).first()
         if existante is None:
             if ouvertes.count() >= MAX_ALERTES_PAR_EMAIL:
-                return Response({'detail': f"Vous avez déjà {MAX_ALERTES_PAR_EMAIL} alertes en cours."},
+                return Response({'detail': t('hebergements.too_many_alerts', count=MAX_ALERTES_PAR_EMAIL)},
                                 status=status.HTTP_400_BAD_REQUEST)
             alerte.email, alerte.langue = email, d['langue']
             alerte.utilisateur_id = request.user.pk if connecte else None
@@ -147,7 +148,7 @@ class AlerteConfirmationView(APIView):
     def post(self, request):
         alerte = _par_jeton(request)
         if alerte is None:
-            return Response({'detail': "Ce lien n'est plus valable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.link_no_longer_valid')}, status=status.HTTP_404_NOT_FOUND)
         if alerte.statut == 'a_confirmer':
             # Dates may have become free since the request: checked at the next pass
             alerte.statut, alerte.a_verifier = 'active', True
@@ -164,7 +165,7 @@ class AlerteDesinscriptionView(APIView):
     def post(self, request):
         alerte = _par_jeton(request)
         if alerte is None:
-            return Response({'detail': "Ce lien n'est plus valable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('hebergements.link_no_longer_valid')}, status=status.HTTP_404_NOT_FOUND)
         if alerte.statut in OUVERTES:
             alerte.statut = 'annulee'
             alerte.save(update_fields=['statut'])

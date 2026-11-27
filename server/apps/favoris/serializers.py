@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.hebergements import api as hebergements
+from shared.language.api import t
 
 
 def favoris_json(favoris, request) -> list[dict]:
@@ -16,5 +17,5 @@ class FavoriCreateSerializer(serializers.Serializer):
 
     def validate_hebergement(self, valeur):
         if not hebergements.est_publiee(valeur):
-            raise serializers.ValidationError('Hébergement introuvable.')
+            raise serializers.ValidationError(t('favoris.accommodation_not_found'))
         return valeur

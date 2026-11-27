@@ -22,6 +22,7 @@ from apps.users import api as users
 
 from . import paiement
 from .models import DemandePaiementModel, ReservationModel
+from shared.language.api import t
 
 DUREE_LIEN = timedelta(hours=24)
 
@@ -47,7 +48,7 @@ def demande_par_jeton(jeton: str) -> DemandePaiementModel | None:
 
 def _verifier_creation(reservation) -> None:
     if reservation.status != 'pending' or (reservation.expire_le and reservation.expire_le <= timezone.now()):
-        raise paiements.PaiementErreur("Cette réservation n'attend plus de paiement : il est trop tard pour la faire payer par quelqu'un d'autre.")
+        raise paiements.PaiementErreur(t('reservations.third_party_too_late'))
 
 
 def creer_lien(reservation) -> tuple[DemandePaiementModel, str]:
@@ -89,25 +90,25 @@ def verifier(demande, payeur) -> ReservationModel:
     """The booking, if this person may pay it now; otherwise PaiementErreur with the reason, for them."""
     maintenant = timezone.now()
     if demande.revoquee_le or demande.expire_le <= maintenant:
-        raise paiements.PaiementErreur("Ce lien de paiement n'est plus valable : demandez-en un nouveau à la personne qui a réservé.")
+        raise paiements.PaiementErreur(t('reservations.third_party_link_invalid'))
     r = ReservationModel.objects.get(pk=demande.reservation_id)
     if payeur.pk == r.guest_id:
-        raise paiements.PaiementErreur("C'est votre réservation : payez-la depuis Mes réservations.")
+        raise paiements.PaiementErreur(t('reservations.third_party_own_booking'))
     annonce = hebergements.fiche(r.hebergement_id, archivees=True)
     if not annonce or payeur.pk == annonce['host_id']:
-        raise paiements.PaiementErreur("L'hôte ne peut pas payer une réservation de son propre logement.")
+        raise paiements.PaiementErreur(t('reservations.third_party_host'))
     if r.status == 'confirmed':
-        raise paiements.PaiementErreur("Ce séjour est déjà payé.")
+        raise paiements.PaiementErreur(t('reservations.already_paid'))
     if not (r.status == 'pending' or (r.status == 'cancelled' and r.annule_par == 'expiration')):
-        raise paiements.PaiementErreur("Cette réservation a été annulée.")
+        raise paiements.PaiementErreur(t('reservations.was_cancelled'))
     if r.check_in < timezone.localdate():
-        raise paiements.PaiementErreur("La date d'arrivée est passée : ce séjour ne peut plus être payé.")
+        raise paiements.PaiementErreur(t('reservations.arrival_passed_cannot_pay'))
     if not (r.status == 'pending' and r.expire_le and r.expire_le > maintenant):
         # The dates are no longer held: payable only if they are still free
         if not hebergements.est_publiee(r.hebergement_id) or hebergements.conflit(
                 r.hebergement_id, r.check_in, r.check_out, exclure=r.pk, type_logement_id=r.type_logement_id,
                 nb=r.nb_unites or 1):
-            raise paiements.PaiementErreur("Les dates ne sont plus disponibles : ce séjour ne peut plus être payé.")
+            raise paiements.PaiementErreur(t('reservations.dates_gone_cannot_pay'))
     return r
 
 

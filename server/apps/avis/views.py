@@ -15,6 +15,7 @@ from apps.reservations import api as reservations
 from .models import AvisModel, CRITERES
 from .serializers import AvisCreateSerializer, AvisSerializer, ReponseHoteSerializer
 from .services import motif_refus, recalculer_note, sejours_a_evaluer
+from shared.language.api import t
 
 PAGE_DEFAUT = 6
 PAGE_MAX = 50
@@ -47,7 +48,7 @@ class AvisListCreateView(APIView):
         # Missing or malformed id: same response as an unknown listing (and not a 500 error)
         hebergement_id = _uuid(request.query_params.get('hebergement'))
         if hebergement_id is None or not hebergements.existe(hebergement_id):
-            return Response({'detail': 'Hébergement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('avis.accommodation_not_found')}, status=status.HTTP_404_NOT_FOUND)
         qs = AvisModel.objects.filter(hebergement_id=hebergement_id)
 
         agregats = qs.aggregate(
@@ -91,7 +92,7 @@ class AvisListCreateView(APIView):
                 avis = serializer.save(auteur_id=request.user.id, hebergement_id=sejour['hebergement_id'])
                 recalculer_note(sejour['hebergement_id'])
         except IntegrityError:
-            return Response({'detail': "Vous avez déjà laissé un avis pour ce séjour."}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('avis.already_reviewed')}, status=status.HTTP_409_CONFLICT)
 
         return Response(AvisSerializer(avis).data, status=status.HTTP_201_CREATED)
 
@@ -123,9 +124,9 @@ class ReponseHoteView(APIView):
         avis = get_object_or_404(AvisModel, pk=pk)
         annonce = hebergements.resumes([avis.hebergement_id]).get(avis.hebergement_id)
         if not annonce or annonce['host_id'] != request.user.id:
-            return Response({'detail': "Seul l'hôte de ce logement peut répondre."}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('avis.host_only_reply')}, status=status.HTTP_403_FORBIDDEN)
         if avis.reponse_hote:
-            return Response({'detail': 'Vous avez déjà répondu à cet avis.'}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('avis.already_replied')}, status=status.HTTP_409_CONFLICT)
 
         serializer = ReponseHoteSerializer(data=request.data)
         if not serializer.is_valid():

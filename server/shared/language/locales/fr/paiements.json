@@ -1,0 +1,12 @@
+{
+  "method_unavailable": "Ce moyen de paiement n'est pas disponible.",
+  "paypal_unavailable": "PayPal est momentanément indisponible. Réessayez ou choisissez un autre moyen de paiement.",
+  "provider_unavailable": "Le service de paiement est momentanément indisponible. Réessayez dans quelques instants.",
+  "hosts_only": "Réservé aux hôtes.",
+  "operator_not_in_country": "Cet opérateur n'est pas disponible dans le pays choisi.",
+  "number_digits": "Le numéro doit comporter {digits} chiffres (sans l'indicatif +{code}).",
+  "holder_name_required": "Indiquez le nom complet du titulaire du compte.",
+  "deletion_pending_refunds": "Un remboursement doit encore vous être envoyé : attendez de l'avoir reçu.",
+  "deletion_pending_payouts": "Un versement doit encore vous être envoyé : attendez de l'avoir reçu.",
+  "deletion_host_debt": "Une somme reste due à Kwa-Ba : contactez-nous pour la régler."
+}

@@ -1,0 +1,11 @@
+{
+  "own_review": "You cannot report your own review.",
+  "already_reported": "You have already reported this review.",
+  "booking_not_found": "Booking not found.",
+  "details_required": "Say what the problem is.",
+  "accommodation_not_found": "Accommodation not found.",
+  "already_reviewed": "You have already reviewed this stay.",
+  "host_only_reply": "Only the host of this accommodation can reply.",
+  "already_replied": "You have already replied to this review.",
+  "comment_too_short": "Describe your stay in at least 20 characters."
+}

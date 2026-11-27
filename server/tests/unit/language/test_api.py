@@ -64,3 +64,10 @@ def test_a_lazy_text_is_read_in_the_language_of_its_use(texts):
     with api.in_language('en'):
         assert str(constant) == 'Hello Ama'
     assert str(constant) == 'Bonjour Ama'
+
+
+def test_an_amount_the_way_of_each_language():
+    assert api.number(1250000, language='fr') == '1 250 000'
+    assert api.number(1250000, language='en') == '1,250,000'
+    with api.in_language('en'):
+        assert api.number(25000) == '25,000'

@@ -4,6 +4,8 @@ from apps.reservations import api as reservations
 from apps.users import api as users
 
 from .models import AvisModel, CRITERES, ReviewReportModel
+from shared.language.api import t
+from shared.language.api import t_lazy
 
 
 class AvisSerializer(serializers.ModelSerializer):
@@ -47,7 +49,7 @@ class AvisCreateSerializer(serializers.ModelSerializer):
     # Without the automatic uniqueness validator: the "already reviewed" case is handled by motif_refus with a clear message
     reservation = serializers.UUIDField(source='reservation_id')
     commentaire = serializers.CharField(min_length=20, max_length=2000, error_messages={
-        'min_length': 'Décrivez votre séjour en au moins 20 caractères.',
+        'min_length': t_lazy('avis.comment_too_short'),
     })
 
     class Meta:
@@ -56,7 +58,7 @@ class AvisCreateSerializer(serializers.ModelSerializer):
 
     def validate_reservation(self, valeur):
         if valeur not in reservations.resumes([valeur]):
-            raise serializers.ValidationError('Réservation introuvable.')
+            raise serializers.ValidationError(t('avis.booking_not_found'))
         return valeur
 
     def validate_commentaire(self, value):
@@ -75,5 +77,5 @@ class ReviewReportSerializer(serializers.Serializer):
     def validate(self, data):
         data['details'] = data['details'].strip()
         if data['reason'] == 'other' and not data['details']:
-            raise serializers.ValidationError({'details': ['Précisez ce qui pose problème.']})
+            raise serializers.ValidationError({'details': [t('avis.details_required')]})
         return data

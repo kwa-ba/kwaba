@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import FavoriModel
 from .serializers import FavoriCreateSerializer, favoris_json
+from shared.language.api import t
 
 
 class FavoriListCreateView(APIView):
@@ -42,5 +43,5 @@ class FavoriDetailView(APIView):
             user_id=request.user.id, hebergement_id=hebergement_id
         ).delete()
         if not deleted:
-            return Response({'detail': 'Favori introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('favoris.not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -13,6 +13,7 @@ from apps.users import api as users
 from shared.notifications.api import send_mail
 
 from .models import AvisModel, ReviewReportModel
+from shared.language.api import t
 
 logger = logging.getLogger('apps.avis')
 
@@ -28,14 +29,14 @@ class ReportRefused(Exception):
 
 def report(review: AvisModel, reporter_id: uuid.UUID, reason: str, details: str) -> ReviewReportModel:
     if review.auteur_id == reporter_id:
-        raise ReportRefused('own_review', 'Vous ne pouvez pas signaler votre propre avis.')
+        raise ReportRefused('own_review', t('avis.own_review'))
     try:
         with transaction.atomic():
             first_pending = not pending(review).exists()
             created = ReviewReportModel.objects.create(avis=review, reporter_id=reporter_id, reason=reason,
                                                        details=details)
     except IntegrityError:
-        raise ReportRefused('already_reported', 'Vous avez déjà signalé cet avis.') from None
+        raise ReportRefused('already_reported', t('avis.already_reported')) from None
     if first_pending:
         transaction.on_commit(lambda: _alert_the_team(created))
     return created

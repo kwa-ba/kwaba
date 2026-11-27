@@ -16,6 +16,7 @@ from apps.paiements.api import ProduitPaye, Relance
 
 from . import deposit
 from .models import ReservationModel
+from shared.language.api import t
 
 
 def _annonce(r) -> dict:
@@ -31,12 +32,12 @@ def demarrer_paiement(reservation, moyen: str = 'mobile_money', *, payeur=None, 
     app, which the provider sends back to (ADR-041).
     """
     if moyen not in paiements.moyens_actifs():
-        raise paiements.PaiementErreur("Ce moyen de paiement n'est pas disponible.")
+        raise paiements.PaiementErreur(t('reservations.payment_method_unavailable'))
     if payeur is None:
         if reservation.status != 'pending':
-            raise paiements.PaiementErreur("Cette réservation n'attend pas de paiement.")
+            raise paiements.PaiementErreur(t('reservations.not_awaiting_payment'))
         if reservation.expire_le and reservation.expire_le <= timezone.now():
-            raise paiements.PaiementErreur("Le délai de paiement est dépassé : les dates ont été libérées. Refaites la réservation.")
+            raise paiements.PaiementErreur(t('reservations.payment_time_over'))
 
     if reservation.payment_method != moyen:
         # Last method used: a refund by card is then sent by hand (paiements.services._par_carte)
@@ -89,7 +90,7 @@ def annuler(reservation, par: str) -> int:
     with transaction.atomic():
         reservation = ReservationModel.objects.select_for_update().get(pk=reservation.pk)
         if reservation.status == 'cancelled':
-            raise paiements.PaiementErreur("Cette réservation est déjà annulée.")
+            raise paiements.PaiementErreur(t('reservations.already_cancelled'))
         rembourse = paiements.annuler_paiement_reservation(reservation, par)
         # Every cancellation gives the escrowed deposit back in full (ADR-036)
         deposit.give_back_on_cancellation(reservation)
