@@ -20,6 +20,7 @@ from apps.users import api as users
 from .models import (
     EtapeModel, LienReservationModel, MembreModel, PropositionModel, VoteModel, VoyageGroupeModel, nouveau_code,
 )
+from shared.language.api import t
 
 MAX_MEMBRES = 20
 
@@ -50,11 +51,11 @@ def _entier(valeur) -> int | None:
 
 
 def _introuvable():
-    return Response({'detail': 'Voyage introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+    return Response({'detail': t('voyages.not_found')}, status=status.HTTP_404_NOT_FOUND)
 
 
 def _reserve_a_l_organisateur():
-    return Response({'detail': "Seul l'organisateur du voyage peut faire cela."}, status=status.HTTP_403_FORBIDDEN)
+    return Response({'detail': t('voyages.organiser_only')}, status=status.HTTP_403_FORBIDDEN)
 
 
 def budget(hebergement, voyage) -> dict | None:
@@ -153,9 +154,9 @@ class VoyageSerializer(serializers.ModelSerializer):
         debut = data.get('date_debut', getattr(self.instance, 'date_debut', None))
         fin = data.get('date_fin', getattr(self.instance, 'date_fin', None))
         if debut and fin and fin <= debut:
-            raise serializers.ValidationError({'date_fin': "La date de retour doit être après la date d'arrivée."})
+            raise serializers.ValidationError({'date_fin': t('voyages.return_after_arrival')})
         if (debut is None) != (fin is None):
-            raise serializers.ValidationError({'date_fin': "Indiquez les deux dates, ou aucune."})
+            raise serializers.ValidationError({'date_fin': t('voyages.both_dates_or_none')})
         return data
 
 
@@ -222,7 +223,7 @@ class InvitationView(APIView):
     def get(self, request, code):
         voyage = self._par_code(code)
         if not voyage:
-            return Response({'detail': "Ce lien d'invitation n'est plus valable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.invitation_invalid')}, status=status.HTTP_404_NOT_FOUND)
         return Response({
             'id': voyage.id, 'nom': voyage.nom, 'destination': voyage.destination, 'date_debut': voyage.date_debut,
             'date_fin': voyage.date_fin, 'organisateur': _nom(users.compte(voyage.organisateur_id)), 'nb_membres': voyage.membres.count(),
@@ -232,10 +233,10 @@ class InvitationView(APIView):
     def post(self, request, code):
         voyage = self._par_code(code)
         if not voyage:
-            return Response({'detail': "Ce lien d'invitation n'est plus valable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.invitation_invalid')}, status=status.HTTP_404_NOT_FOUND)
         if not voyage.membres.filter(utilisateur_id=request.user.id).exists():
             if voyage.membres.count() >= MAX_MEMBRES:
-                return Response({'detail': f"Ce voyage a atteint {MAX_MEMBRES} membres."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': t('voyages.max_members', count=MAX_MEMBRES)}, status=status.HTTP_400_BAD_REQUEST)
             MembreModel.objects.get_or_create(voyage=voyage, utilisateur_id=request.user.id)
         return Response({'id': voyage.id})
 
@@ -266,7 +267,7 @@ class MembreView(APIView):
         if str(user_id) != str(request.user.id) and voyage.organisateur_id != request.user.id:
             return _reserve_a_l_organisateur()
         if str(user_id) == str(voyage.organisateur_id):
-            return Response({'detail': "L'organisateur ne peut pas quitter le voyage : supprimez-le plutôt."},
+            return Response({'detail': t('voyages.organiser_cannot_leave')},
                             status=status.HTTP_400_BAD_REQUEST)
         with transaction.atomic():
             VoteModel.objects.filter(voyage=voyage, utilisateur_id=user_id).delete()
@@ -285,7 +286,7 @@ class PropositionsView(APIView):
             return _introuvable()
         hebergement_id = _uuid(request.data.get('hebergement'))
         if not hebergement_id or not hebergements.est_publiee(hebergement_id):
-            return Response({'hebergement': ['Logement introuvable.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'hebergement': [t('voyages.accommodation_not_found')]}, status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():  # the duplicate must not break the request's transaction
                 PropositionModel.objects.create(
@@ -293,7 +294,7 @@ class PropositionsView(APIView):
                     commentaire=str(request.data.get('commentaire', ''))[:280],
                 )
         except IntegrityError:
-            return Response({'detail': 'Ce logement est déjà proposé au groupe.'}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('voyages.accommodation_already_proposed')}, status=status.HTTP_409_CONFLICT)
         voyage.save(update_fields=['mis_a_jour_le'])
         return Response(detail(voyage, request.user, request), status=status.HTTP_201_CREATED)
 
@@ -307,9 +308,9 @@ class PropositionView(APIView):
             return _introuvable()
         p = voyage.propositions.filter(pk=proposition_id).first()
         if not p:
-            return Response({'detail': 'Proposition introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.proposal_not_found')}, status=status.HTTP_404_NOT_FOUND)
         if request.user.id not in (p.propose_par_id, voyage.organisateur_id):
-            return Response({'detail': "Seul l'auteur de la proposition ou l'organisateur peut la retirer."},
+            return Response({'detail': t('voyages.proposal_author_only')},
                             status=status.HTTP_403_FORBIDDEN)
         p.delete()
         voyage.save(update_fields=['mis_a_jour_le'])
@@ -325,7 +326,7 @@ class VoteView(APIView):
             return _introuvable()
         proposition = voyage.propositions.filter(pk=_entier(request.data.get('proposition'))).first()
         if not proposition:
-            return Response({'proposition': ['Proposition introuvable.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'proposition': [t('voyages.proposal_not_found')]}, status=status.HTTP_400_BAD_REQUEST)
         VoteModel.objects.update_or_create(voyage=voyage, utilisateur_id=request.user.id, defaults={'proposition': proposition})
         voyage.save(update_fields=['mis_a_jour_le'])
         return Response(detail(voyage, request.user, request))
@@ -352,7 +353,7 @@ class RetenirView(APIView):
         pid = request.data.get('proposition')
         proposition = voyage.propositions.filter(pk=_entier(pid)).first() if pid else None
         if pid and not proposition:
-            return Response({'proposition': ['Proposition introuvable.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'proposition': [t('voyages.proposal_not_found')]}, status=status.HTTP_400_BAD_REQUEST)
         voyage.proposition_retenue = proposition
         voyage.save(update_fields=['proposition_retenue', 'mis_a_jour_le'])
         return Response(detail(voyage, request.user, request))
@@ -387,9 +388,9 @@ class EtapeView(APIView):
             return _introuvable()
         etape = voyage.etapes.filter(pk=etape_id).first()
         if not etape:
-            return Response({'detail': 'Étape introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.step_not_found')}, status=status.HTTP_404_NOT_FOUND)
         if request.user.id not in (etape.ajoute_par_id, voyage.organisateur_id):
-            return Response({'detail': "Seul l'auteur de l'étape ou l'organisateur peut la supprimer."},
+            return Response({'detail': t('voyages.step_author_only')},
                             status=status.HTTP_403_FORBIDDEN)
         etape.delete()
         voyage.save(update_fields=['mis_a_jour_le'])
@@ -406,7 +407,7 @@ class ReservationsPartageesView(APIView):
         # Only one's own bookings can be shared
         reservation_id = _uuid(request.data.get('reservation'))
         if not reservation_id or not reservations_api.appartient_au_voyageur(reservation_id, request.user.id):
-            return Response({'reservation': ['Réservation introuvable.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'reservation': [t('voyages.booking_not_found')]}, status=status.HTTP_400_BAD_REQUEST)
         LienReservationModel.objects.get_or_create(voyage=voyage, reservation_id=reservation_id,
                                                    defaults={'ajoute_par_id': request.user.id})
         voyage.save(update_fields=['mis_a_jour_le'])
@@ -422,9 +423,9 @@ class ReservationPartageeView(APIView):
             return _introuvable()
         lien = voyage.reservations.filter(pk=lien_id).first()
         if not lien:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.booking_not_found')}, status=status.HTTP_404_NOT_FOUND)
         if request.user.id not in (lien.ajoute_par_id, voyage.organisateur_id):
-            return Response({'detail': "Seul la personne qui l'a partagée ou l'organisateur peut la retirer."},
+            return Response({'detail': t('voyages.booking_sharer_only')},
                             status=status.HTTP_403_FORBIDDEN)
         lien.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -449,7 +450,7 @@ class DemandePaiementGroupeView(_PaiementDuGroupe):
     def post(self, request, pk, lien_id):
         voyage, lien = self._lien(request, pk, lien_id)
         if not lien:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.booking_not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             reservations_api.ouvrir_paiement_au_groupe(lien.reservation_id, request.user.id, voyage.id)
         except paiements.PaiementErreur as exc:
@@ -461,7 +462,7 @@ class DemandePaiementGroupeView(_PaiementDuGroupe):
     def delete(self, request, pk, lien_id):
         voyage, lien = self._lien(request, pk, lien_id)
         if not lien:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.booking_not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             reservations_api.fermer_paiement_au_groupe(lien.reservation_id, request.user.id, voyage.id)
         except paiements.PaiementErreur as exc:
@@ -476,7 +477,7 @@ class PaiementGroupeView(_PaiementDuGroupe):
         voyage, lien = self._lien(request, pk, lien_id)
         apercu = reservations_api.apercu_paiement_du_groupe(lien.reservation_id, voyage.id, request.user) if lien else None
         if not apercu:
-            return Response({'detail': 'Aucun paiement demandé au groupe pour cette réservation.'},
+            return Response({'detail': t('voyages.no_group_payment')},
                             status=status.HTTP_404_NOT_FOUND)
         return Response(apercu)
 
@@ -484,7 +485,7 @@ class PaiementGroupeView(_PaiementDuGroupe):
         verifier_ouverture()
         voyage, lien = self._lien(request, pk, lien_id)
         if not lien:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('voyages.booking_not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             url = reservations_api.payer_pour_le_groupe(lien.reservation_id, voyage.id, request.user,
                                                         request.data.get('moyen') or 'mobile_money')
