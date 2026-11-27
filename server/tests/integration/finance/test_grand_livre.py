@@ -64,8 +64,9 @@ def test_reference_data_of_the_schema_is_loaded():
     # alert (0014), the rate of the transfers of the Tarifs page (0015), the Solution and the prudent scenario (0017),
     # the thresholds of the drivers' levels (0018), the places and duration of the Founders Programme (0020)
     # the deposit of the stays, decision v3 (0023): seven parameters, the cap in nights switched off
-    assert ParametreModel.objects.count() == 118
-    assert ParametreModel.objects.filter(actif=True).count() == 75
+    # the switch of the enhanced guarantee (0025)
+    assert ParametreModel.objects.count() == 119
+    assert ParametreModel.objects.filter(actif=True).count() == 76
     assert OffreModel.objects.filter(active=True).count() == 6
     assert RapportModel.objects.count() == 9
     # FedaPay, the account of passage of the associates' advances (GL-15), the guarantee fund (GL-17) and the
