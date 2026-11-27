@@ -16,6 +16,7 @@ from django.db.models import Avg, Count, Q
 from django.utils import timezone
 
 from .models import AvisChauffeurModel, ChauffeurModel, IncidentChauffeurModel, NiveauChauffeurModel, TransfertModel
+from shared.language.api import t
 
 ORDRE = ['standard', 'confirme', 'excellence']
 LIBELLES = {'standard': 'Standard', 'confirme': 'Confirmé', 'excellence': 'Excellence'}
@@ -123,9 +124,9 @@ def noter(*, chauffeur_id, objet_type: str, objet_id, voyageur_id, note: int, po
     valeurs = {'note': note, 'ponctualite': ponctualite, 'conduite': conduite, 'amabilite': amabilite}
     for nom, v in valeurs.items():
         if type(v) is not int or not 1 <= v <= 5:
-            raise NiveauErreur(f'Note « {nom} » attendue de 1 à 5.')
+            raise NiveauErreur(t('transferts.rating_range', name=nom))
     if AvisChauffeurModel.objects.filter(objet_type=objet_type, objet_id=objet_id).exists():
-        raise NiveauErreur('Vous avez déjà donné votre avis sur ce chauffeur pour cette course.')
+        raise NiveauErreur(t('transferts.driver_already_rated'))
     return AvisChauffeurModel.objects.create(chauffeur_id=chauffeur_id, objet_type=objet_type, objet_id=objet_id,
                                              voyageur_id=voyageur_id, commentaire=(commentaire or '').strip()[:2000],
                                              **valeurs)

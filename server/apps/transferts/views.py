@@ -13,6 +13,7 @@ from apps.reservations import api as reservations
 
 from . import services, tarifs
 from .models import AeroportModel, AvisChauffeurModel, TransfertModel
+from shared.language.api import t
 
 
 class AeroportSerializer(serializers.ModelSerializer):
@@ -103,7 +104,7 @@ class TransfertCreationSerializer(serializers.Serializer):
 
     def validate_reservation(self, valeur):
         if valeur and not reservations.appartient_au_voyageur(valeur, self.context['request'].user.id):
-            raise serializers.ValidationError("Réservation introuvable.")
+            raise serializers.ValidationError(t('transferts.booking_not_found'))
         return valeur
 
     def validate(self, data):
@@ -139,14 +140,14 @@ class DevisView(APIView):
         q = request.query_params
         aeroport = AeroportModel.objects.filter(pk=q.get('aeroport', '').upper(), actif=True).first()
         if not aeroport:
-            return Response({'detail': 'Aéroport inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('transferts.airport_unknown')}, status=status.HTTP_400_BAD_REQUEST)
         arrivee = _arrivee(aeroport, q.get('arrivee', ''))
         if not arrivee:
-            return Response({'detail': "Heure d'arrivée invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('transferts.arrival_time_invalid')}, status=status.HTTP_400_BAD_REQUEST)
         try:
             passagers, bagages = int(q.get('passagers', 1)), int(q.get('bagages', 0))
         except ValueError:
-            return Response({'detail': 'Nombre de passagers ou de bagages invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': t('transferts.passengers_or_bags_invalid')}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'options': services.devis(aeroport, arrivee, passagers, bagages),
             'trop_tard': arrivee - timezone.now() < tarifs.DELAI_MIN_RESERVATION,
@@ -171,7 +172,7 @@ class TransfertsView(APIView):
             try:
                 qs = qs.filter(reservation_id=uuid.UUID(reservation))
             except ValueError:
-                return Response({'reservation': ['Identifiant invalide.']}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'reservation': [t('transferts.id_invalid')]}, status=status.HTTP_400_BAD_REQUEST)
         data = TransfertSerializer(qs, many=True).data
         return Response({'results': data, 'count': len(data)})
 
@@ -192,7 +193,7 @@ class TransfertView(APIView):
     def get(self, request, pk):
         transfert = _du_voyageur(pk, request.user)
         if not transfert:
-            return Response({'detail': 'Transfert introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('transferts.not_found')}, status=status.HTTP_404_NOT_FOUND)
         # Return page after payment: the transaction is read again at the provider
         if paiements.synchroniser_dernier_paiement('transfert', transfert.pk):
             transfert = _du_voyageur(pk, request.user)
@@ -201,13 +202,13 @@ class TransfertView(APIView):
     def delete(self, request, pk):
         transfert = _du_voyageur(pk, request.user)
         if not transfert:
-            return Response({'detail': 'Transfert introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('transferts.not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             rembourse = services.annuler(transfert, par='voyageur')
         except services.TransfertErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         numero_requis = paiements.numero_remboursement_requis('transfert', transfert.pk)
-        return Response({'detail': 'Transfert annulé.', 'rembourse': rembourse, 'numero_requis': numero_requis})
+        return Response({'detail': t('transferts.cancelled'), 'rembourse': rembourse, 'numero_requis': numero_requis})
 
 
 class PayerTransfertView(APIView):
@@ -217,7 +218,7 @@ class PayerTransfertView(APIView):
         verifier_ouverture()
         transfert = _du_voyageur(pk, request.user)
         if not transfert:
-            return Response({'detail': 'Transfert introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('transferts.not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             url = services.demarrer_paiement(transfert, request.data.get('moyen') or transfert.moyen,
                                              to_app=paiements.asked_from_app(request.data))
@@ -232,12 +233,12 @@ class CompteRemboursementTransfertView(APIView):
     def put(self, request, pk):
         transfert = _du_voyageur(pk, request.user)
         if not transfert:
-            return Response({'detail': 'Transfert introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('transferts.not_found')}, status=status.HTTP_404_NOT_FOUND)
         serializer = paiements.CompteRemboursementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if not paiements.indiquer_numero_remboursement('transfert', transfert.pk, **serializer.validated_data):
-            return Response({'detail': "Aucun remboursement n'attend de numéro pour ce transfert."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'detail': 'Numéro enregistré : le remboursement va être envoyé.'})
+            return Response({'detail': t('transferts.no_refund_awaiting_number')}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': t('transferts.refund_number_saved')})
 
 
 class AvisChauffeurSerializer(serializers.Serializer):
@@ -258,7 +259,7 @@ class AvisChauffeurTransfertView(APIView):
 
         transfert = _du_voyageur(pk, request.user)
         if not transfert or transfert.statut != 'termine' or not transfert.chauffeur_id:
-            return Response({'detail': 'Transfert introuvable ou pas encore effectué.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('transferts.not_found_or_not_done')}, status=status.HTTP_404_NOT_FOUND)
         serializer = AvisChauffeurSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -266,4 +267,4 @@ class AvisChauffeurTransfertView(APIView):
                           voyageur_id=request.user.pk, **serializer.validated_data)
         except niveaux.NiveauErreur as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'detail': 'Merci pour votre avis.'}, status=status.HTTP_201_CREATED)
+        return Response({'detail': t('transferts.thanks_for_review')}, status=status.HTTP_201_CREATED)

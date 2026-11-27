@@ -6,6 +6,7 @@ in the Django admin); this module applies the shared rules.
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from shared.language.api import t
 
 CATEGORIES = {
     'berline': {'nom': 'Berline', 'description': 'Toyota Corolla ou similaire, climatisée', 'passagers': 3, 'bagages': 3},
@@ -54,7 +55,7 @@ def capacite_suffisante(categorie: str, passagers: int, bagages: int) -> str | N
     """Explains why the vehicle does not fit, or None."""
     c = CATEGORIES[categorie]
     if passagers > c['passagers']:
-        return f"{c['passagers']} passagers maximum"
+        return t('transferts.max_passengers', count=c['passagers'])
     if bagages > c['bagages']:
-        return f"{c['bagages']} bagages maximum"
+        return t('transferts.max_bags', count=c['bagages'])
     return None
