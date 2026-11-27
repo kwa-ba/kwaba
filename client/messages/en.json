@@ -2577,26 +2577,27 @@
     },
     "enhanced_guarantee": {
       "nom": "Enhanced Kwa-Ba Guarantee",
-      "regle": "A non-refundable fee paid with the stay, covering minor damage."
+      "regle": "A non-refundable fee paid with the stay: Kwa-Ba takes charge of minor damage as a commercial commitment."
     },
     "escrow": {
       "nom": "Escrowed deposit",
       "regle": "A percentage of the nights' price, held by Kwa-Ba and returned after departure."
     },
     "sequestreFerme": "The escrowed deposit opens soon: meanwhile, choose the enhanced guarantee or no deposit.",
+    "garantieFermee": "The enhanced guarantee is not offered for now.",
     "forfait": "Guarantee fee (FCFA)",
     "forfaitAide": "Usually between 1,000 and 10,000 F CFA: a modest amount reassures travellers.",
-    "couverture": "Covers damage up to {montant}.",
+    "couverture": "Kwa-Ba takes charge of damage up to {montant} as a commercial commitment.",
     "taux": "Deposit rate (% of the nights' price, {max} % at most)",
     "alerte": "Above {seuil} %, a high deposit lowers your bookings.",
     "exemple": "For {nuits} nights: deposit of {montant}.",
     "exempleSous": "For {nuits} nights: no deposit (under {minimum}).",
-    "sequestreAide": "Returned automatically 72 h after departure if there is no damage, and in full if the stay is cancelled. Never more than {plafond}.",
+    "sequestreAide": "Returned automatically 72 h after departure, except the amount of a reported damage, kept while it is decided, and in full if the stay is cancelled. Never more than {plafond}.",
     "stay": {
       "guarantee": "Kwa-Ba Enhanced Guarantee",
-      "guaranteeHelp": "Non-refundable, unless the host cancels. Covers minor damage up to {montant}.",
+      "guaranteeHelp": "Non-refundable, unless the host or Kwa-Ba cancels. Kwa-Ba takes charge of minor damage up to {montant} as a commercial commitment.",
       "escrow": "Security deposit",
-      "escrowHelp": "Held by Kwa-Ba and returned after you leave if there is no damage, and in full if the stay is cancelled."
+      "escrowHelp": "Held by Kwa-Ba and returned 72 h after you leave, except the amount of a reported damage, kept while it is decided; in full if the stay is cancelled."
     }
   }
 }

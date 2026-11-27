@@ -2577,26 +2577,27 @@
     },
     "enhanced_guarantee": {
       "nom": "Garantie Kwa-Ba renforcée",
-      "regle": "Un forfait non remboursable payé avec le séjour, qui couvre les petits dommages."
+      "regle": "Un forfait non remboursable payé avec le séjour : Kwa-Ba prend en charge à titre commercial les petits dommages."
     },
     "escrow": {
       "nom": "Caution séquestrée",
       "regle": "Un pourcentage du prix des nuitées, gardé par Kwa-Ba et rendu après le départ."
     },
     "sequestreFerme": "La caution séquestrée ouvrira bientôt : en attendant, choisissez la garantie renforcée ou aucune caution.",
+    "garantieFermee": "La garantie renforcée n'est pas proposée pour le moment.",
     "forfait": "Forfait de la garantie (FCFA)",
     "forfaitAide": "Entre 1 000 et 10 000 F CFA en général : un montant modeste rassure les voyageurs.",
-    "couverture": "Couvre les dommages jusqu'à {montant}.",
+    "couverture": "Kwa-Ba prend en charge à titre commercial les dommages jusqu'à {montant}.",
     "taux": "Taux de la caution (% du prix des nuitées, {max} % au plus)",
     "alerte": "Au-delà de {seuil} %, une caution élevée fait baisser vos réservations.",
     "exemple": "Pour {nuits} nuits : caution de {montant}.",
     "exempleSous": "Pour {nuits} nuits : pas de caution (moins de {minimum}).",
-    "sequestreAide": "Rendue automatiquement 72 h après le départ s'il n'y a pas de dommage, et en entier en cas d'annulation. Jamais plus de {plafond}.",
+    "sequestreAide": "Rendue automatiquement 72 h après le départ, sauf le montant d'un dommage signalé, gardé le temps de la décision, et en entier en cas d'annulation. Jamais plus de {plafond}.",
     "stay": {
       "guarantee": "Garantie Kwa-Ba renforcée",
-      "guaranteeHelp": "Non remboursable, sauf annulation par l'hôte. Couvre les petits dommages jusqu'à {montant}.",
+      "guaranteeHelp": "Non remboursable, sauf annulation par l'hôte ou par Kwa-Ba. Kwa-Ba prend en charge à titre commercial les petits dommages jusqu'à {montant}.",
       "escrow": "Caution",
-      "escrowHelp": "Gardée par Kwa-Ba, rendue après votre départ s'il n'y a pas de dommage, et en entier si le séjour est annulé."
+      "escrowHelp": "Gardée par Kwa-Ba et rendue 72 h après votre départ, sauf le montant d'un dommage signalé, gardé le temps de la décision ; en entier si le séjour est annulé."
     }
   }
 }

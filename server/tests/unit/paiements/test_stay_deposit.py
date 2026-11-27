@@ -11,8 +11,10 @@ from apps.paiements import tarifs
 from apps.paiements.deposit import DepositRules, StayDeposit, for_stay
 
 RULES = DepositRules(rate_max=Decimal(40), rate_proposed=Decimal(10), rate_warning=Decimal(20), minimum=5_000,
-                     ceiling=150_000, rounding=500, guarantee_multiple=5, escrow_open=True)
+                     ceiling=150_000, rounding=500, guarantee_multiple=5, escrow_open=True,
+                     guarantee_open=True)
 CLOSED = DepositRules(**{**RULES.__dict__, 'escrow_open': False})
+GUARANTEE_CLOSED = DepositRules(**{**RULES.__dict__, 'guarantee_open': False})
 
 GUARANTEE = {'deposit_option': 'enhanced_guarantee', 'deposit_rate': None, 'guarantee_fee': 5_000}
 ESCROW = {'deposit_option': 'escrow', 'deposit_rate': Decimal(10), 'guarantee_fee': None}
@@ -31,9 +33,10 @@ def test_the_escrowed_deposit_is_a_rate_of_the_nights():
     ({'deposit_option': 'none'}, 60_000, False, RULES),
     (GUARANTEE, 60_000, True, RULES),
     (ESCROW, 60_000, False, CLOSED),
+    (GUARANTEE, 60_000, False, GUARANTEE_CLOSED),
     (ESCROW, 30_000, False, RULES),
     ({**GUARANTEE, 'guarantee_fee': None}, 60_000, False, RULES),
-], ids=['no-settings', 'none', 'hotel', 'escrow-closed', 'below-minimum', 'guarantee-without-fee'])
+], ids=['no-settings', 'none', 'hotel', 'escrow-closed', 'guarantee-closed', 'below-minimum', 'guarantee-without-fee'])
 def test_no_deposit(listing, nights_price, hotel, rules):
     assert for_stay(listing, nights_price, hotel=hotel, regles=rules) == StayDeposit()
 

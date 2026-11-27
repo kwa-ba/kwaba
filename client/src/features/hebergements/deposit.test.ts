@@ -4,7 +4,7 @@ import { escrowAmount, guaranteeCover } from "./deposit";
 
 const RULES: DepositRules = {
   rate_max: 40, rate_proposed: 10, rate_warning: 20, minimum: 5000, ceiling: 150000, rounding: 500,
-  guarantee_multiple: 5, escrow_open: true,
+  guarantee_multiple: 5, escrow_open: true, guarantee_open: true,
 };
 
 describe("escrowAmount", () => {
