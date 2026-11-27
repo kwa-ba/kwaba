@@ -4,5 +4,7 @@
   "amount_range": "Le don doit être compris entre {min} et {max} FCFA.",
   "online_unavailable": "Les dons en ligne sont momentanément indisponibles.",
   "organisation_not_found": "Organisation introuvable.",
-  "donation_not_found": "Don introuvable."
+  "donation_not_found": "Don introuvable.",
+  "email_receipt": "Merci pour votre don à {organisation}",
+  "email_donation_paid_out": "Votre don a été reversé à {organisation}"
 }

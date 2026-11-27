@@ -4,5 +4,7 @@
   "amount_range": "The donation must be between {min} and {max} FCFA.",
   "online_unavailable": "Online donations are temporarily unavailable.",
   "organisation_not_found": "Organisation not found.",
-  "donation_not_found": "Donation not found."
+  "donation_not_found": "Donation not found.",
+  "email_receipt": "Thank you for your donation to {organisation}",
+  "email_donation_paid_out": "Your donation was paid out to {organisation}"
 }

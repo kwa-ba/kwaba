@@ -1,0 +1,20 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Thank you! Your donation to {{ organisation }} has been received.
+
+  Beneficiary: {{ organisation }}{% if projet %}, {{ projet }}{% endif %}
+  Donation: {{ montant }}
+  Payment fees: {{ frais }}{% if couvre_frais %} (added by you){% else %} (deducted from the donation){% endif %}
+  Amount charged: {{ total }}
+  Paid out to the NGO: {{ montant_ong }}
+  Reference: {{ reference }}, {{ date }}
+
+Kwa-Ba takes no commission. Your donation will be paid out to {{ organisation }} by {{ date_reversement }} at the latest; we will write to you then, and the proof of the transfer will be published on the NGO's page.
+
+This message confirms your payment. It is not a tax receipt.
+
+Follow your donations: {{ url }}
+
+With all our gratitude,
+The Kwa-Ba team
+{% endautoescape %}
