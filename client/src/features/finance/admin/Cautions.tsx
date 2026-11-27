@@ -12,10 +12,11 @@ import { ErreurLecture } from "./communs";
 
 const STATUTS: Record<StatutCaution, { libelle: string; ton: "bleu" | "vert" | "orange" }> = {
   detenue: { libelle: "Détenue", ton: "bleu" },
+  litige: { libelle: "Dommage en litige", ton: "orange" },
   restituee: { libelle: "Restituée", ton: "vert" },
   retenue: { libelle: "Retenue", ton: "orange" },
 };
-const FILTRES: [string, string][] = [["detenue", "Détenues"], ["retard", "En retard"], ["", "Toutes"], ["restituee", "Restituées"], ["retenue", "Avec retenue"]];
+const FILTRES: [string, string][] = [["detenue", "Détenues"], ["litige", "En litige"], ["retard", "En retard"], ["", "Toutes"], ["restituee", "Restituées"], ["retenue", "Avec retenue"]];
 
 async function telecharger(url: string, nom: string) {
   try {

@@ -348,7 +348,7 @@ export async function deciderValidation(id: string, decision: "approuver" | "ref
 
 // --- Register of the deposits (GL-13, GL-14) -----------------------------------------------------------------------
 
-export type StatutCaution = "detenue" | "restituee" | "retenue";
+export type StatutCaution = "detenue" | "litige" | "restituee" | "retenue";
 
 export interface CautionFinance {
   objet_type: string;
