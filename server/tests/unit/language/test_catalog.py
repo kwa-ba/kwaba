@@ -12,7 +12,7 @@ from shared.language.api import variables
 SERVER = Path(__file__).resolve().parents[3]
 CODE = [SERVER / 'apps', SERVER / 'shared', SERVER / 'config']
 # t('module.key') or t("module.key"), the key written in full
-USED_KEY = re.compile(r"""\bt\(\s*['"]([a-z0-9_]+\.[a-z0-9_.]+)['"]""")
+USED_KEY = re.compile(r"""\bt(?:_lazy)?\(\s*['"]([a-z0-9_]+\.[a-z0-9_.]+)['"]""")
 KEY = re.compile(r'^[a-z0-9_]+$')
 OTHER_LANGUAGES = [language for language in catalog.languages() if language != catalog.REFERENCE]
 
