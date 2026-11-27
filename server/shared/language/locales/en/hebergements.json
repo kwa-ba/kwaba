@@ -17,6 +17,7 @@
   "deposit_not_for_hotels": "A hotel or serviced residence does not collect a deposit through the platform.",
   "deposit_guarantee_amount": "Enter the flat fee of the enhanced guarantee, in CFA francs.",
   "deposit_escrow_not_open": "The escrowed deposit is not open yet: choose the enhanced guarantee or no deposit.",
+  "deposit_guarantee_not_open": "The enhanced guarantee is not offered for now: choose another option.",
   "deposit_rate_range": "Choose a deposit rate between 1 and {max}% of the price of the nights.",
   "breakfast_price_required": "Enter the price of breakfast per person.",
   "price_positive": "The price must be greater than 0.",

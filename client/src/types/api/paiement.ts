@@ -59,6 +59,8 @@ export interface DepositRules {
   guarantee_multiple: number;
   /** Option c open to the hosts (off until FedaPay confirms an escrow without fees). */
   escrow_open: boolean;
+  /** Option b open to the hosts (a switch to close it quickly if the CIMA lawyer asks). */
+  guarantee_open: boolean;
 }
 
 export type StatutPaiement = "en_attente" | "reussi" | "echoue" | "annule";

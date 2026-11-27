@@ -17,6 +17,7 @@
   "deposit_not_for_hotels": "Un hôtel ou une résidence ne perçoit pas de caution par la plateforme.",
   "deposit_guarantee_amount": "Indiquez le forfait de la garantie renforcée, en francs CFA.",
   "deposit_escrow_not_open": "La caution séquestrée n'est pas encore ouverte : choisissez la garantie renforcée ou aucune caution.",
+  "deposit_guarantee_not_open": "La garantie renforcée n'est pas proposée pour le moment : choisissez une autre option.",
   "deposit_rate_range": "Choisissez un taux de caution entre 1 et {max} % du prix des nuitées.",
   "breakfast_price_required": "Indiquez le prix du petit-déjeuner par personne.",
   "price_positive": "Le prix doit être supérieur à 0.",

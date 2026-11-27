@@ -18,8 +18,8 @@ const OPTIONS: DepositOption[] = ["none", "enhanced_guarantee", "escrow"];
 const EXAMPLE_NIGHTS = [2, 7];
 
 /**
- * Deposit chosen by the host for a listing (ADR-036): none, the enhanced guarantee (a fee the traveller pays, which
- * covers damages up to 5 times it) or the escrowed deposit (a rate of the nights' price, held by Kwa-Ba). The API
+ * Deposit chosen by the host for a listing (ADR-036): none, the enhanced guarantee (a fee the traveller pays; Kwa-Ba
+ * takes charge of damages up to 5 times it) or the escrowed deposit (a rate of the nights' price, held by Kwa-Ba). The API
  * checks every value; this screen shows the rules and an example.
  */
 export default function DepositSettings({ value, onChange, nightPrice, inputClass, error }: {
@@ -34,7 +34,10 @@ export default function DepositSettings({ value, onChange, nightPrice, inputClas
 
   const rate = Number(value.rate) || 0;
   const fee = Number(value.fee) || 0;
-  const disponibles = OPTIONS.filter((o) => o !== "escrow" || rules.escrow_open || value.option === "escrow");
+  // A closed option stays shown to a listing that already has it, so that the host sees it and changes it
+  const isOpen = (o: DepositOption) =>
+    (o === "escrow" ? rules.escrow_open : o === "enhanced_guarantee" ? rules.guarantee_open : true) || value.option === o;
+  const disponibles = OPTIONS.filter(isOpen);
 
   return (
     <div className="space-y-3">
@@ -50,6 +53,7 @@ export default function DepositSettings({ value, onChange, nightPrice, inputClas
         ))}
       </div>
       {!rules.escrow_open && <p className="text-xs text-gray-500">{t("sequestreFerme")}</p>}
+      {!rules.guarantee_open && <p className="text-xs text-gray-500">{t("garantieFermee")}</p>}
 
       {value.option === "enhanced_guarantee" && (
         <div>
