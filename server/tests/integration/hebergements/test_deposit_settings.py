@@ -30,6 +30,15 @@ def test_the_enhanced_guarantee_keeps_its_fee(client_for, make_hebergement, make
     assert (annonce.deposit_option, annonce.guarantee_fee, annonce.deposit_rate) == ('enhanced_guarantee', 5_000, None)
 
 
+def test_the_enhanced_guarantee_can_be_closed_quickly(client_for, make_hebergement, make_user):
+    hote = make_user(role='hote')
+    annonce, client = make_hebergement(host=hote), client_for(hote)
+    ParametreModel.objects.filter(cle='garantie_renforcee_active').update(valeur=0)
+
+    refus = _changer(client, annonce, deposit_option='enhanced_guarantee', guarantee_fee=5_000)
+    assert refus.status_code == 400 and "pas proposée" in str(refus.data)
+
+
 def test_the_escrowed_deposit_waits_for_fedapay(client_for, make_hebergement, make_user):
     hote = make_user(role='hote')
     annonce, client = make_hebergement(host=hote), client_for(hote)
@@ -76,4 +85,5 @@ def test_a_hotel_takes_no_deposit(client_for, make_hebergement, make_user):
 def test_the_rules_are_given_to_the_site(api_client):
     regles = api_client.get('/api/v1/paiements/config/').json()['deposit']
     assert regles == {'rate_max': 40.0, 'rate_proposed': 10.0, 'rate_warning': 20.0, 'minimum': 5000, 'ceiling': 150000,
-                      'rounding': 500, 'guarantee_multiple': 5, 'escrow_open': False}
+                      'rounding': 500, 'guarantee_multiple': 5, 'escrow_open': False,
+                      'guarantee_open': True}

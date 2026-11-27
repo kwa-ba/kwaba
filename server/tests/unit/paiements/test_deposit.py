@@ -4,7 +4,8 @@ from decimal import Decimal
 from apps.paiements.deposit import DepositRules, escrow_amount, guarantee_cover
 
 REGLES = DepositRules(rate_max=Decimal(40), rate_proposed=Decimal(10), rate_warning=Decimal(20), minimum=5_000,
-                      ceiling=150_000, rounding=500, guarantee_multiple=5, escrow_open=True)
+                      ceiling=150_000, rounding=500, guarantee_multiple=5, escrow_open=True,
+                      guarantee_open=True)
 
 
 def test_examples_of_the_decision():

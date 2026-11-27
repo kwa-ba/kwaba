@@ -205,6 +205,10 @@ TYPES_OPERATION = ('encaissement', 'remboursement', 'versement', 'inconnu')
 # Prefix of the external reference of a regularisation line: « regul:<reference of the operation>:<id> », or
 # « regul:jour:<YYYY-MM-DD>:<id> » for the day itself
 PREFIXE_REGULARISATION = 'regul:'
+# Prefix of the external reference of a line that aligns the D01 fees of an operation on a later statement (ADR-047):
+# « frais:<reference of the operation>:<n> »
+PREFIXE_AJUSTEMENT_FRAIS = 'frais:'
+NATURE_FRAIS_PAIEMENT = 'D01'
 REGULARISATION_EN_ATTENTE, REGULARISATION_ECRITE, REGULARISATION_REFUSEE = 'en_attente', 'ecrite', 'refusee'
 
 

@@ -29,7 +29,7 @@ def revert(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('finance', '0025_deposit_dispute'),
+        ('finance', '0026_deposit_dispute'),
     ]
 
     operations = [

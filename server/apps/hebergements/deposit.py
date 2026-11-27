@@ -22,6 +22,9 @@ def valider(data: dict, instance, host_id) -> dict:
             {'deposit_option': t('hebergements.deposit_not_for_hotels')})
     regles = paiements.deposit_rules()
     if option == paiements.DEPOSIT_ENHANCED_GUARANTEE:
+        if not regles.guarantee_open and option != getattr(instance, 'deposit_option', None):
+            raise serializers.ValidationError(
+                {'deposit_option': t('hebergements.deposit_guarantee_not_open')})
         if not isinstance(fee, int) or fee <= 0:
             raise serializers.ValidationError(
                 {'guarantee_fee': t('hebergements.deposit_guarantee_amount')})

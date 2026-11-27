@@ -31,7 +31,12 @@ class Rapprochements(ABC):
     @abstractmethod
     def livre_par_reference(self, compte: str, references: list[str]) -> dict[str, tuple[int, bool]]:
         """For each reference: (signed total of its ledger lines on the account, regularisations included and
-        corrections excluded, whether a regularisation is among them)."""
+        corrections excluded except those of the payment fees D01, whether a regularisation is among them)."""
+
+    @abstractmethod
+    def frais_ecrits(self, compte: str, reference: str) -> tuple[list[tuple[int, int]], int]:
+        """The payment fees D01 of an operation on the account: ([(id, amount)] of its lines in force, neither
+        corrected nor a correction; how many D01 lines it has in all)."""
 
     @abstractmethod
     def internes(self, compte: str, jour: date) -> int:

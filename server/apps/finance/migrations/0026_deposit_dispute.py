@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('finance', '0024_damage_compensation_nature'),
+        ('finance', '0025_enhanced_guarantee_switch'),
     ]
 
     operations = [

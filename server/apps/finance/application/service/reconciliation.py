@@ -7,6 +7,8 @@ from datetime import timezone as dt_timezone
 from apps.finance.application.ports import Clock, Journal, Rapprochements, Regularisations, TransactionManager
 from apps.finance.domain.entities import (
     ENTREE,
+    NATURE_FRAIS_PAIEMENT,
+    PREFIXE_AJUSTEMENT_FRAIS,
     PREFIXE_REGULARISATION,
     RAPPROCHEMENT_NON_FAIT,
     REGULARISATION_ECRITE,
@@ -79,6 +81,35 @@ class RapprochementService:
             if par_id is not None:
                 self.journal.rapprochement(par_id, compte, jour, resultat['etat'])
         return resultat
+
+    def aligner_frais(self, compte: str, op: OperationExterne) -> list[int]:
+        """The payment fees D01 of an operation brought to the provider's statement (ADR-047), in the caller's
+        transaction. The first line carries the reference of the operation. A later statement that differs:
+        higher fees add the difference; lower fees cancel the lines in force (a correction takes the whole line) and
+        write the statement's amount. Imported again, nothing is written. Only for an operation whose money is in
+        the ledger and that the provider could read. The ids of the lines written."""
+        if op.hors_grand_livre or op.type == 'inconnu' or not op.offre or op.externe_frais is None:
+            return []
+        en_vigueur, nombre = self.rapprochements.frais_ecrits(compte, op.reference)
+        deja = sum(montant for _, montant in en_vigueur)
+        difference = op.externe_frais - deja
+        if not difference:
+            return []
+        motif = f'Frais FedaPay alignés sur le relevé ({op.type}) : {deja} → {op.externe_frais} FCFA'
+        ids, a_ecrire = [], difference
+        if difference < 0:
+            ids = [self.grand_livre.contre_passer(pk, motif=motif, origine='frais_paiement') for pk, _ in en_vigueur]
+            a_ecrire = op.externe_frais
+        if a_ecrire:
+            # A line in force keeps its reference for good (unique): a new one gets the next « frais:<op>:<n> »
+            reference = f'{PREFIXE_AJUSTEMENT_FRAIS}{op.reference}:{nombre}' if nombre else op.reference
+            ligne = Ligne(nature=NATURE_FRAIS_PAIEMENT, offre=op.offre, montant=a_ecrire, sens=SORTIE,
+                          compte_argent=compte, moyen_paiement=op.moyen_paiement,
+                          piece_reference=op.kwaba_reference or None, externe_reference=reference,
+                          date_evenement=op.date_operation,
+                          motif=motif if nombre else f'Frais FedaPay réels ({op.type})')
+            ids += self.grand_livre.enregistrer([ligne], origine='frais_paiement')
+        return ids
 
     def echec(self, compte: str, jour: date, message: str) -> None:
         """The provider could not be read for this day: « en_erreur », to import again later."""
