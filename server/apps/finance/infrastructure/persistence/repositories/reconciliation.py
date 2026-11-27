@@ -6,6 +6,8 @@ from django.db import connection
 
 from apps.finance.application.ports import Rapprochements, Regularisations
 from apps.finance.domain.entities import (
+    NATURE_FRAIS_PAIEMENT,
+    PREFIXE_AJUSTEMENT_FRAIS,
     PREFIXE_REGULARISATION,
     RAPPROCHEMENT_EN_ERREUR,
     OperationExterne,
@@ -21,10 +23,15 @@ from apps.finance.infrastructure.persistence.models import (
 
 # --- Reconciliation with the payment provider (GL-12) ---------------------------------------------------------------
 
-# The operation a ledger line belongs to: its external reference, or the operation a regularisation explains
-# (« regul:<reference>:<id> »)
-CLE_OPERATION = (f"COALESCE(substring(m.externe_reference from '^{PREFIXE_REGULARISATION}(.*):[^:]*$'), "
-                 "m.externe_reference, '')")
+# The operation a ledger line belongs to: its external reference, the operation a regularisation explains
+# (« regul:<reference>:<id> ») or whose fees a line aligns on the statement (« frais:<reference>:<n> », ADR-047)
+CLE_OPERATION = ("COALESCE(substring(m.externe_reference from "
+                 f"'^(?:{PREFIXE_REGULARISATION}|{PREFIXE_AJUSTEMENT_FRAIS})(.*):[^:]*$'), m.externe_reference, '')")
+
+
+# A line counts in its operation unless it corrects another one; the payment fees D01 always count, their corrections
+# included: aligning them on a lower statement cancels them before writing the right amount (ADR-047)
+COMPTEE_DANS_L_OPERATION = f"(m.annule_mouvement_id IS NULL OR m.nature_code = '{NATURE_FRAIS_PAIEMENT}')"
 
 
 SIGNE = "CASE WHEN m.sens = 'entree' THEN m.montant ELSE -m.montant END"
@@ -90,9 +97,20 @@ class DjangoRapprochements(Rapprochements):
                 SELECT {CLE_OPERATION} AS cle, SUM({SIGNE}),
                        bool_or(m.externe_reference LIKE '{PREFIXE_REGULARISATION}%%')
                 FROM finance_mouvement m
-                WHERE m.compte_argent_code = %s AND m.annule_mouvement_id IS NULL AND {CLE_OPERATION} = ANY(%s)
+                WHERE m.compte_argent_code = %s AND {COMPTEE_DANS_L_OPERATION} AND {CLE_OPERATION} = ANY(%s)
                 GROUP BY 1""", [compte, list(references)])
             return {cle: (int(total), bool(regul)) for cle, total, regul in curseur.fetchall()}
+
+    def frais_ecrits(self, compte, reference) -> tuple[list[tuple[int, int]], int]:
+        with connection.cursor() as curseur:
+            curseur.execute(f"""
+                SELECT m.id, m.montant, m.annule_mouvement_id IS NULL
+                       AND NOT EXISTS (SELECT 1 FROM finance_mouvement c WHERE c.annule_mouvement_id = m.id)
+                FROM finance_mouvement m
+                WHERE m.compte_argent_code = %s AND m.nature_code = %s AND {CLE_OPERATION} = %s
+                ORDER BY m.id""", [compte, NATURE_FRAIS_PAIEMENT, reference])
+            lignes = curseur.fetchall()
+        return [(pk, montant) for pk, montant, en_vigueur in lignes if en_vigueur], len(lignes)
 
     def internes(self, compte, jour) -> int:
         debut, fin = _bornes(jour)
@@ -101,7 +119,7 @@ class DjangoRapprochements(Rapprochements):
                 SELECT COALESCE(SUM({SIGNE}), 0)
                 FROM finance_mouvement m
                 WHERE m.compte_argent_code = %s AND m.date_evenement >= %s AND m.date_evenement < %s
-                  AND NOT (m.annule_mouvement_id IS NULL
+                  AND NOT ({COMPTEE_DANS_L_OPERATION}
                            AND {CLE_OPERATION} IN (SELECT reference FROM finance_rapprochement_ligne
                                                    WHERE compte_argent_code = %s))""",
                             [compte, debut, fin, compte])

@@ -5,8 +5,9 @@ For a finished day:
 - every payment, refund and payout of Kwa-Ba near that day is read again at FedaPay (amount, real fees, status, date);
   the day of an operation is FedaPay's (approval or sending), Kwa-Ba's when FedaPay does not know it;
 - FedaPay transactions unknown to Kwa-Ba are searched for, as far as the API lets us (best effort, see `_inconnues`);
-- the real fees of the operations whose money is in the ledger are written there (D01, account 6317, one line per
-  transaction, at the amount of the statement): they are Kwa-Ba's charge (decisions of 2026-11-13 and 2026-11-19);
+- the real fees of the operations whose money is in the ledger are written there (D01, account 6317, at the amount of
+  the statement): they are Kwa-Ba's charge (decisions of 2026-11-13 and 2026-11-19); a later statement that differs
+  aligns them by the difference (ADR-047);
 - the finance module compares the three sides with the ledger lines of the FEDAPAY account.
 
 Money of a product not in the ledger yet (Give, transfers, rentals, or paid before the ledger existed) is shown apart,
@@ -208,19 +209,6 @@ def operations_du_jour(jour: date, client=None) -> tuple[list[finance.OperationE
     return operations + inconnues, remarque
 
 
-# --- Real fees in the ledger (D01) --------------------------------------------------------------------------------
-
-def _ecrire_frais(op: finance.OperationExterne) -> None:
-    """The real fees of an operation whose money is in the ledger: D01, Kwa-Ba's charge, out of the FEDAPAY account,
-    under the reference of the operation (written once)."""
-    if op.hors_grand_livre or not op.externe_frais or not op.offre or op.type == 'inconnu':
-        return
-    finance.enregistrer([finance.Ligne(
-        nature='D01', offre=op.offre, montant=op.externe_frais, sens=finance.SORTIE, compte_argent=COMPTE,
-        moyen_paiement=op.moyen_paiement, piece_reference=op.kwaba_reference or None, externe_reference=op.reference,
-        date_evenement=op.date_operation, motif=f'Frais FedaPay réels ({op.type})')], origine='frais_paiement')
-
-
 # --- Import ---------------------------------------------------------------------------------------------------------
 
 def importer(jour: date, *, par_id=None, client=None) -> dict:
@@ -236,7 +224,7 @@ def importer(jour: date, *, par_id=None, client=None) -> dict:
         raise
     with transaction.atomic():
         for op in operations:
-            _ecrire_frais(op)
+            finance.aligner_frais_paiement(COMPTE, op)
         resultat = finance.importer_rapprochement(COMPTE, jour, operations, par_id=par_id)
     if remarque:
         logger.warning('Rapprochement du %s : %s', jour, remarque)
