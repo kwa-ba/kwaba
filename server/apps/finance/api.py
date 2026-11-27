@@ -55,8 +55,8 @@ __all__ = [
     # Register of the deposits (GL-13)
     'CautionRefusee', 'enregistrer_caution', 'decider_retenue', 'solder_caution', 'caution', 'registre_cautions',
     # Reconciliation with the payment provider (GL-12)
-    'OperationExterne', 'RapprochementRefuse', 'importer_rapprochement', 'echec_rapprochement',
-    'rapprochement_du_jour', 'rapprochements_du_mois', 'detail_rapprochement', 'regulariser',
+    'OperationExterne', 'RapprochementRefuse', 'importer_rapprochement', 'aligner_frais_paiement',
+    'echec_rapprochement', 'rapprochement_du_jour', 'rapprochements_du_mois', 'detail_rapprochement', 'regulariser',
     'mois_verrouille',
     # Expenses, suppliers and associates (GL-15)
     'DepenseRefusee', 'saisir_depense', 'annuler_depense', 'depense', 'depenses', 'seuil_validation_depense',
@@ -388,6 +388,12 @@ def importer_rapprochement(compte: str, jour: date, operations: list[OperationEx
     """The operations of a finished day, from Kwa-Ba's records and the provider's statement (written by the module
     that talks to the provider): the day is reconciled with the ledger. Raises RapprochementRefuse."""
     return rapprochement_service().importer(compte, jour, operations, par_id=par_id)
+
+
+def aligner_frais_paiement(compte: str, operation: OperationExterne) -> list[int]:
+    """The payment fees D01 of an operation brought to the provider's statement, in the caller's transaction
+    (ADR-047): written once, then aligned by the difference when a later statement differs."""
+    return rapprochement_service().aligner_frais(compte, operation)
 
 
 def echec_rapprochement(compte: str, jour: date, message: str) -> None:

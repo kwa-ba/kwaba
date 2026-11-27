@@ -253,3 +253,59 @@ def test_the_worker_imports_the_last_finished_days_once_a_day(sejour, releve, mo
     assert rapprochement.importer_si_du() == 3
     assert rapprochement.importer_si_du() == 0
     assert finance.rapprochement_du_jour('FEDAPAY', matin.date() - timedelta(days=1))['etat'] == 'fait'
+
+
+def d01_of_operation(reference) -> int:
+    """Net D01 charge of an operation: its first line and the lines that align it on the statement (ADR-047)."""
+    lignes = MouvementModel.objects.filter(nature_id='D01', externe_reference__in=[reference]) | \
+        MouvementModel.objects.filter(nature_id='D01', externe_reference__startswith=f'frais:{reference}:')
+    return sum(m.montant if m.sens == 'sortie' else -m.montant for m in lignes)
+
+
+def anomalies(code) -> int:
+    return next(i['anomalies'] for i in finance.controle_invariants() if i['invariant'] == code)
+
+
+@pytest.mark.parametrize('premier, releve_final', [(11_262, 6_758), (6_758, 11_262)])
+def test_reimporting_aligns_the_fees_on_the_statement(sejour, releve, hier, premier, releve_final):  # noqa: F811
+    r = sejour.reserver()
+    paiement = sejour.payer(r)
+    hier.retour()
+    releve.modifs[paiement.transaction_id] = {'fees': premier}
+    rapprochement.importer(hier.jour, client=releve)
+    assert d01_of_operation(paiement.transaction_id) == premier
+
+    releve.modifs[paiement.transaction_id] = {'fees': releve_final}
+    jour = rapprochement.importer(hier.jour, client=releve)
+
+    assert d01_of_operation(paiement.transaction_id) == releve_final
+    nouvelle = MouvementModel.objects.get(externe_reference=f'frais:{paiement.transaction_id}:1')
+    assert (nouvelle.sens, nouvelle.compte_argent_id, nouvelle.annule_mouvement_id) == ('sortie', 'FEDAPAY', None)
+    corrections = MouvementModel.objects.filter(nature_id='D01', annule_mouvement__isnull=False)
+    if releve_final > premier:
+        # Higher fees: the difference is added
+        assert nouvelle.montant == releve_final - premier and not corrections.exists()
+    else:
+        # Lower fees: the first line is cancelled whole, the statement's amount written again
+        assert nouvelle.montant == releve_final
+        assert [(c.montant, c.sens) for c in corrections] == [(premier, 'entree')]
+    assert (jour['etat'], jour['frais']) == ('fait', releve_final)
+    assert finance.rapprochement_du_jour('FEDAPAY', hier.jour)['ecart'] == 0
+    assert RapprochementLigneModel.objects.get(reference=paiement.transaction_id).etat == 'concorde'
+    assert anomalies('I5') == 0
+
+    # Imported again with the same statement: nothing more is written
+    nb = MouvementModel.objects.count()
+    assert rapprochement.importer(hier.jour, client=releve)['etat'] == 'fait'
+    assert MouvementModel.objects.count() == nb
+
+
+def test_fees_read_again_at_zero_bring_the_charge_back_to_zero(sejour, releve, hier):  # noqa: F811
+    r = sejour.reserver()
+    paiement = sejour.payer(r)
+    hier.retour()
+    rapprochement.importer(hier.jour, client=releve)
+
+    releve.modifs[paiement.transaction_id] = {'fees': 0}
+    assert rapprochement.importer(hier.jour, client=releve)['etat'] == 'fait'
+    assert d01_of_operation(paiement.transaction_id) == 0
