@@ -28,3 +28,11 @@ def test_an_unknown_concierge_conversation(client_for, make_user):
 
 def test_an_unknown_organisation(api_client):
     assert api_client.get('/api/v1/give/organisations/inconnue/', **EN).data['detail'] == 'Organisation not found.'
+
+
+def test_an_identity_document_without_type_or_file(client_for, make_user):
+    client = client_for(make_user(role='hote'))
+    url = '/api/v1/verifications/identite/'
+
+    assert client.post(url, {}, format='multipart', **EN).data['type_piece'] == ['Choose the type of document.']
+    assert client.post(url, {'type_piece': 'cni'}, format='multipart', **EN).data['fichier'] == ['No file received.']
