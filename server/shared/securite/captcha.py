@@ -7,11 +7,12 @@ import logging
 
 import requests
 from django.conf import settings
+from shared.language.api import t_lazy
 
 logger = logging.getLogger('shared.securite')
 
 URL_VERIFICATION = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
-MESSAGE = 'Confirmez que vous n\'êtes pas un robot (case à cocher), puis réessayez.'
+MESSAGE = t_lazy('securite.captcha')
 
 
 def actif() -> bool:

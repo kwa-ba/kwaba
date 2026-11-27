@@ -6,6 +6,7 @@ refused. APP_MIN_VERSION empty: no check.
 """
 from django.conf import settings
 from django.http import JsonResponse
+from shared.language.api import t
 
 MOBILE_CLIENT_PREFIX = 'mobile-'
 # Read by the app before anything else (modules, pre-launch), and by the deployment's health check
@@ -38,6 +39,6 @@ class AppVersionMiddleware:
         if (minimum and request.path.startswith('/api/') and not request.path.startswith(ALWAYS_ANSWERED)
                 and request.headers.get('X-Kwaba-Client', '').startswith(MOBILE_CLIENT_PREFIX)
                 and too_old(request.headers.get('X-Kwaba-Version', ''), minimum)):
-            return JsonResponse({'detail': 'Mettez à jour Kwa-Ba pour continuer.', 'code': 'app_update_required',
+            return JsonResponse({'detail': t('securite.app_update_required'), 'code': 'app_update_required',
                                  'min_version': minimum}, status=426)
         return self.get_response(request)
