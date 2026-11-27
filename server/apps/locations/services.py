@@ -44,6 +44,7 @@ from .models import (
     CategorieVehiculeModel, LieuRemiseModel, LocationModel, ParametresLocationModel, PartenaireLocationModel,
     VersementChauffeurLocationModel, VersementPartenaireModel,
 )
+from shared.language.api import t
 
 logger = logging.getLogger('apps.locations')
 
@@ -183,16 +184,16 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
              voyageur=None, jours_hors_lome: int = 0, jours_hors_pays: int = 0) -> Devis:
     jours = nombre_de_jours(debut, fin)
     if formule not in dict(LocationModel.FORMULES):
-        raise LocationErreur("Formule inconnue.")
+        raise LocationErreur(t('locations.option_unknown'))
     if formule == 'sans_chauffeur' and not module_actif('location_sans_chauffeur'):
         # Hors de l'offre de lancement (interrupteur MODULE_LOCATION_SANS_CHAUFFEUR)
-        raise LocationErreur("La location sans chauffeur n'est pas encore proposée.")
+        raise LocationErreur(t('locations.self_drive_not_offered'))
     avec_chauffeur = formule in ('avec_chauffeur', 'chauffeur_seul')
     if formule == 'chauffeur_seul':
         prix_jour, frais, caution, commission = 0, 0, 0, 0
     else:
         if categorie is None or not categorie.propose(formule):
-            raise LocationErreur("Cette formule n'est pas proposée pour ce véhicule.")
+            raise LocationErreur(t('locations.option_not_for_vehicle'))
         prix_jour = categorie.prix_jour
         frais = lieu_prise.frais + lieu_retour.frais
         taux = taux_commission(params, categorie.proprietaire)
@@ -203,7 +204,7 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
     if not avec_chauffeur:
         jours_hors_lome = jours_hors_pays = 0
     if jours_hors_lome < 0 or jours_hors_pays < 0 or jours_hors_lome + jours_hors_pays > jours:
-        raise LocationErreur(f"Les jours hors de Lomé ne peuvent pas dépasser la durée de la location ({jours} jours).")
+        raise LocationErreur(t('locations.days_outside_lome', days=jours))
     prix_chauffeur = chauffeur_jour() * jours if avec_chauffeur else 0
     primes = prime_hors_lome() * jours_hors_lome + prime_hors_pays() * jours_hors_pays
     return Devis(
@@ -215,14 +216,13 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
 
 def verifier_dates(params: ParametresLocationModel, debut: datetime, fin: datetime) -> None:
     if fin <= debut:
-        raise LocationErreur("Le retour doit être après la prise du véhicule.")
+        raise LocationErreur(t('locations.return_after_pickup'))
     if debut - timezone.now() < timedelta(days=params.delai_min_jours):
         raise LocationErreur(
-            f"Réservez au moins {params.delai_min_jours} jours avant : "
-            "le propriétaire et le chauffeur ont besoin de ce délai pour se préparer."
+            t('locations.book_days_before', days=params.delai_min_jours)
         )
     if nombre_de_jours(debut, fin) > params.duree_max_jours:
-        raise LocationErreur(f"La location est limitée à {params.duree_max_jours} jours.")
+        raise LocationErreur(t('locations.max_days', days=params.duree_max_jours))
 
 
 def creer(*, voyageur, categorie: CategorieVehiculeModel | None, formule: str, lieu_prise: LieuRemiseModel,
@@ -230,24 +230,24 @@ def creer(*, voyageur, categorie: CategorieVehiculeModel | None, formule: str, l
           jours_hors_pays: int = 0, chauffeur_demande_id=None, **champs) -> LocationModel:
     params = ParametresLocationModel.courants()
     if not params or not active():
-        raise LocationErreur("La location de voitures n'est pas encore disponible.")
+        raise LocationErreur(t('locations.not_available_yet'))
     if formule == 'chauffeur_seul':
         categorie = None
     else:
         if categorie is None or not categories_proposees().filter(pk=categorie.pk).exists():
-            raise LocationErreur("Ce véhicule n'est plus proposé.")
+            raise LocationErreur(t('locations.vehicle_no_longer_offered'))
         if passagers > categorie.places:
-            raise LocationErreur(f"Ce véhicule accueille {categorie.places} personnes au plus.")
+            raise LocationErreur(t('locations.max_seats', count=categorie.places))
     if not (lieu_prise.actif and lieu_retour.actif):
-        raise LocationErreur("Ce lieu de remise n'est plus proposé.")
+        raise LocationErreur(t('locations.place_no_longer_offered'))
     for lieu, cle in ((lieu_prise, 'adresse_prise'), (lieu_retour, 'adresse_retour')):
         if lieu.adresse_requise and len(champs.get(cle, '').strip()) < 5:
-            raise LocationErreur(f"Indiquez l'adresse pour « {lieu.nom} ».")
+            raise LocationErreur(t('locations.address_for_place', place=lieu.nom))
     if formule == 'sans_chauffeur' and not all(champs.get(c, '').strip() for c in ('conducteur', 'permis_numero', 'permis_pays')):
-        raise LocationErreur("Pour conduire vous-même, indiquez le nom du conducteur et son permis de conduire.")
+        raise LocationErreur(t('locations.driver_and_licence_required'))
     if chauffeur_demande_id and (formule == 'sans_chauffeur'
                                  or chauffeur_demande_id not in {c['id'] for c in mes_chauffeurs(voyageur)}):
-        raise LocationErreur("Vous ne pouvez redemander qu'un chauffeur qui vous a déjà conduit.")
+        raise LocationErreur(t('locations.only_known_driver'))
     verifier_dates(params, debut, fin)
 
     if not paiements.reservation_possible():
@@ -272,9 +272,9 @@ def creer(*, voyageur, categorie: CategorieVehiculeModel | None, formule: str, l
 def demarrer_paiement(location: LocationModel, moyen: str, *, to_app: bool = False) -> str:
     """`to_app`: started from the mobile app, which the provider sends back to (ADR-041)."""
     if location.statut != 'en_attente_paiement':
-        raise paiements.PaiementErreur("Cette location n'attend pas de paiement.")
+        raise paiements.PaiementErreur(t('locations.not_awaiting_payment'))
     if location.expire_le and location.expire_le <= timezone.now():
-        raise paiements.PaiementErreur("Le délai de paiement est dépassé. Refaites la demande de location.")
+        raise paiements.PaiementErreur(t('locations.payment_time_over'))
     if location.moyen != moyen:
         location.moyen = moyen
         location.save(update_fields=['moyen'])
@@ -448,9 +448,9 @@ def annuler(location: LocationModel, par: str) -> int:
     with transaction.atomic():
         location = LocationModel.objects.select_for_update().get(pk=location.pk)
         if location.statut in ('annulee', 'terminee'):
-            raise LocationErreur("Cette location ne peut plus être annulée.")
+            raise LocationErreur(t('locations.cannot_cancel'))
         if par == 'voyageur' and location.debut <= timezone.now():
-            raise LocationErreur("La location a commencé : elle ne peut plus être annulée.")
+            raise LocationErreur(t('locations.cannot_cancel_started'))
 
         rembourse = 0
         if paiements.paiement_reussi('location', location.pk):

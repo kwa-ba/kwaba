@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.finance import api as finance
 
 from .models import LocationModel
+from shared.language.api import t
 
 NOT_OVER = ('en_attente_paiement', 'confirmee', 'partenaire_assigne')
 OBJECT_TYPE = 'location'
@@ -15,10 +16,9 @@ OBJECT_TYPE = 'location'
 def blockers(user_id: uuid.UUID) -> dict[str, str]:
     found = {}
     if LocationModel.objects.filter(voyageur_id=user_id, statut__in=NOT_OVER, fin__gte=timezone.now()).exists():
-        found['upcoming_rentals'] = ('Vous avez une location à venir ou en cours : annulez-la ou attendez le retour '
-                                     'du véhicule.')
+        found['upcoming_rentals'] = t('locations.deletion_upcoming_rentals')
     if _deposit_held(user_id):
-        found['open_deposit'] = 'Une caution doit encore vous être rendue : attendez sa restitution.'
+        found['open_deposit'] = t('locations.deletion_open_deposit')
     return found
 
 
