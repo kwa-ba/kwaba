@@ -1,0 +1,22 @@
+{
+  "own_listing": "You are the host of this accommodation: you cannot contact yourself.",
+  "confirm_sending": "This message may be badly received. Do you confirm sending it?",
+  "conversation_not_found": "Conversation not found.",
+  "accommodation_not_found": "Accommodation not found.",
+  "message_refused": "This message does not follow the rules of the messaging.",
+  "suspended": "Your messaging is suspended: you can read your conversations but not write.",
+  "not_participant": "You are not part of this conversation.",
+  "own_message": "You cannot report your own message.",
+  "contest_length": "Explain your appeal in {min} to {max} characters.",
+  "contest_closed": "This sanction can no longer be appealed.",
+  "empty": "The message cannot be empty.",
+  "too_long": "The message cannot be longer than {max} characters.",
+  "report_reason_invalid": "Invalid reason for the report.",
+  "report_details_too_long": "The details cannot be longer than {max} characters.",
+  "verify_email_first": "Verify your email address to use the messaging.",
+  "listing_id_invalid": "hebergement_id is invalid or missing.",
+  "booking_id_invalid": "reservation_id is invalid or missing.",
+  "booking_not_found": "Booking not found.",
+  "pagination_invalid": "Invalid after/limit parameters.",
+  "up_to_id_invalid": "Invalid up_to_id."
+}

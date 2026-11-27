@@ -28,6 +28,7 @@ from apps.messaging.domain.repositories.ReportRepository import ReportRepository
 from apps.messaging.domain.repositories.SanctionRepository import SanctionRepository
 from apps.messaging.domain.services import SanctionLadder
 from apps.messaging.domain.services.SanctionLadder import LadderPolicy
+from shared.language.api import t
 
 
 @dataclass(frozen=True)
@@ -111,7 +112,7 @@ class ModerationService:
         if message is None or message.conversation_id != conversation_id:
             raise MessageNotFoundException(str(message_id))
         if message.sender_id == reporter_id:
-            raise CannotReportOwnMessageException("Vous ne pouvez pas signaler votre propre message.")
+            raise CannotReportOwnMessageException(t('messaging.own_message'))
         existing = self._reports.find(reporter_id, message_id)
         if existing:
             return existing, False
@@ -203,13 +204,13 @@ class ModerationService:
         text = (text or '').strip()
         if not self.CONTEST_MIN_LENGTH <= len(text) <= self.CONTEST_MAX_LENGTH:
             raise InvalidReportException(
-                f"Expliquez votre contestation en {self.CONTEST_MIN_LENGTH} à {self.CONTEST_MAX_LENGTH} caractères.")
+                t('messaging.contest_length', min=self.CONTEST_MIN_LENGTH, max=self.CONTEST_MAX_LENGTH))
         with self._tx.atomic():
             sanction = self.get_sanction(sanction_id)
             if sanction.user_id != user_id:
                 raise SanctionNotFoundException(str(sanction_id))
             if not self.is_contestable(sanction):
-                raise ContestNotAllowedException("Cette sanction ne peut plus être contestée.")
+                raise ContestNotAllowedException(t('messaging.contest_closed'))
             sanction.contested_at, sanction.contest_text, sanction.contest_status = self._clock(), text, CONTEST_PENDING
             self._sanctions.save(sanction)
             self._queue.contest_received(sanction)
