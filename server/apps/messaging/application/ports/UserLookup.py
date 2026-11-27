@@ -11,6 +11,8 @@ class UserInfo:
     last_name: str
     email: str
     avatar_url: Optional[str]
+    # Language of the emails sent to the person (ADR-046)
+    language: str = 'fr'
 
 
 class UserLookup(ABC):

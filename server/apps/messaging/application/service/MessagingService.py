@@ -239,6 +239,8 @@ class MessagingService:
             payload={
                 'conversation_id': str(conversation.id),
                 'recipient_id': str(recipient_id),
+                # The email and the push go out in the recipient's language (ADR-046)
+                'recipient_language': recipient.language,
                 'recipient_email': recipient.email,
                 'recipient_first_name': recipient.first_name,
                 'sender_first_name': 'Un voyageur' if anonymous_sender else (sender.first_name if sender else ''),

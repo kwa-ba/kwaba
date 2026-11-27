@@ -52,7 +52,8 @@ def annuler_en_attente(hebergement_id) -> list[dict]:
     ReservationModel.objects.filter(pk__in=[r.pk for r in en_attente]).update(
         status='cancelled', annule_par='hote', annule_le=timezone.now(),
     )
-    return [{'id': r.pk, 'email': r.guest.email, 'prenom': r.guest.first_name, 'check_in': r.check_in,
+    return [{'id': r.pk, 'email': r.guest.email, 'prenom': r.guest.first_name, 'language': r.guest.language,
+             'check_in': r.check_in,
              'check_out': r.check_out} for r in en_attente]
 
 

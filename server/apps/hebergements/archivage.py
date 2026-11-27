@@ -37,6 +37,8 @@ def _prevenir_voyageur(hebergement: HebergementModel, reservation: dict) -> None
         'reservation_id': str(reservation['id']),
         'email': reservation['email'],
         'first_name': reservation['prenom'],
+        # The traveller's language, for the email (ADR-046)
+        'language': reservation.get('language', 'fr'),
         'hebergement_name': hebergement.name,
         'city': hebergement.city,
         'check_in': reservation['check_in'].isoformat(),
