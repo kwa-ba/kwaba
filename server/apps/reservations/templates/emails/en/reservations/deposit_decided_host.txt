@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ prenom }},
+
+The Kwa-Ba team has looked into the damage you reported for the stay {{ reference }} (amount claimed: {{ reclame }}).
+
+{% if retenue_nulle %}Decision: nothing withheld from the traveller's deposit.
+{% else %}Decision: {{ retenue }} withheld{% if motif %} ({{ motif }}){% endif %}. The traveller may contest it until {{ contestation }}; after that, this amount is paid to you, separately from the stay payout.
+{% endif %}
+A question? Kwa-Ba support: {{ assistance }}
+
+The Kwa-Ba team
+{% endautoescape %}

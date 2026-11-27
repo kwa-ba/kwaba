@@ -4,7 +4,7 @@ The reporting period after your departure is over for your stay {{ reference }}.
 
   Deposit paid: {{ caution }}
 {% if retenue %}  Withheld: {{ retenue }}{% if motif %} ({{ motif }}){% endif %}
-{% endif %}  Refunded: {{ rendu }}
+{% endif %}  Refunded: {{ rendu }}{% if deja_rendu %} (of which {{ deja_rendu }} already refunded){% endif %}
 
 {% if numero_requis %}To receive this refund, enter your Mobile Money number on your bookings page: {{ url }}
 {% else %}The refund goes to the payment method you used; depending on your operator or your bank, it may take a few days to show.

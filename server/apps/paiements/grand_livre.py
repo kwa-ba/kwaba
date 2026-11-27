@@ -211,6 +211,16 @@ def stay_deposit_settled(reservation, paiement, *, returned: int, withheld: int,
     ], origine='caution', cle=f'caution-rendue:{reservation.pk}')
 
 
+def stay_deposit_part_given_back(reservation, paiement, *, amount: int, step: str) -> None:
+    """Part of a disputed deposit given back before its settlement (ADR-048): it leaves the deposits (C02), then is
+    owed to the traveller. `step` tells the restitution apart (each written once)."""
+    if not dans_le_grand_livre('reservation', reservation.pk):
+        return
+    offre = _hote(reservation)[0]
+    ecrire(paiement, offre, [Part('C02', amount, 'voyageur', reservation.guest_id, finance.SORTIE)],
+           origine='caution', cle=f'caution-rendue:{reservation.pk}:{step}')
+
+
 def damage_payout_sent(payout, paiement) -> None:
     """The damage compensation paid to the host: T09 settles what Kwa-Ba owed them (ADR-038)."""
     from apps.reservations import api as reservations  # local import: reservations depends on paiements

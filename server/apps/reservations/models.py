@@ -66,6 +66,14 @@ class ReservationModel(models.Model):
     # host when the deposit is settled
     deposit_withheld = models.PositiveIntegerField(default=0, db_default=0)
     deposit_withheld_reason = models.TextField(blank=True, default='', db_default='')
+    # Damage dispute on the escrowed deposit (ADR-048, terms of sale 13.6): the amount the host claims stays held, the
+    # rest is given back once the reporting period is over; the team's decision (deposit_withheld) starts the period
+    # in which the traveller may contest it, after which the withholding is paid to the host
+    deposit_claimed = models.PositiveIntegerField(default=0, db_default=0)
+    deposit_claim_reason = models.TextField(blank=True, default='', db_default='')
+    deposit_released_at = models.DateTimeField(null=True, blank=True)
+    deposit_given_back = models.PositiveIntegerField(default=0, db_default=0)
+    deposit_decided_at = models.DateTimeField(null=True, blank=True)
 
     # Stay terms frozen at booking, as the traveller accepted them: the host may change the listing afterwards.
     # The bookings made before were given the listing's values of the day (migration 0010).

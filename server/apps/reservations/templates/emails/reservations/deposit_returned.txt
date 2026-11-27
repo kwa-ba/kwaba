@@ -4,7 +4,7 @@ Le délai de signalement après votre départ est terminé pour votre séjour {{
 
   Caution payée : {{ caution }}
 {% if retenue %}  Retenue : {{ retenue }}{% if motif %} ({{ motif }}){% endif %}
-{% endif %}  Remboursé : {{ rendu }}
+{% endif %}  Remboursé : {{ rendu }}{% if deja_rendu %} (dont {{ deja_rendu }} déjà rendus){% endif %}
 
 {% if numero_requis %}Pour recevoir ce remboursement, indiquez votre numéro Mobile Money sur la page de vos réservations : {{ url }}
 {% else %}Le remboursement part sur le moyen de paiement utilisé ; selon votre opérateur ou votre banque, il peut mettre quelques jours à apparaître.

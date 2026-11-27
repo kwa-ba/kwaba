@@ -1,0 +1,17 @@
+{% autoescape off %}Hello {{ prenom }},
+
+The reporting period after your departure is over for your stay {{ reference }}. The host reported a damage{% if motif %} ({{ motif }}){% endif %}: the Kwa-Ba team is looking into it.
+
+  Deposit paid: {{ caution }}
+  Refunded now: {{ rendu }}
+  Kept while it is decided: {{ garde }}
+
+You may answer the report through the Kwa-Ba messages within 48 hours. The team then gives a reasoned decision, taking normal wear into account; the part it does not withhold is refunded to you at once.
+
+{% if numero_requis %}To receive this refund, enter your Mobile Money number on your bookings page: {{ url }}
+{% else %}The refund goes to the payment method you used; depending on your operator or your bank, it may take a few days to show.
+{% endif %}
+A question? Kwa-Ba support: {{ assistance }}
+
+The Kwa-Ba team
+{% endautoescape %}

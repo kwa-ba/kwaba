@@ -1,0 +1,17 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+Le délai de signalement après votre départ est terminé pour votre séjour {{ reference }}. L'hôte a signalé un dommage{% if motif %} ({{ motif }}){% endif %} : l'équipe Kwa-Ba l'examine.
+
+  Caution payée : {{ caution }}
+  Rendu dès maintenant : {{ rendu }}
+  Gardé le temps de la décision : {{ garde }}
+
+Vous pouvez répondre au signalement par la messagerie de Kwa-Ba dans les 48 heures. L'équipe rend ensuite une décision motivée, en tenant compte de l'usure normale ; la part qu'elle ne retient pas vous est rendue aussitôt.
+
+{% if numero_requis %}Pour recevoir ce remboursement, indiquez votre numéro Mobile Money sur la page de vos réservations : {{ url }}
+{% else %}Le remboursement part sur le moyen de paiement utilisé ; selon votre opérateur ou votre banque, il peut mettre quelques jours à apparaître.
+{% endif %}
+Une question ? Assistance Kwa-Ba : {{ assistance }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}

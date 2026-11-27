@@ -1,0 +1,15 @@
+{% autoescape off %}Hello {{ prenom }},
+
+The Kwa-Ba team has looked into the damage the host reported for your stay {{ reference }}.
+
+  Deposit paid: {{ caution }}
+  Amount claimed by the host: {{ reclame }}
+{% if retenue_nulle %}  Decision: nothing withheld. The part still kept is refunded to you.
+{% else %}  Decision: {{ retenue }} withheld{% if motif %} ({{ motif }}){% endif %}
+{% endif %}
+{% if not retenue_nulle %}You may contest this decision through the Kwa-Ba messages until {{ contestation }}: the team then reviews the file on its evidence. After that, the amount withheld is paid to the host and you receive the withholding notice.
+
+{% endif %}A question? Kwa-Ba support: {{ assistance }}
+
+The Kwa-Ba team
+{% endautoescape %}
