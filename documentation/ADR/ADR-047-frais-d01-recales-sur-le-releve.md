@@ -22,8 +22,9 @@ Option 3 : Une ligne d'ajustement de la différence, calculée à chaque import 
 Nous retenons l'option 3 (décision de Godwin du 27 novembre 2026).
 
 - À chaque import d'une journée, pour chaque opération dont l'argent est au grand livre : `delta = frais du relevé − D01 déjà écrits`.
-- `delta > 0` : D01 en sortie du compte FEDAPAY (frais sous-estimés). `delta < 0` : D01 en entrée du compte FEDAPAY (frais surestimés, la charge baisse).
-- La première ligne garde la référence de l'opération. Un ajustement porte la référence `frais:<opération>:<n>`, que le rapprochement rattache à l'opération (comme une régularisation, sans en être une). Le doc 39 proposait de lier l'ajustement à la ligne d'origine comme une contre-passation partielle. Nous ne le faisons pas : le rapprochement exclut les corrections du total d'une opération, et l'ajustement serait sorti de l'opération.
+- `delta > 0` (frais sous-estimés) : une ligne D01 de la différence, en sortie du compte FEDAPAY.
+- `delta < 0` (frais surestimés) : la nature D01 n'admet que le sens sortie, et une contre-passation reprend toujours la ligne entière (garde-fou SQL FIN-01.3) : la contre-passation partielle du doc 39 est impossible. Les D01 en vigueur de l'opération sont donc contre-passés, puis une ligne D01 est écrite au montant du relevé.
+- La première ligne garde la référence de l'opération. Les suivantes portent `frais:<opération>:<n>`, que le rapprochement rattache à l'opération (comme une régularisation, sans en être une). Le rapprochement compte aussi, dans l'opération, les contre-passations de D01 : elles en font partie, alors que les autres corrections restent des mouvements internes.
 - Même transaction que l'import et le calcul de la journée. Un mois clôturé ne se réimporte pas : ses frais ne bougent plus.
 - Une opération illisible chez FedaPay n'est pas ajustée. Un frais lu à 0 ramène les D01 à 0.
 
