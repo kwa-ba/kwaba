@@ -34,6 +34,7 @@ from shared.notifications.api import send_mail
 from apps.users import api as users
 
 from .models import ContratModel, ModeleContratModel, PreinscriptionModel, hacher_jeton
+from shared.language.api import t
 
 logger = logging.getLogger('apps.contrats')
 
@@ -192,19 +193,19 @@ def signature_png(contenu: bytes, fond_blanc_transparent=False) -> bytes:
     try:
         with Image.open(BytesIO(contenu)) as sonde:
             if sonde.format not in ('PNG', 'JPEG', 'WEBP'):
-                raise ContratErreur("Signature : format d'image non pris en charge.")
+                raise ContratErreur(t('contrats.signature_format'))
             if sonde.width * sonde.height > 4000 * 4000:
-                raise ContratErreur("Signature : image trop grande.")
+                raise ContratErreur(t('contrats.signature_too_big'))
             sonde.verify()
         image = Image.open(BytesIO(contenu)).convert('RGBA')
     except (UnidentifiedImageError, OSError, SyntaxError):
-        raise ContratErreur("Signature illisible.") from None
+        raise ContratErreur(t('contrats.signature_unreadable')) from None
     if fond_blanc_transparent:
         # Scanned signature: the light background becomes transparent
         image.putdata([(r, g, b, 0) if r > 225 and g > 225 and b > 225 else (r, g, b, a) for r, g, b, a in image.getdata()])
     cadre = image.getchannel('A').point(lambda a: 255 if a > 20 else 0).getbbox()
     if not cadre or (cadre[2] - cadre[0]) < 30 or (cadre[3] - cadre[1]) < 10:
-        raise ContratErreur("La signature est vide ou trop petite : dessinez-la dans le cadre.")
+        raise ContratErreur(t('contrats.signature_empty'))
     image = image.crop(cadre)
     image.thumbnail((900, 300))
     tampon = BytesIO()
@@ -214,14 +215,14 @@ def signature_png(contenu: bytes, fond_blanc_transparent=False) -> bytes:
 
 def _depuis_data_url(valeur: str) -> bytes:
     if not isinstance(valeur, str) or len(valeur) > TAILLE_MAX_SIGNATURE * 4 // 3 + 100:
-        raise ContratErreur("Signature manquante ou trop lourde.")
+        raise ContratErreur(t('contrats.signature_missing_or_heavy'))
     entete, _, donnees = valeur.partition(',')
     if not re.fullmatch(r'data:image/(png|jpeg|webp);base64', entete):
-        raise ContratErreur("Signature manquante.")
+        raise ContratErreur(t('contrats.signature_missing'))
     try:
         return base64.b64decode(donnees, validate=True)
     except (binascii.Error, ValueError):
-        raise ContratErreur("Signature illisible.") from None
+        raise ContratErreur(t('contrats.signature_unreadable')) from None
 
 
 # --- Emails -----------------------------------------------------------------------------------------
@@ -381,16 +382,16 @@ def signer(contrat: ContratModel, *, nom: str, signature: str, accepte: bool, ip
     with transaction.atomic():
         contrat = ContratModel.objects.select_for_update().get(pk=contrat.pk)
         if contrat.statut == 'signe':
-            raise ContratErreur("Ce contrat est déjà signé.")
+            raise ContratErreur(t('contrats.already_signed'))
         if contrat.statut != 'a_signer':
-            raise ContratErreur("Ce contrat n'est plus à signer.")
+            raise ContratErreur(t('contrats.no_longer_to_sign'))
         if methode == 'lien personnel' and contrat.expire_le < timezone.now():
-            raise ContratErreur("Ce lien a expiré : demandez à Kwa-Ba de vous renvoyer le contrat.")
+            raise ContratErreur(t('contrats.link_expired'))
         if not accepte:
-            raise ContratErreur("Cochez la case pour accepter le contrat.")
+            raise ContratErreur(t('contrats.tick_contract'))
         nom = ' '.join((nom or '').split())
         if len(nom) < 3 or len(nom) > 150:
-            raise ContratErreur("Tapez votre nom complet.")
+            raise ContratErreur(t('contrats.type_full_name'))
         image = signature_png(_depuis_data_url(signature))
 
         contrat.signataire_nom, contrat.signe_le, contrat.statut = nom, timezone.now(), 'signe'
