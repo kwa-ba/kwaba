@@ -8,6 +8,7 @@ from apps.finance import api as finance
 
 from .deposit import OBJECT_TYPE
 from .models import ReservationModel
+from shared.language.api import t
 
 # Waiting for its payment or paid: cancelling it would start a refund, which a deletion never does by itself
 NOT_OVER = ('pending', 'confirmed')
@@ -17,9 +18,9 @@ def blockers(user_id: uuid.UUID) -> dict[str, str]:
     found = {}
     if ReservationModel.objects.filter(guest_id=user_id, status__in=NOT_OVER,
                                        check_out__gte=timezone.localdate()).exists():
-        found['upcoming_stays'] = 'Vous avez un séjour à venir ou en cours : annulez-le ou attendez sa fin.'
+        found['upcoming_stays'] = t('reservations.deletion_upcoming_stays')
     if _deposit_held(user_id):
-        found['open_deposit'] = 'Une caution doit encore vous être rendue : attendez sa restitution.'
+        found['open_deposit'] = t('reservations.deletion_open_deposit')
     return found
 
 

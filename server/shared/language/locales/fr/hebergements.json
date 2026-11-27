@@ -62,5 +62,6 @@
   "dates_booked": "Ces dates sont déjà réservées pour cet hébergement.",
   "units_available_other": "Il ne reste que {count} logements de ce type disponibles à ces dates.",
   "units_available_one": "Il ne reste que {count} logement de ce type disponible à ces dates.",
-  "dates_closed_by_host": "L'hôte a fermé ces dates à la réservation."
+  "dates_closed_by_host": "L'hôte a fermé ces dates à la réservation.",
+  "deletion_upcoming_bookings": "Un de vos logements a un séjour payé à venir : il doit avoir lieu avant la suppression de votre compte."
 }

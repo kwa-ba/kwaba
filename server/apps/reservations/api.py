@@ -13,6 +13,7 @@ from apps.paiements import api as paiements
 from apps.users import api as users
 
 from .models import ReservationModel
+from shared.language.api import t
 
 
 def appartient_au_voyageur(reservation_id: uuid.UUID, voyageur_id: uuid.UUID) -> bool:
@@ -169,7 +170,7 @@ def confirmees_par_jour(premier_jour: date) -> dict:
 def _du_voyageur(reservation_id, voyageur_id) -> ReservationModel:
     r = ReservationModel.objects.filter(pk=reservation_id, guest_id=voyageur_id).first()
     if not r:
-        raise paiements.PaiementErreur("Seule la personne qui a réservé peut demander qu'on la paie.")
+        raise paiements.PaiementErreur(t('reservations.only_booker_asks_payment'))
     return r
 
 
@@ -205,5 +206,5 @@ def payer_pour_le_groupe(reservation_id, voyage_id, payeur, moyen: str) -> str:
 
     demande = tiers.demande_du_groupe(reservation_id, voyage_id)
     if not demande:
-        raise paiements.PaiementErreur("Personne ne demande plus au groupe de payer cette réservation.")
+        raise paiements.PaiementErreur(t('reservations.group_payment_not_asked'))
     return tiers.payer(demande, payeur, moyen)

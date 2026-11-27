@@ -11,13 +11,13 @@ from apps.users import api as users
 from .archivage import archiver
 from .models import AlerteDisponibiliteModel, BrouillonAnnonceModel, HebergementModel, InscriptionLancementModel
 from .occupations import reservations
+from shared.language.api import t
 
 
 def blockers(user_id: uuid.UUID) -> dict[str, str]:
     listings = HebergementModel.objects.filter(host_id=user_id).values_list('pk', flat=True)
     if any(reservations().sejour_paye_a_venir(pk) for pk in listings):
-        return {'upcoming_bookings': 'Un de vos logements a un séjour payé à venir : il doit avoir lieu avant la '
-                                     'suppression de votre compte.'}
+        return {'upcoming_bookings': t('hebergements.deletion_upcoming_bookings')}
     return {}
 
 

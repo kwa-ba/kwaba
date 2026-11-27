@@ -15,6 +15,7 @@ from shared.activity import api as activity
 
 from . import paiement, tiers
 from .models import DemandePaiementModel, ReservationModel
+from shared.language.api import t
 
 
 class _LimiteEcritures:
@@ -36,7 +37,7 @@ class PayerView(APIView):
         verifier_ouverture()
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         moyen = request.data.get('moyen') or reservation.payment_method
         try:
             url = paiement.demarrer_paiement(reservation, moyen, to_app=paiements.asked_from_app(request.data))
@@ -52,7 +53,7 @@ class StatutView(APIView):
     def get(self, request, pk):
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if paiements.synchroniser_dernier_paiement('reservation', reservation.pk):
             reservation.refresh_from_db()
         return Response({
@@ -70,12 +71,12 @@ class CompteRemboursementView(APIView):
     def put(self, request, pk):
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         serializer = paiements.CompteRemboursementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if not paiements.indiquer_numero_remboursement('reservation', reservation.pk, **serializer.validated_data):
-            return Response({'detail': "Aucun remboursement n'attend de numéro pour cette réservation."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'detail': 'Numéro enregistré : le remboursement va être envoyé.'})
+            return Response({'detail': t('reservations.no_refund_awaiting_number')}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': t('reservations.refund_number_saved')})
 
 
 # --- Payment by a third party -----------------------------------------------------------------------------------------
@@ -92,14 +93,14 @@ class DemandeTiersView(_LimiteEcritures, APIView):
     def get(self, request, pk):
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(_etat_demande(tiers.demande_active(reservation)))
 
     def post(self, request, pk):
         verifier_ouverture()
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             demande, jeton = tiers.creer_lien(reservation)
         except paiements.PaiementErreur as exc:
@@ -112,7 +113,7 @@ class DemandeTiersView(_LimiteEcritures, APIView):
     def delete(self, request, pk):
         reservation = _reservation_du_voyageur(pk, request.user)
         if not reservation:
-            return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.not_found')}, status=status.HTTP_404_NOT_FOUND)
         tiers.revoquer(reservation)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -127,14 +128,14 @@ class PaiementTiersView(_LimiteEcritures, APIView):
     def get(self, request, jeton):
         demande = self._demande(jeton)
         if not demande:
-            return Response({'detail': 'Lien de paiement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.payment_link_not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(tiers.apercu(demande, request.user))
 
     def post(self, request, jeton):
         verifier_ouverture()
         demande = self._demande(jeton)
         if not demande:
-            return Response({'detail': 'Lien de paiement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.payment_link_not_found')}, status=status.HTTP_404_NOT_FOUND)
         try:
             url = tiers.payer(demande, request.user, request.data.get('moyen') or 'mobile_money')
         except paiements.PaiementErreur as exc:
@@ -151,5 +152,5 @@ class StatutTiersView(APIView):
         demande = DemandePaiementModel.objects.select_related('reservation').filter(pk=demande_id).first()
         statut = tiers.statut_pour_payeur(demande, request.user) if demande else None
         if statut is None:
-            return Response({'detail': 'Paiement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('reservations.payment_not_found')}, status=status.HTTP_404_NOT_FOUND)
         return Response(statut)
