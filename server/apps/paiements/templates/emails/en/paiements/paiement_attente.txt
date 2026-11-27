@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your booking is saved: {{ quoi }}.
+
+It will be confirmed as soon as we receive your payment of {{ montant }}, to be made before {{ avant }} (Lomé time). Until then, we hold it for you.
+
+Pay now: {{ url }}
+
+Without payment in time, it will be cancelled automatically and the dates released.
+
+The Kwa-Ba team
+{% endautoescape %}

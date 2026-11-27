@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Stay {{ reference }} was cancelled and refunded to the guest after we had paid you your share.
+{{ montant }} is still to be given back to Kwa-Ba.
+
+If another stay is paid to you soon, we will deduct this sum from that payout: you have nothing to do.
+Otherwise, reply to this email to agree with us on the refund.
+
+The details of your payouts are in your host space: {{ url_revenus }}
+
+The Kwa-Ba team
+{% endautoescape %}

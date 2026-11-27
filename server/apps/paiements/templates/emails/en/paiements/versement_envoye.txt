@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ prenom }},
+
+We have just paid you {{ montant }} on your {{ operateur }} account ({{ numero }}) for {{ voyageur }}'s stay at “{{ hebergement }}” (reference {{ reference }}).
+
+  Price of the nights: {{ montant_brut }}
+  Kwa-Ba commission: {{ commission }}
+  Paid: {{ montant }}
+
+Details of your earnings: {{ url_revenus }}
+
+The Kwa-Ba team
+{% endautoescape %}

@@ -173,8 +173,8 @@ def _decrire_relance(r) -> dict:
             .values_list('expire_le', flat=True).first())
     return {'voyageur': r.guest, 'montant': int(r.total_price),
             'url': f"{settings.FRONTEND_URL}/reservation/paiement/{r.id}",
-            'quoi': f"votre séjour « {annonce['name']} » ({annonce['city']}), "
-                    f"du {formats.date_format(r.check_in, 'j F')} au {formats.date_format(r.check_out, 'j F Y')}",
+            'quoi': t('reservations.reminder_what', name=annonce['name'], city=annonce['city'],
+                      arrival=formats.date_format(r.check_in, 'j F'), departure=formats.date_format(r.check_out, 'j F Y')),
             'lien_tiers': formats.date_format(timezone.localtime(lien), 'j F à H\\hi') if lien else ''}
 
 

@@ -20,6 +20,7 @@ from django.core.signals import request_finished, request_started
 from django.utils import timezone
 
 from . import deposit
+from shared.language.api import t, t_lazy
 
 # Rates of the price grid of 18 October 2026: the defaults. The rates in force are set by the team in the back-office
 # (ReglagesTarifsModel, reglages() below).
@@ -274,25 +275,22 @@ def politique(reservation) -> str:
             or POLITIQUE_PAR_DEFAUT)
 
 
-REGLES_POLITIQUES = {
-    'souple': "remboursement intégral jusqu'à 24 heures avant l'arrivée ; ensuite, la première nuit est retenue",
-    'moderee': "remboursement intégral jusqu'à 5 jours avant l'arrivée ; 50 % des nuits jusqu'à 24 heures avant ; "
-               "aucun remboursement ensuite",
-    'ferme': "remboursement intégral jusqu'à 30 jours avant l'arrivée ; 50 % des nuits jusqu'à 7 jours avant ; "
-             "aucun remboursement ensuite",
+# Cancellation policies in the language of the reader (ADR-046)
+POLICY_TEXTS = {
+    'souple': t_lazy('paiements.policy_flexible'),
+    'moderee': t_lazy('paiements.policy_moderate'),
+    'ferme': t_lazy('paiements.policy_strict'),
 }
 
 
 def texte_politique(reservation) -> str:
-    """Cancellation conditions of the booking, in one sentence (booking voucher, confirmation email)."""
-    code = politique(reservation)
-    texte = (f"Politique {dict(POLITIQUES)[code]} : {REGLES_POLITIQUES[code]}. Les frais de service ne sont rendus qu'avec un "
-             "remboursement intégral. Annulation gratuite dans les 48 heures suivant la réservation si l'arrivée est dans "
-             "7 jours ou plus.")
+    """Cancellation conditions of the booking, in one sentence (booking voucher, confirmation email), in the active
+    language."""
+    texte = f"{POLICY_TEXTS[politique(reservation)]} {t('paiements.policy_common')}"
     if getattr(reservation, 'deposit_amount', 0):
-        texte += " La caution est toujours rendue en entier en cas d'annulation."
+        texte += ' ' + t('paiements.policy_deposit_returned')
     if getattr(reservation, 'guarantee_fee', 0):
-        texte += " Le forfait de la garantie renforcée reste acquis, sauf annulation par l'hôte."
+        texte += ' ' + t('paiements.policy_guarantee_kept')
     return texte
 
 

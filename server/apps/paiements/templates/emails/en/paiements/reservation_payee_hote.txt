@@ -1,0 +1,18 @@
+{% autoescape off %}Hello {{ prenom }},
+
+{{ voyageur }} has booked and paid for a stay at “{{ hebergement }}”.
+
+  From {{ arrivee }} to {{ depart }} · {{ voyageurs }} guest{{ voyageurs|pluralize }}
+  Reference: {{ reference }}
+{% if message %}
+Their message: “{{ message }}”
+{% endif %}
+You will receive {{ montant_hote }} (price of the nights minus the Kwa-Ba commission) on your Mobile Money on {{ date_versement }}.
+{% if not profil_complet %}
+Important: you have not yet said where to receive your money. Do it here:
+{{ url_revenus }}
+{% endif %}
+See the booking: {{ url_reservations }}
+
+The Kwa-Ba team
+{% endautoescape %}

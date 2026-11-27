@@ -1,0 +1,8 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your refund of {{ montant }} for booking {{ reference }} (“{{ hebergement }}”) has been sent{% if destination %} to {{ destination }}{% endif %}.
+
+Depending on your operator or your bank, it may take a few hours to show.
+
+The Kwa-Ba team
+{% endautoescape %}

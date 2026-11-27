@@ -1,0 +1,15 @@
+{% autoescape off %}Hello {{ prenom }},
+
+Your payment of {{ montant }} has been received: {{ voyageur }}'s stay is confirmed.
+
+  {{ hebergement }} ({{ ville }})
+  From {{ arrivee }} to {{ depart }} · {{ voyageurs }} guest{{ voyageurs|pluralize }}
+  Reference: {{ reference }}
+
+Your payment receipt is attached to this email. {{ voyageur }} receives the confirmation of the stay and talks with the host through the Kwa-Ba messaging.
+
+If the stay is cancelled, the refund set by the cancellation conditions goes back to you, on the payment method you used.
+
+Thank you,
+The Kwa-Ba team
+{% endautoescape %}
