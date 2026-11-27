@@ -34,6 +34,8 @@ class Compte:
     date_joined: datetime
     avatar_url: str | None
     candidature_hote: str = ''
+    # Language of the emails sent to the person (ADR-046)
+    language: str = 'fr'
 
     is_authenticated = True
 
@@ -51,7 +53,8 @@ class Compte:
 def _compte(u: UserModel) -> Compte:
     return Compte(id=u.id, email=u.email, first_name=u.first_name, last_name=u.last_name, phone=u.phone, role=u.role,
                   is_active=u.is_active, is_verified=u.is_verified, date_joined=u.date_joined,
-                  avatar_url=u.avatar.url if u.avatar else None, candidature_hote=u.candidature_hote)
+                  avatar_url=u.avatar.url if u.avatar else None, candidature_hote=u.candidature_hote,
+                  language=u.language)
 
 
 def hote_ou_candidat(utilisateur) -> bool:

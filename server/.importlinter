@@ -31,7 +31,7 @@ ignore_imports =
     apps.** -> apps.*.api
 
 [importlinter:contract:noyau-partage]
-name = Le noyau partagé (shared : securite, notifications, export, activity) ne dépend d'aucun module métier
+name = Le noyau partagé (shared : securite, notifications, export, activity, language) ne dépend d'aucun module métier
 type = forbidden
 source_modules =
     shared

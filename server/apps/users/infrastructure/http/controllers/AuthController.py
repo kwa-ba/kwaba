@@ -21,6 +21,7 @@ from apps.users.application.events.UserRegistered import UserRegistered
 from apps.users.application.events.PasswordResetRequested import PasswordResetRequested
 from apps.users.infrastructure.persistence.DjangoUserRepository import DjangoUserRepository
 from apps.users.infrastructure.messaging.FallbackEventBus import FallbackEventBus
+from apps.users.infrastructure.http.account_language import remember_language
 from apps.users.infrastructure.http.session_tokens import asks_long_session, tokens_for
 from apps.users.infrastructure.http.serializers.auth_serializers import (
     RegisterSerializer, LoginSerializer, PasswordResetConfirmSerializer, RefreshWithGracePeriodSerializer,
@@ -76,7 +77,10 @@ def _user_payload(user) -> dict:
 
 
 def _tokens_for(user_id, request=None) -> dict:
-    """`request`: a sign-in from the mobile app gets a long session (ADR-043)."""
+    """`request`: a sign-in from the mobile app gets a long session (ADR-043), and its language becomes the account's
+    (ADR-046)."""
+    if request is not None:
+        remember_language(user_id)
     return tokens_for(UserModel.objects.get(id=user_id),
                       long_session=request is not None and asks_long_session(request))
 
@@ -155,6 +159,7 @@ class RegisterView(APIView):
         except IntegrityError:
             return Response({'email': ['Ce compte existe déjà.']}, status=status.HTTP_409_CONFLICT)
 
+        remember_language(result.id)
         activity.record('inscription', request, actor=result.id, email=str(result.email))
         return Response(_user_payload(result), status=status.HTTP_201_CREATED)
 

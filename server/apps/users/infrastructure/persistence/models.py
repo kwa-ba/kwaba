@@ -47,6 +47,8 @@ class UserModel(AbstractUser):
     phone       = models.CharField(max_length=20, unique=True, null=True, blank=True)
     avatar      = models.ImageField(upload_to='avatars/', null=True, blank=True)
     role        = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    # Language of the emails sent to the person (ADR-046): the one of their last sign-in, or chosen in their profile
+    language    = models.CharField(max_length=8, default='fr', db_default='fr')
     is_verified = models.BooleanField(default=False)
     # Traveller preparing their first listing: they become a host only once an agent has validated one
     CANDIDATURE_CHOICES = [('', 'Aucune'), ('ouverte', 'En cours'), ('refusee', 'Refusée')]

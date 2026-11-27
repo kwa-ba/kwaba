@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from shared.activity import api as activity
+from shared.language.api import supported, t
 from shared.securite.images import MESSAGE as IMAGE_REFUSEE, url_image_autorisee
 from apps.users.application.dto.dto import UpdateProfileDTO
 from apps.users.infrastructure.http.controllers.AccountDeletionController import delete_own_account
@@ -21,7 +22,8 @@ def _service() -> UserService:
 
 
 def _payload(result) -> dict:
-    compte = UserModel.objects.values('date_joined', 'candidature_hote', 'candidature_motif').get(id=result.id)
+    compte = UserModel.objects.values('date_joined', 'candidature_hote', 'candidature_motif', 'language').get(
+        id=result.id)
     return {
         'id': str(result.id),
         'email': str(result.email),
@@ -35,6 +37,8 @@ def _payload(result) -> dict:
         'date_joined': compte['date_joined'],
         'candidature_hote': compte['candidature_hote'],
         'candidature_motif': compte['candidature_motif'],
+        # Language of the emails (ADR-046)
+        'language': compte['language'],
     }
 
 
@@ -48,6 +52,9 @@ class MeView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
 
     def patch(self, request):
+        language = supported(str(request.data['language'])) if 'language' in request.data else None
+        if 'language' in request.data and not language:
+            return Response({'language': [t('language.unknown')]}, status=status.HTTP_400_BAD_REQUEST)
         noms = {champ: str(request.data.get(champ) or '').strip() for champ in ('first_name', 'last_name')}
         trop_longs = {champ: ['150 caractères maximum.'] for champ, valeur in noms.items() if len(valeur) > 150}
         if trop_longs:
@@ -74,6 +81,8 @@ class MeView(APIView):
                 avatar_url=avatar_url,
             )
             result = _service().update_profile(request.user.id, dto)
+            if language:
+                UserModel.objects.filter(pk=request.user.id).update(language=language)
             return Response(_payload(result))
         except UserNotFoundException as e:
             return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
