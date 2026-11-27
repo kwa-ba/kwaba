@@ -1,0 +1,9 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Welcome to Kwa-Ba.
+Your account has been created and verified.
+You are ready to discover Africa in all its splendour!
+
+See you soon,
+The Kwa-Ba team
+{% endautoescape %}

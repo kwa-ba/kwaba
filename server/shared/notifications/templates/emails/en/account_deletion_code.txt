@@ -1,0 +1,16 @@
+{% autoescape off %}Hello {{ first_name }},
+
+You asked to delete your Kwa-Ba account.
+To confirm, enter this code:
+
+    {{ code }}
+
+It expires in 10 minutes.
+
+Deletion is permanent: your name, email address, phone number and documents will be erased.
+Invoices and payments are kept, as the law requires.
+
+If you did not ask for this, ignore this email and change your password: your account stays active.
+
+The Kwa-Ba team
+{% endautoescape %}

@@ -1,0 +1,12 @@
+{% autoescape off %}Hello {{ first_name }},
+
+{{ sender_first_name }} sent you a message about “{{ hebergement_name }}”:
+
+“{{ message_preview }}”
+
+To read the conversation and reply:
+{{ conversation_url }}
+
+See you soon,
+The Kwa-Ba team
+{% endautoescape %}

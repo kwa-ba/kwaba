@@ -1,0 +1,10 @@
+{
+  "subject_verification": "Vérification de votre compte Kwa-Ba",
+  "subject_welcome": "Bienvenue sur Kwa-Ba",
+  "subject_new_message": "Nouveau message de {sender} sur Kwa-Ba",
+  "subject_password_reset": "Réinitialisation de votre mot de passe Kwa-Ba",
+  "subject_password_changed": "Votre mot de passe Kwa-Ba a été changé",
+  "subject_deletion_code": "Suppression de votre compte Kwa-Ba : votre code",
+  "subject_account_deleted": "Votre compte Kwa-Ba a été supprimé",
+  "subject_booking_cancelled_listing_removed": "Réservation annulée : le logement n'est plus proposé"
+}

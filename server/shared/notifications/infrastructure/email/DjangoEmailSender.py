@@ -5,6 +5,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import formats
 from shared.notifications.application.ports.NotificationSender import NotificationSender
+from shared.language.api import t
 
 
 class DjangoEmailSender(NotificationSender):
@@ -15,7 +16,7 @@ class DjangoEmailSender(NotificationSender):
             'code': code,
         })
         send_mail(
-            subject='Vérification de votre compte Kwa-Ba',
+            subject=t('notifications.subject_verification'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -26,7 +27,7 @@ class DjangoEmailSender(NotificationSender):
             'first_name': first_name,
         })
         send_mail(
-            subject='Bienvenue sur Kwa-Ba',
+            subject=t('notifications.subject_welcome'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -44,7 +45,7 @@ class DjangoEmailSender(NotificationSender):
             'conversation_url': conversation_url,
         })
         send_mail(
-            subject=f'Nouveau message de {sender_first_name} sur Kwa-Ba',
+            subject=t('notifications.subject_new_message', sender=sender_first_name),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -56,7 +57,7 @@ class DjangoEmailSender(NotificationSender):
             'code': code,
         })
         send_mail(
-            subject='Réinitialisation de votre mot de passe Kwa-Ba',
+            subject=t('notifications.subject_password_reset'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -68,7 +69,7 @@ class DjangoEmailSender(NotificationSender):
             'reset_url': f"{settings.FRONTEND_URL.rstrip('/')}/mot-de-passe-oublie",
         })
         send_mail(
-            subject='Votre mot de passe Kwa-Ba a été changé',
+            subject=t('notifications.subject_password_changed'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -77,7 +78,7 @@ class DjangoEmailSender(NotificationSender):
     def send_account_deletion_code_email(self, to: str, first_name: str, code: str) -> None:
         message = render_to_string('emails/account_deletion_code.txt', {'first_name': first_name, 'code': code})
         send_mail(
-            subject='Suppression de votre compte Kwa-Ba : votre code',
+            subject=t('notifications.subject_deletion_code'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -86,7 +87,7 @@ class DjangoEmailSender(NotificationSender):
     def send_account_deleted_email(self, to: str, first_name: str) -> None:
         message = render_to_string('emails/account_deleted.txt', {'first_name': first_name})
         send_mail(
-            subject='Votre compte Kwa-Ba a été supprimé',
+            subject=t('notifications.subject_account_deleted'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],
@@ -104,7 +105,7 @@ class DjangoEmailSender(NotificationSender):
             'search_url': f"{settings.FRONTEND_URL.rstrip('/')}/recherche",
         })
         send_mail(
-            subject='Réservation annulée : le logement n\'est plus proposé',
+            subject=t('notifications.subject_booking_cancelled_listing_removed'),
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[to],

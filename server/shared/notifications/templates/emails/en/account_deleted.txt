@@ -1,0 +1,11 @@
+{% autoescape off %}Hello {{ first_name }},
+
+Your Kwa-Ba account has been deleted.
+
+Your name, email address, phone number and documents have been erased. Invoices and payments are kept, no longer
+linked to a profile, as the law requires.
+
+You can create a new account with the same address whenever you wish.
+
+The Kwa-Ba team
+{% endautoescape %}

@@ -113,8 +113,8 @@ class RabbitMQConsumer:
         handler_name = self.ROUTING_KEYS.get(routing_key)
         if handler_name is None:
             raise ValueError(f"Routing key non gérée : {routing_key}")
-        # The email templates are in French: dates and Django's texts too, even when sent during an English request
-        with in_language(DEFAULT):
+        # In the recipient's language, carried by the event (ADR-046): template, subject and dates; French without it
+        with in_language(data.get('language') or data.get('recipient_language') or DEFAULT):
             getattr(self, handler_name)(data)
 
     def handle_verification_email(self, data: dict) -> None:
