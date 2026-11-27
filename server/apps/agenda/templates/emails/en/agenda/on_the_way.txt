@@ -1,0 +1,10 @@
+{% autoescape off %}Hello,
+
+The Kwa-Ba agent is on the way for the {{ hour }} visit.
+
+{% for listing in listings %}  {{ listing }}
+{% endfor %}
+Please be there to welcome them. Your visit: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

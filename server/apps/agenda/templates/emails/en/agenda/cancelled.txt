@@ -1,0 +1,12 @@
+{% autoescape off %}Hello,
+
+The verification visit planned on {{ when }} is cancelled.
+
+{% for listing in listings %}  {{ listing }}
+{% endfor %}
+Reason: {{ reason }}
+
+Choose a new slot: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}

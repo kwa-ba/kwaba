@@ -1,0 +1,12 @@
+{% autoescape off %}Hello,
+
+{% if by_phone %}As agreed by phone, the{% else %}The{% endif %} verification visit is confirmed on {{ when }}.
+
+{% for listing in listings %}  {{ listing }}
+{% endfor %}  {{ city }}
+
+A Kwa-Ba agent will come and check your accommodation. Have your identity document ready.
+You can move the visit up to 24 h before: {{ url }}
+
+The Kwa-Ba team
+{% endautoescape %}
