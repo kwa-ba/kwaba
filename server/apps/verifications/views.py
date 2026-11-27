@@ -18,6 +18,7 @@ from apps.users import api as users
 from . import services
 from .fichiers import FichierInvalide, piece_identite
 from .models import PieceIdentiteModel, VisiteModel
+from shared.language.api import t
 
 
 class EstVerificateur(IsAuthenticated):
@@ -55,17 +56,17 @@ class MaPieceIdentiteView(APIView):
 
     def post(self, request):
         if not users.peut_gerer_annonces(request.user):
-            return Response({'detail': 'Réservé aux hôtes.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': t('verifications.hosts_only')}, status=status.HTTP_403_FORBIDDEN)
         type_piece = request.data.get('type_piece')
         if type_piece not in dict(PieceIdentiteModel.TYPES):
-            return Response({'type_piece': ["Choisissez le type de pièce."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'type_piece': [t('verifications.choose_document_type')]}, status=status.HTTP_400_BAD_REQUEST)
         fichier = request.FILES.get('fichier')
         if not fichier:
-            return Response({'fichier': ['Aucun fichier reçu.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'fichier': [t('verifications.no_file')]}, status=status.HTTP_400_BAD_REQUEST)
 
         piece = PieceIdentiteModel.objects.filter(hote_id=request.user.pk).first()
         if piece and piece.statut == 'verifiee':
-            return Response({'detail': 'Votre identité est déjà vérifiée.'}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('verifications.identity_already_verified')}, status=status.HTTP_409_CONFLICT)
         try:
             contenu, extension, type_contenu = piece_identite(fichier)
         except FichierInvalide as exc:

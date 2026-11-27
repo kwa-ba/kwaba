@@ -26,6 +26,7 @@ from apps.users import api as users
 from . import positions
 from .fichiers import image_normalisee
 from .models import PhotoVisiteModel, PieceIdentiteModel, VisitInvitationModel, VisiteModel
+from shared.language.api import t
 
 logger = logging.getLogger('apps.verifications')
 
@@ -99,14 +100,13 @@ def verifier_limite_annonces(hote) -> None:
         return
     if not hote.phone:
         raise VerificationErreur(
-            "Ajoutez votre numéro de téléphone dans votre profil : l'agent Kwa-Ba vous appellera pour la visite.")
+            t('verifications.phone_for_visit'))
     if identite_verifiee(hote):
         return
     en_attente = hebergements.nb_annonces_non_verifiees(hote.pk)
     if en_attente >= MAX_ANNONCES_HOTE_NON_VERIFIE:
         raise VerificationErreur(
-            f"Vous avez déjà {en_attente} annonces en attente. Attendez la vérification de votre identité "
-            "avant d'en ajouter d'autres.")
+            t('verifications.too_many_pending_listings', count=en_attente))
 
 
 def visite_a_planifier(hebergement_id, modification: bool = False) -> None:

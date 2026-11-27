@@ -1,0 +1,13 @@
+{
+  "phone_for_visit": "Add your phone number to your profile: the Kwa-Ba agent will call you for the visit.",
+  "too_many_pending_listings": "You already have {count} listings waiting. Wait for your identity to be verified before adding more.",
+  "hosts_only": "For hosts only.",
+  "choose_document_type": "Choose the type of document.",
+  "no_file": "No file received.",
+  "identity_already_verified": "Your identity is already verified.",
+  "file_too_big": "The file is larger than 10 MB.",
+  "not_an_image": "This file is not a valid image.",
+  "accepted_formats": "Accepted formats: JPEG, PNG, WebP or PDF.",
+  "image_too_large": "Image too large (40 megapixels maximum).",
+  "deletion_upcoming_visit": "An agent is due to visit your accommodation: contact Kwa-Ba to cancel the visit."
+}
