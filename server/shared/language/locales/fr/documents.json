@@ -1,0 +1,6 @@
+{
+  "unknown": "Document inconnu.",
+  "not_found": "Document introuvable.",
+  "after_payment": "Les documents sont disponibles une fois le paiement reçu.",
+  "deposit_not_settled": "Pas encore de document : la caution n'est pas soldée."
+}

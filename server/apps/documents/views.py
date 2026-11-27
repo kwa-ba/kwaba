@@ -17,6 +17,7 @@ from shared.securite.permissions import EstAdministrateur
 from . import generateurs, services
 from .models import AvoirModel, DocumentCautionModel, FactureModel, JustificatifCautionModel, ParametresSocieteModel
 from .registre import PRODUITS
+from shared.language.api import t
 
 
 def _pdf(contenu: bytes, nom: str) -> HttpResponse:
@@ -35,13 +36,13 @@ class DocumentView(APIView):
     def get(self, request, type_objet, pk, document):
         produit = PRODUITS.get(type_objet)
         if not produit or document not in (*produit.documents, 'caution'):
-            return Response({'detail': 'Document inconnu.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('documents.unknown')}, status=status.HTTP_404_NOT_FOUND)
         objet = produit.charger(pk)
         # Same response if the object does not exist or belongs to someone else: nothing leaks
         if not objet or (produit.proprietaire_id(objet) != request.user.pk and request.user.role != 'admin'):
-            return Response({'detail': 'Document introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('documents.not_found')}, status=status.HTTP_404_NOT_FOUND)
         if not produit.paye(objet):
-            return Response({'detail': 'Les documents sont disponibles une fois le paiement reçu.'}, status=status.HTTP_409_CONFLICT)
+            return Response({'detail': t('documents.after_payment')}, status=status.HTTP_409_CONFLICT)
         reference = produit.reference(objet)
         if document == 'bon':
             return _pdf(produit.bon(objet), f"bon-{reference}.pdf")
@@ -51,7 +52,7 @@ class DocumentView(APIView):
             # REC receipt or RET notice of the deposit, once it is settled (GL-14)
             d = DocumentCautionModel.objects.filter(objet_type=type_objet, objet_id=objet.pk).first()
             if d is None:
-                return Response({'detail': "Pas encore de document : la caution n'est pas soldée."},
+                return Response({'detail': t('documents.deposit_not_settled')},
                                 status=status.HTTP_404_NOT_FOUND)
             return _pdf(d.pdf.read() if d.pdf else generateurs.document_caution(d), f"{d.numero}.pdf")
         try:
@@ -280,7 +281,7 @@ class DocumentCautionPdfView(APIView):
     def get(self, request, numero):
         d = DocumentCautionModel.objects.filter(numero=numero).first()
         if not d:
-            return Response({'detail': 'Document introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': t('documents.not_found')}, status=status.HTTP_404_NOT_FOUND)
         return _pdf(d.pdf.read() if d.pdf else generateurs.document_caution(d), f"{d.numero}.pdf")
 
 
