@@ -24,6 +24,7 @@ from config import prelancement
 from . import fedapay, grand_livre, paypal, tarifs, versements
 from .models import PaiementModel, ProfilVersementModel, RemboursementModel, VersementModel
 from .registre import PRODUITS
+from shared.language.api import t
 
 logger = logging.getLogger('apps.paiements')
 
@@ -94,7 +95,7 @@ def creer_paiement(*, type_objet: str, objet_id, montant: int, moyen: str, descr
     if prelancement.actif():
         raise PaiementErreur(prelancement.MESSAGE)
     if moyen not in moyens_actifs():
-        raise PaiementErreur("Ce moyen de paiement n'est pas disponible.")
+        raise PaiementErreur(t('paiements.method_unavailable'))
     cible = {f'{type_objet}_id': objet_id, 'payeur_id': payeur.pk if payeur else None}
 
     if MOYENS[moyen] == 'paypal':
@@ -106,7 +107,7 @@ def creer_paiement(*, type_objet: str, objet_id, montant: int, moyen: str, descr
             )
         except paypal.PayPalErreur:
             logger.exception("Création de la commande PayPal impossible pour %s", objet_id)
-            raise PaiementErreur("PayPal est momentanément indisponible. Réessayez ou choisissez un autre moyen de paiement.")
+            raise PaiementErreur(t('paiements.paypal_unavailable'))
         paiement.save()
         return paiement.url_paiement
 
@@ -121,7 +122,7 @@ def creer_paiement(*, type_objet: str, objet_id, montant: int, moyen: str, descr
         )
     except fedapay.FedaPayErreur:
         logger.exception("Création de la transaction impossible pour %s", objet_id)
-        raise PaiementErreur("Le service de paiement est momentanément indisponible. Réessayez dans quelques instants.")
+        raise PaiementErreur(t('paiements.provider_unavailable'))
     PaiementModel.objects.create(**cible, montant=montant, transaction_id=transaction_id, url_paiement=url)
     return url
 
