@@ -32,7 +32,7 @@ class FauxRegistre(Cautions):
                 and (not en_retard_au or c.date_limite < en_retard_au)][:limite]
 
     def total_detenu(self):
-        return sum(c.montant for c in self.lignes.values() if c.statut == 'detenue')
+        return sum(c.montant - c.montant_rendu for c in self.lignes.values() if c.statut in ('detenue', 'litige'))
 
 
 class Transaction(TransactionManager):
@@ -67,7 +67,7 @@ def test_a_deposit_is_received_once_and_counted_as_held(registre):
 
 def test_a_withholding_is_motivated_and_within_the_deposit(registre):
     recevoir(registre)
-    with pytest.raises(CautionRefusee, match='entre 0 et la caution'):
+    with pytest.raises(CautionRefusee, match='entre 0 et ce qui reste détenu'):
         registre.decider_retenue('location', 'l1', montant=60_001, motif='Trop', cgv_article='14.3', par_id=None)
     with pytest.raises(CautionRefusee, match='motif'):
         registre.decider_retenue('location', 'l1', montant=10_000, motif='', cgv_article='14.3', par_id=None)
@@ -96,3 +96,31 @@ def test_a_settlement_adds_up_needs_its_document_and_happens_once(registre):
 def test_a_deposit_past_its_date_is_flagged(registre):
     recevoir(registre, limite=-timedelta(hours=1))
     assert registre.liste(en_retard=True)['en_retard'] == 1
+
+
+def test_a_dispute_gives_back_the_part_not_claimed_and_keeps_the_claim(registre):
+    """ADR-048: deposit 50 000, damage claimed 12 000 → 38 000 given back at 72 h, 12 000 held."""
+    recevoir(registre, montant=50_000)
+    assert registre.declarer_litige('location', 'l1', montant=12_000).statut == 'litige'
+    with pytest.raises(CautionRefusee, match='encore réclamé'):
+        registre.rendre_en_partie('location', 'l1', montant=38_001)
+
+    c = registre.rendre_en_partie('location', 'l1', montant=38_000)
+
+    assert (c.statut, c.montant_rendu, c.montant_conteste) == ('litige', 38_000, 12_000)
+    assert registre.liste()['total_detenu'] == 12_000
+    with pytest.raises(CautionRefusee, match='ce qui reste détenu'):
+        registre.declarer_litige('location', 'l1', montant=12_001)
+
+
+def test_a_disputed_deposit_is_settled_with_what_was_given_back(registre):
+    recevoir(registre, montant=50_000)
+    registre.declarer_litige('location', 'l1', montant=12_000)
+    registre.rendre_en_partie('location', 'l1', montant=38_000)
+    registre.declarer_litige('location', 'l1', montant=12_000)
+    registre.decider_retenue('location', 'l1', montant=12_000, motif='Table cassée', cgv_article='13.6', par_id=None)
+
+    c = registre.solder('location', 'l1', rendu=38_000, mode='Remboursement', document_numero='RET-2026-00001')
+
+    assert (c.statut, c.montant_rendu, c.montant_retenu) == ('retenue', 38_000, 12_000)
+    assert registre.liste()['total_detenu'] == 0

@@ -9,7 +9,8 @@ class CautionModel(models.Model):
     """A deposit held for a traveller (finance_caution of the schema), per booking or rental: received, then settled
     once with its document (REC receipt or RET notice). The database refuses a settlement whose amounts do not add up
     or a withholding without its reason and document."""
-    ETATS = [('detenue', 'Détenue'), ('restituee', 'Restituée'), ('retenue', 'Retenue en partie ou en totalité')]
+    ETATS = [('detenue', 'Détenue'), ('litige', 'Détenue, dommage en litige'), ('restituee', 'Restituée'),
+             ('retenue', 'Retenue en partie ou en totalité')]
 
     objet_type = models.CharField(max_length=30)
     objet_id = models.CharField(max_length=64)
@@ -29,6 +30,7 @@ class CautionModel(models.Model):
     soldee_le = models.DateTimeField(null=True, blank=True)
     mode_restitution = models.CharField(max_length=120, blank=True, default='')
     document_numero = models.CharField(max_length=20, blank=True, default='')
+    montant_conteste = models.BigIntegerField(default=0, help_text='Montant réclamé pour un dommage (ADR-048)')
 
     class Meta:
         db_table = 'finance_caution'
@@ -41,9 +43,15 @@ class CautionModel(models.Model):
                                    name='finance_caution_retenue_bornee'),
             # Settled: what is given back and what is withheld make the deposit, with its document
             models.CheckConstraint(
-                condition=Q(statut='detenue') | (Q(montant_rendu=F('montant') - F('montant_retenu'))
+                condition=Q(statut__in=['detenue', 'litige']) | (Q(montant_rendu=F('montant') - F('montant_retenu'))
                                                   & ~Q(document_numero='') & Q(soldee_le__isnull=False)),
                 name='finance_caution_soldee_complete'),
+            # Held: what was already given back leaves room for what is claimed or withheld (ADR-048)
+            models.CheckConstraint(
+                condition=Q(montant_conteste__gte=0, montant_rendu__gte=0)
+                & Q(montant_rendu__lte=F('montant') - F('montant_conteste'))
+                & Q(montant_rendu__lte=F('montant') - F('montant_retenu')),
+                name='finance_caution_rendu_partiel_borne'),
             # A withholding states its reason and the article of the terms of sale
             models.CheckConstraint(condition=Q(montant_retenu=0) | (~Q(motif_retenue='') & ~Q(cgv_article='')),
                                    name='finance_caution_retenue_motivee'),

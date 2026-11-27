@@ -162,12 +162,16 @@ class Validation:
 
 # States of a deposit in the register (not to mix with CAUTION_RETENUE, the ledger nature C03)
 ETAT_CAUTION_DETENUE, ETAT_CAUTION_RESTITUEE, ETAT_CAUTION_RETENUE = 'detenue', 'restituee', 'retenue'
+# Part of a held deposit claimed for a damage (ADR-048): the rest may already be given back
+ETAT_CAUTION_LITIGE = 'litige'
+ETATS_CAUTION_EN_COURS = (ETAT_CAUTION_DETENUE, ETAT_CAUTION_LITIGE)
 
 
 @dataclass(frozen=True)
 class Caution:
     """A deposit held by Kwa-Ba for a traveller: never Kwa-Ba's money. Settled once: given back in full (receipt
-    REC), or partly kept for a motivated decision (notice RET)."""
+    REC), or partly kept for a motivated decision (notice RET). During a damage dispute (ADR-048), the part not
+    claimed may be given back before the settlement (`montant_rendu` adds up what was given back)."""
     objet_type: str
     objet_id: str
     reference: str
@@ -186,6 +190,7 @@ class Caution:
     soldee_le: datetime | None = None
     mode_restitution: str = ''
     document_numero: str = ''
+    montant_conteste: int = 0
 
 
 # --- Reconciliation with the payment provider (GL-12, FIN-02) -------------------------------------------------------
