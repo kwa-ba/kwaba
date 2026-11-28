@@ -244,6 +244,7 @@ export default function FormulaireLocation({ catalogue, categorie, formule, onCh
             {d.caution_en_ligne ? (
               <p className="text-xs text-gray-500 pt-1">{t("cautionEnLigne", { heures: regles.restitution_caution_heures })}</p>
             ) : d.caution > 0 && <p className="text-xs text-gray-500 pt-1">{t("caution", { montant: formatPrice(d.caution) })}</p>}
+            {d.caution_reduite && <p className="text-xs text-green-700 pt-1">{t("cautionReduite")}</p>}
           </dl>
         ) : null}
 

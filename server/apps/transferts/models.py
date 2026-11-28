@@ -42,7 +42,9 @@ class TarifTransfertModel(models.Model):
         return f"{self.aeroport_id} · {self.get_categorie_display()} : {self.prix} FCFA"
 
 
-NIVEAUX = [('standard', 'Standard'), ('confirme', 'Confirmé'), ('excellence', 'Excellence')]
+NIVEAUX = [('standard', 'Standard'), ('excellence', 'Excellence')]
+# The history keeps the Confirmé level, removed on 26 November 2026 (driver charter B6, resolution 4)
+NIVEAUX_HISTORIQUE = [*NIVEAUX, ('confirme', 'Confirmé (retiré)')]
 
 
 class ChauffeurModel(models.Model):
@@ -61,10 +63,13 @@ class ChauffeurModel(models.Model):
         default=False, db_default=False,
         help_text='Statut « Chauffeur Excellence » (revu chaque trimestre) : 6 500 FCFA par jour au lieu de 6 000',
     )
-    # Level (Standard, Confirmé, Excellence): proposed each quarter from the rides, the travellers' ratings and the
-    # incidents, then validated by the team; `excellence` follows it (the driver's pay reads it)
+    # Level (Standard, Excellence): proposed each quarter from the rides, the travellers' ratings and the incidents,
+    # then validated by the team; `excellence` follows it (the driver's pay reads it)
     niveau = models.CharField(max_length=12, choices=NIVEAUX, default='standard', db_default='standard')
     niveau_depuis = models.DateTimeField(null=True, blank=True)
+    # Founders Programme (the 10 first drivers, 6 months): Excellence from fewer missions. Dates entered by the team
+    fondateur_debut = models.DateField(null=True, blank=True, help_text='Programme Fondateurs : premier jour')
+    fondateur_fin = models.DateField(null=True, blank=True, help_text='Programme Fondateurs : dernier jour (6 mois)')
     # Profile photo: shown to the traveller once the driver is assigned; without a photo validated by the team, no ride
     photo = models.ImageField(upload_to='chauffeurs/', blank=True)
     photo_validee = models.BooleanField(default=False, db_default=False)
@@ -84,6 +89,12 @@ class ChauffeurModel(models.Model):
 
     def __str__(self):
         return f"{self.prenom} {self.nom} · {self.vehicule} ({self.get_categorie_display()})"
+
+    def est_fondateur(self, jour=None) -> bool:
+        from django.utils import timezone
+
+        jour = jour or timezone.localdate()
+        return bool(self.fondateur_debut and self.fondateur_fin and self.fondateur_debut <= jour <= self.fondateur_fin)
 
 
 class TransfertModel(models.Model):
@@ -229,8 +240,10 @@ class AvisChauffeurModel(models.Model):
 
 
 class IncidentChauffeurModel(models.Model):
-    """An incident the team records on a driver (a serious one, a lateness, a no-show): read by the level review."""
-    TYPES = [('grave', 'Incident grave'), ('retard', 'Retard'), ('absence', 'Absence'), ('autre', 'Autre')]
+    """An incident the team records on a driver: read by the level review. Any of them but « autre » within the period
+    bars Excellence (driver charter B6); a serious one also takes Excellence away at once."""
+    TYPES = [('grave', 'Incident grave'), ('retard', 'Retard de plus de 15 min'), ('absence', 'Absence'),
+             ('plainte', 'Plainte fondée'), ('accident', 'Accident responsable'), ('autre', 'Autre')]
 
     id = models.BigAutoField(primary_key=True)
     chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, related_name='incidents')
@@ -253,9 +266,9 @@ class NiveauChauffeurModel(models.Model):
     relied on. Append only."""
     id = models.BigAutoField(primary_key=True)
     chauffeur = models.ForeignKey(ChauffeurModel, on_delete=models.PROTECT, related_name='niveaux')
-    avant = models.CharField(max_length=12, choices=NIVEAUX)
-    apres = models.CharField(max_length=12, choices=NIVEAUX)
-    propose = models.CharField(max_length=12, choices=NIVEAUX)
+    avant = models.CharField(max_length=12, choices=NIVEAUX_HISTORIQUE)
+    apres = models.CharField(max_length=12, choices=NIVEAUX_HISTORIQUE)
+    propose = models.CharField(max_length=12, choices=NIVEAUX_HISTORIQUE)
     motif = models.TextField(blank=True, default='')
     chiffres = models.JSONField(default=dict)
     par_id = models.UUIDField(null=True, blank=True)

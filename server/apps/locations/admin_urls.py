@@ -3,11 +3,12 @@ from django.urls import path
 from .admin_views import (
     CategorieView, CategoriesView, LieuView, LieuxView, LocationAnnulerView, LocationAttribuerView,
     LocationCautionView, LocationPartenairesView, LocationsView, ParametresView, PartenaireView, PartenairesView,
-    PhotoCategorieView, PhotosCategorieView,
+    PhotoCategorieView, PhotosCategorieView, TarifsMobiliteView,
 )
 
 urlpatterns = [
     path('location/regles/', ParametresView.as_view(), name='admin-location-regles'),
+    path('location/tarifs-mobilite/', TarifsMobiliteView.as_view(), name='admin-location-tarifs-mobilite'),
     path('location/categories/', CategoriesView.as_view(), name='admin-location-categories'),
     path('location/categories/<int:pk>/', CategorieView.as_view(), name='admin-location-categorie'),
     path('location/categories/<int:pk>/photos/', PhotosCategorieView.as_view(), name='admin-location-categorie-photos'),

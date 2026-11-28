@@ -1853,6 +1853,7 @@
     "total": "Total",
     "caution": "Caution à régler au propriétaire à la remise du véhicule : {montant}",
     "cautionLigne": "Caution, remboursée après le retour",
+    "cautionReduite": "Caution divisée par deux : merci pour vos 3 locations sans incident.",
     "cautionEnLigne": "La caution est payée avec la location et gardée par Kwa-Ba : vous ne réglez rien au propriétaire. Elle vous est remboursée {heures} h après le retour du véhicule, moins les éventuels dommages constatés.",
     "calcul": "Calcul du prix…",
     "reserver": "Réserver et payer",

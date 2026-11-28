@@ -151,7 +151,8 @@ class TestCatalogue:
         devis = api_client.get(f'{LOCATIONS}devis/', q).data
         # 3 days + 2 started hours = 4 days; fees: 5,000 (airport) + 3,000 (delivery); deposit: 2 days
         assert devis == {'jours': 4, 'prix_jour': 30000, 'prix_vehicule': 120000, 'frais_lieux': 8000, 'prix_chauffeur': 0,
-                         'primes': 0, 'prix': 128000, 'caution': 60000, 'caution_en_ligne': True, 'a_payer': 188000}
+                         'primes': 0, 'prix': 128000, 'caution': 60000, 'caution_reduite': False,
+                         'caution_en_ligne': True, 'a_payer': 188000}
 
     def test_self_drive_refused_while_hidden(self, api_client, catalogue, settings):
         # Outside the launch offer: refused by the API while the switch is off
@@ -311,6 +312,8 @@ def test_founding_owner_and_loyal_customer(client_for, make_user, faux, catalogu
     assert r.status_code == 201, r.data
     loc = LocationModel.objects.get(pk=r.data['id'])
     assert loc.caution == 30000  # deposit halved
+    # T-H16: the halving is kept on the rental, and shown to the traveller and to the back-office
+    assert loc.caution_reduite is True and r.data['caution_reduite'] is True
     assert loc.commission == 12000  # 10 % during the Founders Programme
 
 

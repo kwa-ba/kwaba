@@ -26,14 +26,25 @@ from .models import (
 # --- Rules (a single row) ------------------------------------------------------------------
 
 class ParametresSerializer(serializers.ModelSerializer):
+    # Read from the referential of the finance module (T-H10): changed in Finance → Paramètres only
+    commission_pourcent = serializers.SerializerMethodField()
+
     class Meta:
         model = ParametresLocationModel
         fields = ['commission_pourcent', 'delai_min_jours', 'duree_max_jours', 'annulation_gratuite_heures', 'conditions',
                   'caution_en_ligne', 'restitution_caution_heures']
 
+    def get_commission_pourcent(self, obj):
+        return float(services.commission_vehicule())
+
+
+# Offers of the referential that belong to mobility (Finance → Paramètres)
+OFFRES_MOBILITE = ('VOITURE_CH', 'VOITURE_SANS', 'TRANSFERT')
+
 
 class ParametresView(APIView):
-    """GET: rules in force (null while they do not exist: rental is then not offered). PUT: set them."""
+    """GET: rules in force (null while they do not exist: rental is then not offered); the commission is read from the
+    finance referential (T-H10). PUT: set the rules."""
     permission_classes = [EstAdministrateur]
 
     def get(self, request):
@@ -48,6 +59,18 @@ class ParametresView(APIView):
         activity.record("backoffice_modification", request, actor=request.user, objet="regles_location",
                         champs=sorted(request.data.keys()))
         return Response(serializer.data)
+
+
+class TarifsMobiliteView(APIView):
+    """GET: the rates and rules of the mobility offers (vehicles, drivers, transfers), read only: they change in
+    Finance → Paramètres (or on the Tarifs page for the transfer commission), the single place (T-H10)."""
+    permission_classes = [EstAdministrateur]
+
+    def get(self, request):
+        from apps.finance import api as finance  # local import: finance is read at the call only
+
+        return Response([{k: p[k] for k in ('cle', 'valeur', 'unite', 'categorie', 'offre', 'libelle', 'source')}
+                         for p in finance.parametres() if p['actif'] and p['offre'] in OFFRES_MOBILITE])
 
 
 # --- Reference lists --------------------------------------------------------------------------------
@@ -190,8 +213,7 @@ class PartenaireSerializer(serializers.ModelSerializer):
                   'nb_vehicules', 'commission_pourcent']
 
     def get_commission_pourcent(self, obj):
-        params = ParametresLocationModel.courants()
-        return float(services.taux_commission(params, obj)) if params else None
+        return float(services.taux_commission(obj))
 
     def validate(self, data):
         debut = data.get('fondateur_debut', getattr(self.instance, 'fondateur_debut', None))
@@ -238,7 +260,7 @@ def _location(loc: LocationModel) -> dict:
         'lieu_prise': loc.lieu_prise.nom, 'adresse_prise': loc.adresse_prise,
         'lieu_retour': loc.lieu_retour.nom, 'adresse_retour': loc.adresse_retour,
         'debut': loc.debut, 'fin': loc.fin, 'jours': loc.jours, 'passagers': loc.passagers,
-        'prix': loc.prix, 'caution': loc.caution, 'precisions': loc.precisions,
+        'prix': loc.prix, 'caution': loc.caution, 'caution_reduite': loc.caution_reduite, 'precisions': loc.precisions,
         'caution_en_ligne': bool(loc.caution_gardee), 'caution_retenue': loc.caution_retenue,
         'caution_motif': loc.caution_motif, 'caution_restituee_le': loc.caution_restituee_le,
         'conducteur': loc.conducteur, 'permis_numero': loc.permis_numero, 'permis_pays': loc.permis_pays,

@@ -65,11 +65,59 @@ def test_reserve_aux_admins(make_user, client_for):
 
 def test_regles_creees_puis_modifiees(admin):
     assert admin.get(B + 'regles/').data is None
-    regles = {'commission_pourcent': '15', 'delai_min_jours': 2, 'duree_max_jours': 30, 'annulation_gratuite_heures': 48,
+    regles = {'delai_min_jours': 2, 'duree_max_jours': 30, 'annulation_gratuite_heures': 48,
               'conditions': '23 ans minimum.'}
     assert admin.put(B + 'regles/', regles, format='json').status_code == 200
     assert admin.put(B + 'regles/', {**regles, 'delai_min_jours': 3}, format='json').data['delai_min_jours'] == 3
     assert ActivityEntryModel.objects.filter(action='backoffice_modification', details__objet='regles_location').count() == 2
+
+
+def test_la_commission_vehicule_n_a_qu_une_source(admin, lieu):
+    """T-H10: the owner's commission changes in Finance → Paramètres only, and everything follows."""
+    from apps.finance.models import ParametreModel
+
+    admin.put(B + 'regles/', {'delai_min_jours': 2, 'duree_max_jours': 30, 'annulation_gratuite_heures': 48},
+              format='json')
+    citadine = CategorieVehiculeModel.objects.get(nom='Citadine')
+    proprietaire = _loueur(citadine, lieu)
+    ParametreModel.objects.filter(cle='commission_vehicule').update(valeur=18)
+
+    # A rate typed in the rules is ignored: the rules show the referential
+    r = admin.put(B + 'regles/', {'commission_pourcent': '40', 'delai_min_jours': 2, 'duree_max_jours': 30,
+                                  'annulation_gratuite_heures': 48}, format='json')
+    assert r.data['commission_pourcent'] == 18.0
+    assert admin.get(f'{B}loueurs/{proprietaire.id}/').data['commission_pourcent'] == 18.0
+    from apps.locations import api as locations
+    assert locations.parametres_contrat()['commission_pourcent'] == 18
+
+    tarifs = {p['cle']: p for p in admin.get(B + 'tarifs-mobilite/').data}
+    assert float(tarifs['commission_vehicule']['valeur']) == 18
+    assert {'chauffeur_prix_jour', 'transfert_part_chauffeur', 'chauffeur_excellence_courses'} <= set(tarifs)
+    assert 'commission_hote' not in tarifs  # stays are not mobility
+
+
+def test_le_catalogue_ne_montre_que_des_fiches_reelles_et_la_demo_se_purge(admin, lieu):
+    """T-H13: a vehicle without owner or at the demo price is never offered; the command withdraws them."""
+    from django.core.management import call_command
+
+    from apps.locations import services
+
+    citadine, berline = CategorieVehiculeModel.objects.get(nom='Citadine'), CategorieVehiculeModel.objects.get(nom='Berline')
+    proprietaire = _loueur(citadine, lieu)
+    CategorieVehiculeModel.objects.filter(pk=citadine.pk).update(actif=True, prix_jour=5000)  # demo, no owner
+    CategorieVehiculeModel.objects.filter(pk=berline.pk).update(actif=True, prix_jour=30000, proprietaire=proprietaire)
+    PhotoVehiculeModel.objects.create(categorie=berline, image=_photo('Ripple-demo.png'))
+    PhotoVehiculeModel.objects.create(categorie=berline, image=_photo('berline.png'))
+
+    assert list(services.categories_proposees().values_list('pk', flat=True)) == [berline.pk]
+
+    call_command('purger_demo_mobilite')  # simulation
+    assert CategorieVehiculeModel.objects.get(pk=citadine.pk).actif and PhotoVehiculeModel.objects.count() == 2
+    call_command('purger_demo_mobilite', '--appliquer')
+    assert not CategorieVehiculeModel.objects.get(pk=citadine.pk).actif
+    assert CategorieVehiculeModel.objects.get(pk=berline.pk).actif
+    [restante] = PhotoVehiculeModel.objects.all()
+    assert 'ripple' not in restante.image.name.lower()
 
 
 def _photo(nom='voiture.png'):
@@ -91,7 +139,7 @@ def test_vehicule_prix_caution_et_activation(admin, lieu):
     assert ActivityEntryModel.objects.filter(action='backoffice_modification', details__objet='categorie_vehicule').exists()
 
 
-def test_categorie_plusieurs_photos(admin, monkeypatch):
+def test_categorie_plusieurs_photos(admin, monkeypatch, lieu):
     citadine = CategorieVehiculeModel.objects.get(nom='Citadine')
     url = f'{B}categories/{citadine.id}/photos/'
     ids = []
@@ -109,7 +157,7 @@ def test_categorie_plusieurs_photos(admin, monkeypatch):
     assert admin.delete(f'{url}{ids[0]}/').status_code == 404
 
     # The public catalogue shows all the photos, the main one first (also in "image")
-    citadine.prix_jour, citadine.actif = 25000, True
+    citadine.prix_jour, citadine.actif, citadine.proprietaire = 25000, True, _loueur(citadine, lieu)
     citadine.save()
     from apps.locations.models import ParametresLocationModel
     ParametresLocationModel.objects.create(commission_pourcent=15, delai_min_jours=2, duree_max_jours=30, annulation_gratuite_heures=48)

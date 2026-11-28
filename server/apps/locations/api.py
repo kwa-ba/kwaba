@@ -22,10 +22,12 @@ def loueurs(q: str = '', limite: int = 30) -> list[dict]:
 
 
 def parametres_contrat() -> dict | None:
+    from . import services  # local import: the services import other modules api
+
     p = ParametresLocationModel.objects.first()
     if not p:
         return None
-    return {'commission_pourcent': p.commission_pourcent, 'delai_min_jours': p.delai_min_jours,
+    return {'commission_pourcent': services.commission_vehicule(), 'delai_min_jours': p.delai_min_jours,
             'restitution_caution_heures': p.restitution_caution_heures}
 
 

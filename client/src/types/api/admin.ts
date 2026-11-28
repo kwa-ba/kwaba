@@ -191,7 +191,8 @@ export interface AdminReviewReport {
 // --- Location de voiture (back-office) ---------------------------------------------------------
 
 export interface ReglesLocation {
-  commission_pourcent: string;
+  /** Read only: the parameter `commission_vehicule` of Finance → Paramètres (T-H10). */
+  commission_pourcent: number;
   delai_min_jours: number;
   duree_max_jours: number;
   annulation_gratuite_heures: number;
@@ -322,6 +323,8 @@ export interface AdminLocation {
   passagers: number;
   prix: number;
   caution: number;
+  /** Deposit halved for a loyal customer (frozen at booking). */
+  caution_reduite: boolean;
   caution_en_ligne: boolean;
   caution_retenue: number;
   caution_motif: string;
@@ -365,7 +368,10 @@ export interface ChauffeurAdmin {
   actif: boolean;
   /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000; follows the level, set by the quarterly review. */
   excellence: boolean;
-  niveau?: "standard" | "confirme" | "excellence";
+  niveau?: "standard" | "excellence";
+  /** Founders Programme (10 first drivers, 6 months): Excellence from fewer missions */
+  fondateur_debut?: string | null;
+  fondateur_fin?: string | null;
   niveau_libelle?: string;
   niveau_depuis?: string | null;
   /** Profile photo; without a photo validated by the team, the driver receives no ride */

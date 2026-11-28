@@ -1,6 +1,7 @@
-"""Partner drivers (decisions of 19 November 2026): a profile photo validated by the team before any ride, shown to
-the traveller once assigned with the level; the travellers' ratings after each ride; the level Standard / Confirmé /
-Excellence proposed from the last months and validated by the team, which changes the Excellence pay."""
+"""Partner drivers (decisions of 19 and 26 November 2026): a profile photo validated by the team before any ride,
+shown to the traveller once assigned with the level; the travellers' ratings after each ride; the level Standard /
+Excellence of the project book (charter B6) proposed from the last months and validated by the team, which changes the
+Excellence pay."""
 from datetime import timedelta
 from decimal import Decimal
 
@@ -114,39 +115,61 @@ def _courses(chauffeur, n, make_user):
     return voyageur
 
 
+def _chiffres(courses, note, incident=None):
+    chiffres = {'courses': courses, 'avis': 3, 'note': None if note is None else Decimal(note)}
+    return {**chiffres, **{cle: int(incident == type_) for cle, type_ in niveaux.BLOQUANTS.items()}}
+
+
 @pytest.mark.parametrize('courses, note, incident, attendu', [
-    (5, 5, None, 'standard'), (15, Decimal('4.3'), None, 'confirme'), (14, 5, None, 'standard'),
-    (40, Decimal('4.8'), None, 'excellence'), (40, Decimal('4.8'), 'retard', 'confirme'),
-    (40, Decimal('4.8'), 'grave', 'confirme'), (20, Decimal('4.5'), 'grave', 'standard'),
+    (5, 5, None, 'standard'), (19, 5, None, 'standard'), (20, Decimal('4.7'), None, 'excellence'),
+    (20, Decimal('4.8'), None, 'excellence'), (20, Decimal('4.6'), None, 'standard'),
+    (40, Decimal('4.8'), 'retard', 'standard'), (40, Decimal('4.8'), 'absence', 'standard'),
+    (40, Decimal('4.8'), 'plainte', 'standard'), (40, Decimal('4.8'), 'accident', 'standard'),
+    (40, Decimal('4.8'), 'grave', 'standard'), (40, Decimal('4.8'), 'autre', 'excellence'),
 ])
-def test_the_level_proposed_by_the_rules(courses, note, incident, attendu):
-    chiffres = {'courses': courses, 'avis': 3, 'note': Decimal(note), 'graves': int(incident == 'grave'),
-                'retards': int(incident == 'retard'), 'absences': 0}
-    assert niveaux.proposer(chiffres) == attendu
+def test_the_level_proposed_by_the_rules_of_the_book(courses, note, incident, attendu):
+    assert niveaux.proposer(_chiffres(courses, note, incident)) == attendu
+
+
+def test_a_founder_driver_reaches_excellence_with_10_missions():
+    assert niveaux.proposer(_chiffres(10, Decimal('4.8')), fondateur=True) == 'excellence'
+    assert niveaux.proposer(_chiffres(9, Decimal('4.8')), fondateur=True) == 'standard'
+    assert niveaux.proposer(_chiffres(10, Decimal('4.8'))) == 'standard'
 
 
 def test_no_rating_yet_keeps_a_driver_standard():
-    assert niveaux.proposer({'courses': 50, 'avis': 0, 'note': None, 'graves': 0, 'retards': 0, 'absences': 0}) == \
-        'standard'
+    assert niveaux.proposer(_chiffres(50, None)) == 'standard'
+
+
+def test_the_confirme_level_no_longer_exists(sans_paiement, admin):  # noqa: F811
+    chauffeur = _chauffeur()
+    r = admin.post(f'{ADMIN}niveaux/', {'chauffeur': chauffeur.pk, 'niveau': 'confirme', 'motif': 'Ancien niveau.'},
+                   format='json')
+    assert r.status_code == 400
+    assert 'confirme' not in admin.get(f'{ADMIN}niveaux/').json()['libelles']
 
 
 def test_the_team_validates_the_level_and_the_excellence_pay_follows(sans_paiement, make_user, admin):  # noqa: F811
+    # Recipe of T-H24: 20 missions, a rating of 4.8 and no incident give Excellence at the quarterly review
     chauffeur = _chauffeur()
-    voyageur = _courses(chauffeur, 40, make_user)
-    _avis(chauffeur, 10, 5, voyageur.pk)
+    voyageur = _courses(chauffeur, 20, make_user)
+    _avis(chauffeur, 8, 5, voyageur.pk)
+    _avis(chauffeur, 2, 4, voyageur.pk)  # (8 × 5 + 2 × 4) / 10 = 4.8
 
     revue = admin.get(f'{ADMIN}niveaux/').json()
     [ligne] = [x for x in revue['chauffeurs'] if x['chauffeur_id'] == chauffeur.pk]
-    assert (ligne['chiffres']['courses'], ligne['chiffres']['avis'], ligne['propose']) == (40, 10, 'excellence')
+    assert (ligne['chiffres']['courses'], ligne['chiffres']['avis'], ligne['propose']) == (20, 10, 'excellence')
+    assert Decimal(str(ligne['chiffres']['note'])) == Decimal('4.8')
+    assert (ligne['fondateur'], ligne['courses_requises']) == (False, 20)
 
     # Another level than the proposal needs its reason
-    r = admin.post(f'{ADMIN}niveaux/', {'chauffeur': chauffeur.pk, 'niveau': 'confirme'}, format='json')
+    r = admin.post(f'{ADMIN}niveaux/', {'chauffeur': chauffeur.pk, 'niveau': 'standard'}, format='json')
     assert r.status_code == 400 and 'expliquez' in r.json()['detail']
     r = admin.post(f'{ADMIN}niveaux/', {'chauffeur': chauffeur.pk, 'niveau': 'excellence'}, format='json')
 
     assert r.status_code == 200 and (r.json()['niveau'], r.json()['excellence']) == ('excellence', True)
     h = NiveauChauffeurModel.objects.get()
-    assert (h.avant, h.apres, h.propose, h.chiffres['courses']) == ('standard', 'excellence', 'excellence', 40)
+    assert (h.avant, h.apres, h.propose, h.chiffres['courses']) == ('standard', 'excellence', 'excellence', 20)
     # The level is not changed from the driver's form
     admin.patch(f'{ADMIN}{chauffeur.pk}/', {'niveau': 'standard', 'excellence': False}, format='json')
     chauffeur.refresh_from_db()
@@ -171,10 +194,92 @@ def test_a_serious_incident_is_recorded_and_lowers_the_proposal(sans_paiement, m
                                                          'description': 'court'}, format='json').status_code == 400
 
 
+def test_a_serious_incident_takes_excellence_away_at_once(sans_paiement, admin):  # noqa: F811
+    chauffeur = _chauffeur()
+    ChauffeurModel.objects.filter(pk=chauffeur.pk).update(niveau='excellence', excellence=True)
+
+    r = admin.post(f'{ADMIN}{chauffeur.pk}/suivi/', {'type': 'grave', 'date': f'{timezone.localdate()}',
+                                                      'description': 'Accident grave pendant la course'},
+                   format='json')
+
+    assert r.status_code == 201
+    chauffeur.refresh_from_db()
+    assert (chauffeur.niveau, chauffeur.excellence) == ('standard', False)
+    h = NiveauChauffeurModel.objects.get(chauffeur=chauffeur)
+    assert (h.avant, h.apres) == ('excellence', 'standard') and 'perte immédiate' in h.motif
+
+
+@pytest.mark.parametrize('type_incident', ['retard', 'plainte', 'accident'])
+def test_other_incidents_wait_for_the_review(sans_paiement, admin, type_incident):  # noqa: F811
+    chauffeur = _chauffeur()
+    ChauffeurModel.objects.filter(pk=chauffeur.pk).update(niveau='excellence', excellence=True)
+
+    r = admin.post(f'{ADMIN}{chauffeur.pk}/suivi/', {'type': type_incident, 'date': f'{timezone.localdate()}',
+                                                      'description': 'Signalé par le voyageur à son arrivée'},
+                   format='json')
+
+    assert r.status_code == 201
+    chauffeur.refresh_from_db()
+    assert chauffeur.niveau == 'excellence'
+    [ligne] = [x for x in niveaux.revue()['chauffeurs'] if x['chauffeur_id'] == chauffeur.pk]
+    assert ligne['chiffres'][f'{type_incident}s'] == 1 and ligne['propose'] == 'standard'
+
+
+def test_a_founder_driver_is_proposed_excellence_at_10_missions(sans_paiement, make_user, admin):  # noqa: F811
+    chauffeur = _chauffeur()
+    voyageur = _courses(chauffeur, 10, make_user)
+    _avis(chauffeur, 5, 5, voyageur.pk)
+    aujourd_hui = timezone.localdate()
+
+    r = admin.patch(f'{ADMIN}{chauffeur.pk}/', {'fondateur_debut': f'{aujourd_hui - timedelta(days=30)}'},
+                    format='json')
+    assert r.status_code == 400  # both dates or none
+    r = admin.patch(f'{ADMIN}{chauffeur.pk}/', {'fondateur_debut': f'{aujourd_hui - timedelta(days=30)}',
+                                                'fondateur_fin': f'{aujourd_hui + timedelta(days=150)}'},
+                    format='json')
+    assert r.status_code == 200
+
+    [ligne] = [x for x in niveaux.revue()['chauffeurs'] if x['chauffeur_id'] == chauffeur.pk]
+    assert (ligne['fondateur'], ligne['courses_requises'], ligne['propose']) == (True, 10, 'excellence')
+    # Once the 6 months are over, the usual threshold
+    ChauffeurModel.objects.filter(pk=chauffeur.pk).update(fondateur_fin=aujourd_hui - timedelta(days=1))
+    [ligne] = [x for x in niveaux.revue()['chauffeurs'] if x['chauffeur_id'] == chauffeur.pk]
+    assert (ligne['fondateur'], ligne['propose']) == (False, 'standard')
+
+
+def test_the_migration_moves_confirme_to_standard_and_names_the_10_first_founders(sans_paiement):  # noqa: F811
+    import importlib
+
+    from django.apps import apps
+
+    migration = importlib.import_module('apps.transferts.migrations.0008_niveaux_livre_fondateurs')
+    chauffeurs = [_chauffeur() for _ in range(12)]
+    ChauffeurModel.objects.update(fondateur_debut=None, fondateur_fin=None)
+    for i, c in enumerate(chauffeurs):  # registered one day apart, the first one 30 days ago
+        ChauffeurModel.objects.filter(pk=c.pk).update(cree_le=timezone.now() - timedelta(days=30 - i))
+    ChauffeurModel.objects.filter(pk=chauffeurs[0].pk).update(niveau='confirme')
+    ChauffeurModel.objects.filter(pk=chauffeurs[1].pk).update(niveau='excellence', excellence=True)
+
+    migration.appliquer(apps, None)
+
+    niveaux_ = dict(ChauffeurModel.objects.values_list('pk', 'niveau'))
+    assert (niveaux_[chauffeurs[0].pk], niveaux_[chauffeurs[1].pk]) == ('standard', 'excellence')
+    fondateurs = list(ChauffeurModel.objects.filter(fondateur_debut__isnull=False).values_list('pk', flat=True))
+    assert sorted(fondateurs) == sorted(c.pk for c in chauffeurs[:10])
+    premier = ChauffeurModel.objects.get(pk=chauffeurs[0].pk)
+    assert (premier.fondateur_fin - premier.fondateur_debut).days in range(180, 184) and premier.est_fondateur()
+
+    migration.revenir(apps, None)
+    assert ChauffeurModel.objects.get(pk=chauffeurs[0].pk).niveau == 'confirme'
+    assert not NiveauChauffeurModel.objects.exists()
+
+
 def test_the_thresholds_are_steered_parameters():
-    ParametreModel.objects.filter(cle='chauffeur_confirme_courses').update(valeur=5)
-    chiffres = {'courses': 6, 'avis': 2, 'note': Decimal('4.5'), 'graves': 0, 'retards': 0, 'absences': 0}
-    assert niveaux.proposer(chiffres) == 'confirme'
+    assert niveaux.seuils()['chauffeur_excellence_courses'] == 20  # finance migration 0028
+    ParametreModel.objects.filter(cle='chauffeur_excellence_courses').update(valeur=5)
+    assert niveaux.proposer(_chiffres(6, Decimal('4.8'))) == 'excellence'
+    ParametreModel.objects.filter(cle='chauffeur_excellence_courses_fondateur').update(valeur=3)
+    assert niveaux.proposer(_chiffres(3, Decimal('4.8')), fondateur=True) == 'excellence'
 
 
 def test_the_team_is_reminded_once_a_quarter(sans_paiement, make_user):  # noqa: F811

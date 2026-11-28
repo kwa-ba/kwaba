@@ -16,8 +16,8 @@ Code : `server/apps/locations/` (backend), `client/src/app/[locale]/(main)/locat
 
 | Onglet | Contenu |
 |---|---|
-| **Règles** (une seule ligne) | Commission sur le véhicule (15 %), délai minimum de réservation (2 jours), durée maximale, annulation gratuite (48 h), conditions affichées (âge, permis…), caution en ligne, délai de signalement des dommages |
-| **Véhicules** (`CategorieVehiculeModel`, nom historique) | Propriétaire, nom, marque et modèle, année, immatriculation, places, valises, boîte, carburant, photos, **prix par jour du propriétaire**, formules proposées, **caution en journées** (calculée et plafonnée), fin de validité de l'assurance et de la visite technique. Un véhicule n'est proposé qu'actif, avec un prix, un propriétaire actif et des papiers à jour |
+| **Règles** (une seule ligne) | Délai minimum de réservation (2 jours), durée maximale, annulation gratuite (48 h), conditions affichées (âge, permis…), caution en ligne, délai de signalement des dommages |
+| **Véhicules** (`CategorieVehiculeModel`, nom historique) | Propriétaire, nom, marque et modèle, année, immatriculation, places, valises, boîte, carburant, photos, **prix par jour du propriétaire**, formules proposées, **caution en journées** (calculée et plafonnée), fin de validité de l'assurance et de la visite technique. Un véhicule n'est proposé qu'actif, avec un prix, un propriétaire actif et des papiers à jour ; un véhicule **sans propriétaire** (ancien catalogue) n'est jamais proposé (T-H13) |
 | **Lieux de remise** | Aéroport, agence ou livraison (adresse saisie par le voyageur), frais de remise et de retour |
 | **Propriétaires** (`PartenaireLocationModel`) | Contact, lieux, compte Mobile Money, **Programme Fondateurs** (dates : 10 % pendant 6 mois). Statut Propriétaire Fidèle automatique : 12 % après 20 locations terminées sans retenue |
 | Transferts → **Chauffeurs** | Chauffeurs partenaires (transferts et missions à la journée), statut **Excellence** |
@@ -37,7 +37,7 @@ Les catégories types de la migration initiale restent inactives et sans prix : 
 
 - **Propriétaire** (`VersementPartenaireModel`) : prix du véhicule + frais de remise − commission (15 / 12 / 10 %), plus la retenue éventuelle sur la caution. Versé 24 h après le début de la location, ou après le délai de signalement des dommages quand une caution est gardée.
 - **Chauffeur** (`VersementChauffeurLocationModel`) : 6 000 FCFA par jour (6 500 s'il est Excellence ou redemandé par le voyageur : « Mon chauffeur »), plus les primes. Kwa-Ba garde 1 000 FCFA par jour (500). Versé 24 h après la fin de la mission. Ces montants, et les commissions fondateur (10 %) et fidèle (12 %) des propriétaires, sont lus au référentiel des paramètres du module finance (GL-20). Seul un chauffeur dont la photo est validée est proposé et attribué ; le voyageur voit sa photo et son niveau sur la page de la location, et donne son avis une fois la location terminée (voir le module transferts : photo, niveaux et avis).
-- **Caution** (voiture seule) : payée en ligne avec la location, gardée par Kwa-Ba, **divisée par deux** pour un client qui a 3 locations terminées sans retenue, remboursée moins la retenue après le délai de signalement.
+- **Caution** (voiture seule) : payée en ligne avec la location, gardée par Kwa-Ba, **divisée par deux** pour un client qui a 3 locations terminées sans retenue (CGV art. 14.3 ; figé sur la location, `caution_reduite`, et affiché au voyageur et au back-office : T-H16), remboursée moins la retenue après le délai de signalement.
 - **Pack Séjour + Chauffeur** : une formule avec chauffeur payée avec un séjour Kwa-Ba à venir ramène les frais de service du séjour à 3 % ; la différence est remboursée (`services.appliquer_pack_sejour`).
 - **Annulation par le voyageur** (`services.retenue_si_annulation`) : intégral jusqu'à 48 h avant (et dans les 48 h suivant la réservation si la prise est dans 7 jours ou plus), 50 % jusqu'à 24 h avant, rien ensuite. La part retenue est versée au propriétaire et au chauffeur au prorata ; la caution est toujours rendue.
 - **Annulation par Kwa-Ba** : remboursement intégral (Suivi → Annuler).
@@ -45,3 +45,8 @@ Les catégories types de la migration initiale restent inactives et sans prix : 
 ## Migration
 
 `locations/0007` reprend les anciens prix (prix sans chauffeur, sinon prix avec chauffeur − 7 000) et convertit la caution en journées. Les colonnes `prix_jour_sans_chauffeur` et `prix_jour_avec_chauffeur` sont seulement retirées du modèle : à supprimer dans une version ultérieure (règle « ajouter avant de supprimer »).
+
+## Harmonisation mobilité, phase 0 (28 novembre 2026)
+
+- **Taux : une seule source (T-H10).** La commission du propriétaire est le paramètre `commission_vehicule` de Finance → Paramètres (`services.commission_vehicule()`), avec `commission_vehicule_fondateur` et `commission_vehicule_fidele`. L'écran Règles l'affiche en lecture seule ; la colonne `commission_pourcent` des règles n'est plus lue (gardée pour le retour arrière, `locations/0012`, à supprimer ensuite). Le bloc **Tarifs & règles mobilité** de l'écran Règles liste en lecture tous les paramètres des offres `VOITURE_CH`, `VOITURE_SANS` et `TRANSFERT` (`GET /api/v1/admin/location/tarifs-mobilite/`), avec le lien d'édition.
+- **Purge de la démo (T-H13).** `python manage.py purger_demo_mobilite` liste les véhicules actifs sans propriétaire, sans prix ou au prix de démo de 5 000 F/jour, et les photos « Ripple » ; avec `--appliquer`, retire ces véhicules du catalogue (jamais supprimés : une location passée garde son véhicule) et supprime ces photos, avec une entrée au journal d'activité.

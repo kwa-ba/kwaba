@@ -110,7 +110,8 @@ class DevisView(APIView):
         caution_en_ligne = params.caution_en_ligne and devis.caution > 0
         return Response({'jours': devis.jours, 'prix_jour': devis.prix_jour, 'prix_vehicule': devis.prix_jour * devis.jours,
                          'frais_lieux': devis.frais_lieux, 'prix_chauffeur': devis.prix_chauffeur, 'primes': devis.primes,
-                         'prix': devis.prix, 'caution': devis.caution, 'caution_en_ligne': caution_en_ligne,
+                         'prix': devis.prix, 'caution': devis.caution, 'caution_reduite': devis.caution_reduite,
+                         'caution_en_ligne': caution_en_ligne,
                          'a_payer': devis.prix + (devis.caution if caution_en_ligne else 0)})
 
 
@@ -148,7 +149,7 @@ class LocationSerializer(serializers.ModelSerializer):
             'adresse_prise', 'lieu_retour', 'lieu_retour_detail', 'adresse_retour', 'debut', 'fin', 'debut_locale',
             'fin_locale', 'passagers', 'telephone', 'precisions', 'conducteur', 'permis_numero', 'permis_pays',
             'reservation', 'jours', 'prix_jour', 'frais_lieux', 'prix_chauffeur', 'primes', 'jours_hors_lome',
-            'jours_hors_pays', 'chauffeur_demande', 'libelle', 'prix', 'caution', 'caution_en_ligne', 'a_payer',
+            'jours_hors_pays', 'chauffeur_demande', 'libelle', 'prix', 'caution', 'caution_reduite', 'caution_en_ligne', 'a_payer',
             'caution_etat', 'moyen', 'statut', 'expire_le', 'annulee_par', 'vehicule_attribue', 'avis_chauffeur',
             'paiement',
             'remboursement', 'annulation_gratuite', 'rembourse_si_annulation', 'cree_le',
