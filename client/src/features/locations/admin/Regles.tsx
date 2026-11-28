@@ -26,7 +26,7 @@ function valeurLisible(t: TarifMobilite) {
 }
 
 /** The rates and rules of the mobility offers, read only: one place to change them, Finance → Paramètres. */
-function TarifsMobilite() {
+export function TarifsMobilite() {
   const { data: tarifs = [] } = useQuery({ queryKey: ["admin", "location", "tarifs-mobilite"], queryFn: lireTarifsMobilite });
   if (!tarifs.length) return null;
   return (
@@ -134,7 +134,7 @@ export default function Regles() {
         <button type="submit" disabled={envoi} className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">{envoi ? "Enregistrement…" : "Enregistrer"}</button>
       </div>
     </form>
-    <TarifsMobilite />
+    <p className="text-xs text-muted max-w-2xl">Les autres tarifs de la mobilité (chauffeurs, transferts, cautions) sont regroupés dans Mobilité → Tarifs &amp; règles.</p>
     </div>
   );
 }

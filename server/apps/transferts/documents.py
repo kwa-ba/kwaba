@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.documents.api import Document, Produit, date, fcfa, nom as _nom
 from apps.paiements import api as paiements
 
+from . import tarifs
 from .models import TransfertModel
 
 
@@ -16,7 +17,7 @@ def bon(t) -> bytes:
     lignes = [
         ('Aéroport', f"{t.aeroport.nom} ({t.aeroport.code}), {t.aeroport.ville}"),
         ('Arrivée prévue', f"{date(arrivee, 'l j F Y')} à {arrivee:%H:%M} (heure locale)"), ('Vol', t.numero_vol),
-        ('Destination', t.destination), ('Véhicule', t.get_categorie_display()),
+        ('Destination', t.destination), ('Véhicule', tarifs.nom(t.categorie)),
         ('Passagers · bagages', f"{t.passagers} · {t.bagages}"), ('Téléphone à l’arrivée', t.telephone),
     ]
     if t.chauffeur_id:
@@ -30,7 +31,7 @@ def bon(t) -> bytes:
 
 
 def lignes_facture(t) -> list[dict]:
-    return [{'libelle': f"Transfert aéroport {t.aeroport.ville}, {t.get_categorie_display()}{' (nuit)' if t.majoration_nuit else ''}, "
+    return [{'libelle': f"Transfert aéroport {t.aeroport.ville}, {tarifs.nom(t.categorie)}{' (nuit)' if t.majoration_nuit else ''}, "
                         f"vol {t.numero_vol}", 'quantite': 1, 'prix_unitaire': t.prix}]
 
 

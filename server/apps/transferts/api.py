@@ -100,3 +100,17 @@ def avis_donne(objet_type: str, objet_id) -> bool:
     from .models import AvisChauffeurModel
 
     return AvisChauffeurModel.objects.filter(objet_type=objet_type, objet_id=objet_id).exists()
+
+
+# --- Shared mobility registry (harmonisation of 26 November 2026, T-H2) ---------------------------------------------
+
+def chauffeur_du_compte(compte_id) -> int | None:
+    """The driver record of a Kwa-Ba account, or None (an account may also be an owner: the roles add up)."""
+    if not compte_id:
+        return None
+    return ChauffeurModel.objects.filter(compte_id=compte_id).values_list('pk', flat=True).first()
+
+
+def chauffeurs_du_vehicule(vehicule_id) -> list[dict]:
+    """The drivers who drive this vehicle record (module locations)."""
+    return [_partie(c) for c in ChauffeurModel.objects.filter(vehicule_id=vehicule_id).order_by('prenom')]

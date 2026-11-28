@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.prelancement import verifier_ouverture
+from apps.mobilite import api as mobilite
 from apps.paiements import api as paiements
 from apps.reservations import api as reservations
 
@@ -25,7 +26,10 @@ class AeroportSerializer(serializers.ModelSerializer):
         fields = ['code', 'nom', 'ville', 'pays', 'fuseau', 'prix']
 
     def get_prix(self, obj):
-        return {t.categorie: t.prix for t in obj.tarifs.all() if t.actif}
+        prix = {t.categorie: t.prix for t in obj.tarifs.all() if t.actif}
+        # The published mobile app still reads the former codes (« confort », « van »): until it is updated
+        prix.update({ancien: prix[code] for ancien, code in mobilite.ALIAS.items() if code in prix})
+        return prix
 
 
 class TransfertSerializer(serializers.ModelSerializer):
@@ -91,7 +95,7 @@ class TransfertCreationSerializer(serializers.Serializer):
     })
     passagers = serializers.IntegerField(min_value=1, max_value=7)
     bagages = serializers.IntegerField(min_value=0, max_value=10)
-    categorie = serializers.ChoiceField(choices=tarifs.CATEGORIE_CHOICES)
+    categorie = serializers.CharField(max_length=20)
     destination = serializers.CharField(max_length=255)
     telephone = serializers.RegexField(r'^\+?[\d\s]{8,20}$', error_messages={
         'invalid': "Indiquez un numéro joignable à l'arrivée, avec l'indicatif (par ex. +33 6 12 34 56 78).",
@@ -101,6 +105,12 @@ class TransfertCreationSerializer(serializers.Serializer):
 
     def validate_numero_vol(self, valeur):
         return valeur.replace(' ', '').upper()
+
+    def validate_categorie(self, valeur):
+        code = mobilite.normaliser(valeur)
+        if code not in tarifs.categories():
+            raise serializers.ValidationError(t('transferts.vehicle_not_at_airport'))
+        return code
 
     def validate_reservation(self, valeur):
         if valeur and not reservations.appartient_au_voyageur(valeur, self.context['request'].user.id):

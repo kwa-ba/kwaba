@@ -52,7 +52,7 @@ def faux(settings, monkeypatch):
 @pytest.fixture
 def chauffeur():
     c = ChauffeurModel.objects.create(photo_validee=True, 
-        prenom='Komi', nom='Ablodé', telephone='+228 90 11 22 33', email='komi@test.kwaba', categorie='confort',
+        prenom='Komi', nom='Ablodé', telephone='+228 90 11 22 33', email='komi@test.kwaba', categorie='suv',
         vehicule='Toyota RAV4 grise', immatriculation='TG-1234-AB',
         pays_versement='TG', operateur_versement='togocel', numero_versement='90112233',
     )
@@ -88,12 +88,15 @@ def test_aeroports_de_lancement_et_devis():
     aeroports = api.get(f'{TRANSFERTS}aeroports/').data
     codes = {a['code'] for a in aeroports}
     # "From" price of each vehicle, shown before the traveller chooses
-    assert next(a for a in aeroports if a['code'] == 'LFW')['prix'] == {'berline': 10000, 'confort': 15000, 'van': 25000}
+    # T-H1: the ranges of the mobility referential; the former codes stay for the published mobile app
+    assert next(a for a in aeroports if a['code'] == 'LFW')['prix'] == {
+        'berline': 10000, 'suv': 15000, 'minibus': 25000, 'confort': 15000, 'van': 25000}
     assert {'LFW', 'COO', 'OUA', 'NIM', 'BKO'} <= codes
 
     jour = api.get(f'{TRANSFERTS}devis/', {'aeroport': 'LFW', 'arrivee': _arrivee(), 'passagers': 4, 'bagages': 2}).data
     prix = {o['categorie']: (o['prix'], o['disponible']) for o in jour['options']}
-    assert prix == {'berline': (10000, False), 'confort': (15000, True), 'van': (25000, True)}
+    assert prix == {'berline': (10000, False), 'suv': (15000, True), 'minibus': (25000, True)}
+    assert {o['nom'] for o in jour['options']} == {'Berline', 'SUV', 'Minibus'}  # one word per range, « SUV » everywhere
 
     # Same price at night (surcharge removed)
     nuit = api.get(f'{TRANSFERTS}devis/', {'aeroport': 'LFW', 'arrivee': _arrivee(heure='23:40')}).data

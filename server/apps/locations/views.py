@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.prelancement import verifier_ouverture
+from apps.mobilite import api as mobilite
 from apps.paiements import api as paiements
 from apps.reservations import api as reservations
 from apps.transferts import api as transferts
@@ -27,7 +28,7 @@ def _categorie_json(request, c: CategorieVehiculeModel | None) -> dict | None:
         return None
     photos = _photos(request, c)
     return {
-        'id': c.id, 'nom': c.nom, 'gamme': c.gamme, 'gamme_libelle': c.get_gamme_display(),
+        'id': c.id, 'nom': c.nom, 'gamme': c.gamme, 'gamme_libelle': mobilite.nom(c.gamme),
         'exemple_modele': c.exemple_modele, 'description': c.description, 'places': c.places, 'bagages': c.bagages,
         'boite': c.boite, 'carburant': c.carburant, 'climatisation': c.climatisation, 'image': photos[0] if photos else None,
         'photos': photos, 'annee': c.annee,
@@ -67,7 +68,7 @@ class CatalogueView(APIView):
             'chauffeur': _tarifs_chauffeur(),
             'lieux': [_lieu_json(lieu) for lieu in LieuRemiseModel.objects.filter(actif=True)],
             'filtres': {
-                'gammes': [{'code': c, 'nom': n} for c, n in CategorieVehiculeModel.GAMMES],
+                'gammes': [{'code': g['code'], 'nom': g['nom']} for g in mobilite.gammes(location=True)],
                 'boites': [{'code': c, 'nom': n} for c, n in CategorieVehiculeModel.BOITES],
                 'carburants': [{'code': c, 'nom': n} for c, n in CategorieVehiculeModel.CARBURANTS],
             },

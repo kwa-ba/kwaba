@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.finance import api as finance
 
-from .models import LocationModel
+from .models import LocationModel, PartenaireLocationModel
 from shared.language.api import t
 
 NOT_OVER = ('en_attente_paiement', 'confirmee', 'partenaire_assigne')
@@ -31,3 +31,5 @@ def _deposit_held(user_id: uuid.UUID) -> bool:
 
 def erase(user_id: uuid.UUID) -> None:
     LocationModel.objects.filter(voyageur_id=user_id).update(telephone='', permis_numero='', permis_pays='')
+    # The owner record stays (vehicles, rentals, payouts): only its link to the deleted account goes
+    PartenaireLocationModel.objects.filter(compte_id=user_id).update(compte_id=None)

@@ -20,6 +20,7 @@ modules =
     apps.hebergements
     apps.locations
     apps.messaging
+    apps.mobilite
     apps.paiements
     apps.reservations
     apps.terrain
@@ -49,6 +50,7 @@ forbidden_modules =
     apps.hebergements
     apps.locations
     apps.messaging
+    apps.mobilite
     apps.paiements
     apps.reservations
     apps.terrain
@@ -74,6 +76,7 @@ source_modules =
     apps.hebergements
     apps.locations
     apps.messaging
+    apps.mobilite
     apps.paiements
     apps.reservations
     apps.terrain

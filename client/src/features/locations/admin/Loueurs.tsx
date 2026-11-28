@@ -14,10 +14,13 @@ import { PAYS_PAR_DEFAUT } from "@/lib/telephone/countries";
 import { composerTelephone, decomposerTelephone, estCodePays } from "@/lib/telephone/telephone";
 import type { Loueur } from "@/types/api/admin";
 
-type Formulaire = Omit<Loueur, "id" | "nb_locations" | "nb_vehicules" | "commission_pourcent" | "fondateur_debut" | "fondateur_fin"> & {
+type Formulaire = Omit<Loueur, "id" | "nb_locations" | "nb_vehicules" | "commission_pourcent" | "fondateur_debut" | "fondateur_fin"
+  | "compte" | "compte_email" | "aussi_chauffeur"> & {
   fondateur_debut: string; fondateur_fin: string;
+  /** Email of the owner's Kwa-Ba account (empty: not linked) */
+  compte_email: string;
 };
-const VIDE: Formulaire = { nom: "", contact: "", telephone: "", email: "", categories: [], lieux: [], actif: true,
+const VIDE: Formulaire = { nom: "", contact: "", telephone: "", email: "", compte_email: "", categories: [], lieux: [], actif: true,
   fondateur_debut: "", fondateur_fin: "", pays_versement: "TG", operateur_versement: "", numero_versement: "" };
 
 /** Checkboxes as chips (categories, places). */
@@ -61,8 +64,11 @@ export default function Loueurs() {
 
   const ouvrir = (l: Loueur | "nouveau") => {
     setEdition(l);
-    setForm(l === "nouveau" ? { ...VIDE, operateur_versement: "" }
-      : { ...l, fondateur_debut: l.fondateur_debut ?? "", fondateur_fin: l.fondateur_fin ?? "" });
+    if (l === "nouveau") setForm({ ...VIDE, operateur_versement: "" });
+    else {
+      const { compte, aussi_chauffeur: _a, id: _i, nb_locations: _n, nb_vehicules: _v, commission_pourcent: _c, ...reste } = l;
+      setForm({ ...reste, compte_email: compte?.email ?? "", fondateur_debut: l.fondateur_debut ?? "", fondateur_fin: l.fondateur_fin ?? "" });
+    }
     setErreurs({});
   };
 
@@ -90,7 +96,7 @@ export default function Loueurs() {
 
   const nomsDe = <T extends { id: number; nom: string }>(ids: number[], liste: T[]) => liste.filter((x) => ids.includes(x.id)).map((x) => x.nom).join(", ") || "-";
   const colonnes: Colonne<Loueur>[] = [
-    { titre: "Propriétaire", masquerMobile: true, cellule: (l) => <div><p className="font-semibold text-dark">{l.nom}</p><p className="text-xs text-muted">{l.contact} · {l.telephone}</p></div> },
+    { titre: "Propriétaire", masquerMobile: true, cellule: (l) => <div><p className="font-semibold text-dark">{l.nom}{l.aussi_chauffeur && <> <Pill ton="bleu">Aussi chauffeur</Pill></>}</p><p className="text-xs text-muted">{l.contact} · {l.telephone}{l.compte && ` · compte ${l.compte.email}`}</p></div> },
     { titre: "Véhicules", cellule: (l) => <span className="tabular-nums">{l.nb_vehicules}</span> },
     { titre: "Commission", cellule: (l) => <span className="text-xs whitespace-nowrap">{l.commission_pourcent ?? "-"} %{l.fondateur_fin ? ` · fondateur jusqu'au ${formatDate(l.fondateur_fin)}` : ""}</span> },
     { titre: "Lieux", cellule: (l) => <span className="text-xs">{nomsDe(l.lieux, lieux)}</span> },
@@ -121,6 +127,9 @@ export default function Loueurs() {
         </div>
         <Champ label="Email (facultatif)" aide="Reçoit le détail des locations attribuées" erreur={erreurs.email}>
           <Saisie type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </Champ>
+        <Champ label="Compte Kwa-Ba (email du compte)" aide="Le même compte peut aussi être chauffeur partenaire : les rôles se cumulent" erreur={erreurs.compte_email}>
+          <Saisie type="email" value={form.compte_email} onChange={(e) => setForm({ ...form, compte_email: e.target.value })} placeholder="Non lié" />
         </Champ>
         {form.categories.length > 0 && (
           <Choix label="Ancien catalogue (véhicules sans propriétaire)" elements={categories.filter((c) => !c.proprietaire)} valeur={form.categories}

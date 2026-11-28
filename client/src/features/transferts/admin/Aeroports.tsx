@@ -8,17 +8,17 @@ import { toast } from "sonner";
 import { formatPrice } from "@/lib/utils";
 import { Pill } from "@/components/backoffice/AdminTable";
 import Panneau, { Champ, Interrupteur, Saisie, erreursApi } from "@/components/backoffice/Panneau";
-import type { AeroportAdmin, CategorieTransfert } from "@/types/api/admin";
+import { useGammes } from "@/features/mobilite";
+import type { AeroportAdmin } from "@/types/api/admin";
 
-export const CATEGORIES_TRANSFERT: { code: CategorieTransfert; nom: string }[] = [
-  { code: "berline", nom: "Berline" }, { code: "confort", nom: "SUV confort" }, { code: "van", nom: "Minibus" },
-];
-type Tarifs = Record<CategorieTransfert, { prix: string; actif: boolean }>;
+// One fare per range offered in transfer (shared mobility referential, Mobilité → Gammes: T-H1)
+type Tarifs = Record<string, { prix: string; actif: boolean }>;
 const VIDE = { code: "", nom: "", ville: "", pays: "TG", fuseau: "Africa/Lome", actif: true };
 
 export default function Aeroports() {
   const queryClient = useQueryClient();
   const { data: aeroports, isLoading } = useAeroportsAdmin();
+  const { data: gammes = [] } = useGammes("transfert");
   const [edition, setEdition] = useState<AeroportAdmin | "nouveau" | null>(null);
   const [form, setForm] = useState(VIDE);
   const [tarifs, setTarifs] = useState<Tarifs>({} as Tarifs);
@@ -28,7 +28,7 @@ export default function Aeroports() {
   const ouvrir = (a: AeroportAdmin | "nouveau") => {
     setEdition(a);
     setForm(a === "nouveau" ? VIDE : { code: a.code, nom: a.nom, ville: a.ville, pays: a.pays, fuseau: a.fuseau, actif: a.actif });
-    setTarifs(Object.fromEntries(CATEGORIES_TRANSFERT.map(({ code }) => {
+    setTarifs(Object.fromEntries(gammes.map(({ code }) => {
       const t = a === "nouveau" ? undefined : a.tarifs.find((x) => x.categorie === code);
       return [code, { prix: t ? String(t.prix) : "", actif: t?.actif ?? !!t }];
     })) as Tarifs);
@@ -42,7 +42,7 @@ export default function Aeroports() {
       const code = edition === "nouveau" ? (await creerAeroport(form)).code : (edition as AeroportAdmin).code;
       if (edition !== "nouveau") await modifierAeroport(code, form);
       // Only categories with a price have a fare
-      const lignes = CATEGORIES_TRANSFERT.filter(({ code: c }) => tarifs[c].prix).map(({ code: c }) => ({ categorie: c, prix: Number(tarifs[c].prix), actif: tarifs[c].actif }));
+      const lignes = gammes.filter(({ code: c }) => tarifs[c]?.prix).map(({ code: c }) => ({ categorie: c, prix: Number(tarifs[c].prix), actif: tarifs[c].actif }));
       await enregistrerTarifs(code, lignes);
       toast.success("Aéroport enregistré");
       setEdition(null);
@@ -71,7 +71,7 @@ export default function Aeroports() {
                 </div>
                 <p className="text-xs text-muted mt-0.5 truncate">{a.nom}</p>
                 <ul className="mt-3 space-y-1 text-sm">
-                  {CATEGORIES_TRANSFERT.map(({ code, nom }) => {
+                  {gammes.map(({ code, nom }) => {
                     const t = a.tarifs.find((x) => x.categorie === code);
                     return (
                       <li key={code} className="flex justify-between gap-2">
@@ -101,7 +101,7 @@ export default function Aeroports() {
           <Champ label="Fuseau horaire" erreur={erreurs.fuseau}><Saisie value={form.fuseau} onChange={(e) => setForm({ ...form, fuseau: e.target.value })} required placeholder="Africa/Lome" /></Champ>
         </div>
         <p className="text-xs font-bold text-dark uppercase tracking-wide pt-2">Tarifs (FCFA, hors nuit)</p>
-        {CATEGORIES_TRANSFERT.map(({ code, nom }) => (
+        {gammes.map(({ code, nom }) => (
           <div key={code} className="grid grid-cols-[1fr_140px_auto] items-center gap-3">
             <span className="text-sm font-semibold text-dark">{nom}</span>
             <Saisie type="number" min={0} inputMode="numeric" aria-label={`Prix ${nom}`} value={tarifs[code]?.prix ?? ""} placeholder="Non proposé"

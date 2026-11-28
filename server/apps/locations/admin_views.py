@@ -7,6 +7,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.mobilite import api as mobilite
 from apps.paiements.api import operateurs_du_pays
 from apps.transferts import api as transferts
 from shared.activity import api as activity
@@ -87,13 +88,41 @@ class CategorieSerializer(serializers.ModelSerializer):
     # Photos handled one by one (PhotosCategorieView): several photos in a single request would exceed
     # the maximum size accepted by nginx
     photos = PhotoVehiculeSerializer(many=True, read_only=True)
+    gamme_libelle = serializers.SerializerMethodField()
+    proprietaire_nom = serializers.CharField(source='proprietaire.nom', read_only=True, default='')
+    # Drivers who drive this vehicle for the transfers (shared registry, T-H2)
+    chauffeurs = serializers.SerializerMethodField()
 
     class Meta:
         model = CategorieVehiculeModel
-        fields = ['id', 'nom', 'gamme', 'exemple_modele', 'description', 'places', 'bagages', 'boite', 'carburant',
-                  'climatisation', 'photos', 'proprietaire', 'prix_jour', 'sans_chauffeur', 'avec_chauffeur', 'caution_jours',
-                  'caution', 'immatriculation', 'annee', 'assurance_fin', 'visite_technique_fin', 'actif', 'ordre']
+        fields = ['id', 'nom', 'gamme', 'gamme_libelle', 'exemple_modele', 'description', 'places', 'bagages', 'boite',
+                  'carburant', 'climatisation', 'photos', 'proprietaire', 'proprietaire_nom', 'chauffeurs', 'prix_jour',
+                  'sans_chauffeur', 'avec_chauffeur', 'caution_jours', 'caution', 'immatriculation', 'annee',
+                  'assurance_fin', 'visite_technique_fin', 'actif', 'ordre']
         read_only_fields = ['caution']
+
+    def get_gamme_libelle(self, obj):
+        return mobilite.nom(obj.gamme)
+
+    def get_chauffeurs(self, obj):
+        return [c['nom'] for c in transferts.chauffeurs_du_vehicule(obj.pk)]
+
+    def validate_gamme(self, valeur):
+        code = mobilite.normaliser(valeur)
+        if not mobilite.existe(code):
+            raise serializers.ValidationError('Gamme inconnue (Mobilité → Gammes).')
+        return code
+
+    def validate_immatriculation(self, valeur):
+        # One record per real vehicle (T-H3): the same plate cannot be registered twice
+        valeur = ' '.join((valeur or '').upper().split())
+        plaque = mobilite.plaque(valeur)
+        if plaque:
+            autres = CategorieVehiculeModel.objects.exclude(pk=getattr(self.instance, 'pk', None)).exclude(
+                immatriculation='').values_list('immatriculation', flat=True)
+            if any(mobilite.plaque(a) == plaque for a in autres):
+                raise serializers.ValidationError('Un véhicule a déjà cette immatriculation : complétez sa fiche.')
+        return valeur
 
     def validate(self, data):
         def valeur(champ, defaut=None):
@@ -110,9 +139,23 @@ class CategorieSerializer(serializers.ModelSerializer):
 
 
 class CategoriesView(ListeAdmin):
+    """The vehicle records (T-H3), filtered by ?gamme=, ?proprietaire= (id, or « aucun ») and ?statut=actif|inactif."""
     nom_objet = "categorie_vehicule"
     serializer_class = CategorieSerializer
-    queryset = CategorieVehiculeModel.objects.prefetch_related('photos').order_by('ordre', 'nom')
+
+    def get_queryset(self):
+        qs = CategorieVehiculeModel.objects.select_related('proprietaire').prefetch_related('photos').order_by(
+            'ordre', 'nom')
+        p = self.request.query_params
+        if gamme := p.get('gamme'):
+            qs = qs.filter(gamme=mobilite.normaliser(gamme))
+        if (proprietaire := p.get('proprietaire')) == 'aucun':
+            qs = qs.filter(proprietaire__isnull=True)
+        elif proprietaire and proprietaire.isdigit():
+            qs = qs.filter(proprietaire_id=int(proprietaire))
+        if (statut := p.get('statut')) in ('actif', 'inactif'):
+            qs = qs.filter(actif=statut == 'actif')
+        return qs
 
 
 class CategorieView(FicheAdmin):
@@ -205,17 +248,36 @@ class PartenaireSerializer(serializers.ModelSerializer):
     nb_locations = serializers.IntegerField(source='locations.count', read_only=True)
     nb_vehicules = serializers.IntegerField(source='vehicules.count', read_only=True)
     commission_pourcent = serializers.SerializerMethodField()
+    # The owner's Kwa-Ba account (decision 3: the same account may be a partner driver)
+    compte = serializers.SerializerMethodField()
+    compte_email = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    aussi_chauffeur = serializers.SerializerMethodField()
 
     class Meta:
         model = PartenaireLocationModel
-        fields = ['id', 'nom', 'contact', 'telephone', 'email', 'categories', 'lieux', 'actif', 'fondateur_debut',
-                  'fondateur_fin', 'pays_versement', 'operateur_versement', 'numero_versement', 'nb_locations',
-                  'nb_vehicules', 'commission_pourcent']
+        fields = ['id', 'nom', 'contact', 'telephone', 'email', 'compte', 'compte_email', 'aussi_chauffeur', 'categories',
+                  'lieux', 'actif', 'fondateur_debut', 'fondateur_fin', 'pays_versement', 'operateur_versement',
+                  'numero_versement', 'nb_locations', 'nb_vehicules', 'commission_pourcent']
 
     def get_commission_pourcent(self, obj):
         return float(services.taux_commission(obj))
 
+    def get_compte(self, obj):
+        return mobilite.compte_affiche(obj.compte_id) if obj.compte_id else None
+
+    def get_aussi_chauffeur(self, obj):
+        return bool(obj.compte_id and transferts.chauffeur_du_compte(obj.compte_id))
+
     def validate(self, data):
+        if 'compte_email' in data:
+            try:
+                compte = mobilite.compte_par_email(data.pop('compte_email'))
+            except ValueError as exc:
+                raise serializers.ValidationError({'compte_email': [str(exc)]}) from exc
+            if compte and PartenaireLocationModel.objects.filter(compte_id=compte.id).exclude(
+                    pk=getattr(self.instance, 'pk', None)).exists():
+                raise serializers.ValidationError({'compte_email': ["Ce compte est déjà celui d'un autre propriétaire."]})
+            data['compte_id'] = compte.id if compte else None
         debut = data.get('fondateur_debut', getattr(self.instance, 'fondateur_debut', None))
         fin = data.get('fondateur_fin', getattr(self.instance, 'fondateur_fin', None))
         if bool(debut) != bool(fin) or (debut and fin <= debut):

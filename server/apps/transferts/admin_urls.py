@@ -1,7 +1,8 @@
 from django.urls import path
 
 from .admin_views import (
-    AeroportView, AeroportsView, ChauffeurPhotoView, ChauffeurView, ChauffeursView, NiveauxChauffeursView,
+    AeroportView, AeroportsView, ChauffeurPhotoView, ChauffeurVehiculeView, ChauffeurView, ChauffeursView,
+    NiveauxChauffeursView,
     SuiviChauffeurView, TarifsView, TransfertAnnulerView, TransfertAttribuerView, TransfertChauffeursView,
     TransfertsView,
 )
@@ -17,6 +18,7 @@ urlpatterns = [
     path('transferts/chauffeurs/<int:pk>/photo/<str:action>/', ChauffeurPhotoView.as_view(),
          name='admin-chauffeur-photo-action'),
     path('transferts/chauffeurs/<int:pk>/suivi/', SuiviChauffeurView.as_view(), name='admin-chauffeur-suivi'),
+    path('transferts/chauffeurs/<int:pk>/vehicule/', ChauffeurVehiculeView.as_view(), name='admin-chauffeur-vehicule'),
     path('transferts/transferts/', TransfertsView.as_view(), name='admin-transferts'),
     path('transferts/transferts/<uuid:pk>/chauffeurs/', TransfertChauffeursView.as_view(), name='admin-transfert-chauffeurs'),
     path('transferts/transferts/<uuid:pk>/attribuer/', TransfertAttribuerView.as_view(), name='admin-transfert-attribuer'),

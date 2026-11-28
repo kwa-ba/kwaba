@@ -10,7 +10,15 @@ export interface Aeroport {
   prix: Partial<Record<CategorieVehicule, number>>;
 }
 
-export type CategorieVehicule = "berline" | "confort" | "van";
+/** A range of the mobility referential offered in transfer (berline, suv, minibus… : T-H1). */
+export type CategorieVehicule = string;
+
+// Former transfer codes (before 28 November 2026), still in a draft kept by the browser
+const ANCIENS_CODES: Record<string, string> = { confort: "suv", van: "minibus" };
+
+export function normaliserGamme(code: string): CategorieVehicule {
+  return ANCIENS_CODES[code] ?? code;
+}
 
 export interface Vehicule {
   nom: string;

@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  creerChauffeur, envoyerPhotoChauffeur, lireRevueNiveaux, lireSuiviChauffeur, modifierChauffeur, signalerIncident, validerNiveau,
-  validerPhotoChauffeur, type LigneRevueNiveaux, type TypeIncident,
+  creerChauffeur, creerVehiculeChauffeur, envoyerPhotoChauffeur, lireRevueNiveaux, lireSuiviChauffeur, modifierChauffeur, signalerIncident,
+  validerNiveau, validerPhotoChauffeur, type LigneRevueNiveaux, type TypeIncident,
 } from "../api";
 import { clesTransferts, useAeroportsAdmin, useChauffeurs } from "../hooks";
 import { useState } from "react";
@@ -16,10 +16,12 @@ import Panneau, { Champ, Interrupteur, LIBELLE_ADMIN, Liste, Saisie, erreursApi 
 import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { PAYS_PAR_DEFAUT } from "@/lib/telephone/countries";
 import { composerTelephone, decomposerTelephone, estCodePays } from "@/lib/telephone/telephone";
-import { CATEGORIES_TRANSFERT } from "./Aeroports";
+import { useGammes } from "@/features/mobilite";
+import { useCategoriesAdmin } from "@/features/locations";
 import type { ChauffeurAdmin } from "@/types/api/admin";
 
-type Formulaire = Omit<ChauffeurAdmin, "id" | "nb_transferts" | "niveau" | "niveau_libelle" | "niveau_depuis" | "photo" | "photo_validee">;
+type Formulaire = Omit<ChauffeurAdmin, "id" | "nb_transferts" | "niveau" | "niveau_libelle" | "niveau_depuis" | "photo" | "photo_validee"
+  | "compte" | "vehicule_fiche" | "categorie_libelle" | "compte_email" | "vehicule_id"> & { compte_email: string; vehicule_id: number | null };
 // Levels of the project book (charter B6): Standard and Excellence
 const NIVEAUX: Record<"standard" | "excellence", { libelle: string; ton: "gris" | "vert" }> = {
   standard: { libelle: "Standard", ton: "gris" }, excellence: { libelle: "Excellence", ton: "vert" },
@@ -31,13 +33,18 @@ const INCIDENTS: Record<TypeIncident, string> = {
   grave: "Incident grave", autre: "Autre",
 };
 const VIDE: Formulaire = { prenom: "", nom: "", telephone: "", email: "", aeroports: [], categorie: "berline", vehicule: "", immatriculation: "",
-  actif: true, excellence: false, fondateur_debut: null, fondateur_fin: null, pays_versement: "TG", operateur_versement: "", numero_versement: "" };
+  actif: true, excellence: false, fondateur_debut: null, fondateur_fin: null, pays_versement: "TG", operateur_versement: "", numero_versement: "",
+  compte_email: "", vehicule_id: null };
 
 export default function Chauffeurs() {
   const queryClient = useQueryClient();
   const { data: config } = useConfigPaiement();
   const { data, isLoading, isError, refetch } = useChauffeurs();
   const { data: aeroports = [] } = useAeroportsAdmin();
+  const { data: gammes = [] } = useGammes();
+  // Vehicle records with an owner: the one the driver drives gives their range, name and plate (T-H2)
+  const { data: vehicules = [] } = useCategoriesAdmin();
+  const vehiculesAvecProprietaire = vehicules.filter((v) => v.proprietaire);
   const [edition, setEdition] = useState<ChauffeurAdmin | "nouveau" | null>(null);
   const [form, setForm] = useState<Formulaire>(VIDE);
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
@@ -52,9 +59,9 @@ export default function Chauffeurs() {
     if (c === "nouveau") setForm(VIDE);
     else {
       const { prenom, nom, telephone, email, aeroports, categorie, vehicule, immatriculation, actif, excellence, pays_versement,
-        operateur_versement, numero_versement, fondateur_debut = null, fondateur_fin = null } = c;
+        operateur_versement, numero_versement, fondateur_debut = null, fondateur_fin = null, compte, vehicule_id = null } = c;
       setForm({ prenom, nom, telephone, email, aeroports, categorie, vehicule, immatriculation, actif, excellence, pays_versement,
-        operateur_versement, numero_versement, fondateur_debut, fondateur_fin });
+        operateur_versement, numero_versement, fondateur_debut, fondateur_fin, compte_email: compte?.email ?? "", vehicule_id });
     }
     setErreurs({});
   };
@@ -80,9 +87,21 @@ export default function Chauffeurs() {
     }
   };
 
-  const nomCategorie = (c: string) => CATEGORIES_TRANSFERT.find((x) => x.code === c)?.nom ?? c;
+  const nomCategorie = (c: string) => gammes.find((x) => x.code === c)?.nom ?? c;
+  const creerFicheVehicule = async (c: ChauffeurAdmin) => {
+    try {
+      const maj = await creerVehiculeChauffeur(c.id);
+      toast.success("Fiche véhicule créée : complétez-la dans Véhicules pour la proposer en location.");
+      setEdition(maj);
+      setForm((f) => ({ ...f, vehicule_id: maj.vehicule_id ?? null }));
+      queryClient.invalidateQueries({ queryKey: clesTransferts.admin });
+      queryClient.invalidateQueries({ queryKey: ["admin", "location"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Fiche véhicule non créée."));
+    }
+  };
   const colonnes: Colonne<ChauffeurAdmin>[] = [
-    { titre: "Chauffeur", masquerMobile: true, cellule: (c) => <div><p className="font-semibold text-dark">{c.prenom} {c.nom}</p><p className="text-xs text-muted">{c.telephone}</p></div> },
+    { titre: "Chauffeur", masquerMobile: true, cellule: (c) => <div><p className="font-semibold text-dark">{c.prenom} {c.nom}</p><p className="text-xs text-muted">{c.telephone}{c.compte && ` · compte ${c.compte.email}`}</p></div> },
     { titre: "Véhicule", cellule: (c) => <span className="text-xs">{nomCategorie(c.categorie)} · {c.vehicule} · {c.immatriculation}</span> },
     { titre: "Aéroports", cellule: (c) => <span className="text-xs">{c.aeroports.join(", ") || "-"}</span> },
     { titre: "Courses", cellule: (c) => <span className="tabular-nums">{c.nb_transferts}</span> },
@@ -131,12 +150,28 @@ export default function Chauffeurs() {
           </div>
           {erreurs.aeroports && <p role="alert" className="text-xs text-red-600 mt-1">{erreurs.aeroports}</p>}
         </fieldset>
-        <div className="grid grid-cols-2 gap-3">
-          <Champ label="Catégorie"><Liste value={form.categorie} onChange={(e) => setForm({ ...form, categorie: e.target.value as Formulaire["categorie"] })}
-            options={CATEGORIES_TRANSFERT.map((c) => ({ value: c.code, label: c.nom }))} /></Champ>
-          <Champ label="Immatriculation" erreur={erreurs.immatriculation}><Saisie value={form.immatriculation} onChange={(e) => setForm({ ...form, immatriculation: e.target.value })} required /></Champ>
-        </div>
-        <Champ label="Véhicule (marque, modèle, couleur)" erreur={erreurs.vehicule}><Saisie value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} required placeholder="Toyota Corolla grise" /></Champ>
+        <Champ label="Compte Kwa-Ba (email du compte)" aide="Le même compte peut aussi être propriétaire : les rôles se cumulent" erreur={erreurs.compte_email}>
+          <Saisie type="email" value={form.compte_email} onChange={(e) => setForm({ ...form, compte_email: e.target.value })} placeholder="Non lié" />
+        </Champ>
+        <Champ label="Véhicule conduit (fiche Véhicule)" aide="Sa gamme, son nom et sa plaque suivent la fiche" erreur={erreurs.vehicule_id}>
+          <Liste value={form.vehicule_id ? String(form.vehicule_id) : ""} onChange={(e) => setForm({ ...form, vehicule_id: e.target.value ? Number(e.target.value) : null })}
+            options={[{ value: "", label: "Aucune fiche (saisie ci-dessous)" }, ...vehiculesAvecProprietaire.map((v) => ({ value: String(v.id), label: `${v.nom} · ${v.immatriculation || "sans plaque"} · ${v.proprietaire_nom ?? ""}` }))]} />
+        </Champ>
+        {!form.vehicule_id && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Champ label="Gamme" erreur={erreurs.categorie}><Liste value={form.categorie} onChange={(e) => setForm({ ...form, categorie: e.target.value })}
+                options={gammes.map((g) => ({ value: g.code, label: g.nom }))} /></Champ>
+              <Champ label="Immatriculation" erreur={erreurs.immatriculation}><Saisie value={form.immatriculation} onChange={(e) => setForm({ ...form, immatriculation: e.target.value })} required /></Champ>
+            </div>
+            <Champ label="Véhicule (marque, modèle, couleur)" erreur={erreurs.vehicule}><Saisie value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} required placeholder="Toyota Corolla grise" /></Champ>
+            {edition && edition !== "nouveau" && (
+              <button type="button" onClick={() => creerFicheVehicule(edition)} className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold">
+                C&apos;est sa voiture : créer sa fiche Véhicule
+              </button>
+            )}
+          </>
+        )}
         <p className="text-xs font-bold text-dark uppercase tracking-wide pt-2">Versement Mobile Money</p>
         <div className="grid grid-cols-2 gap-3">
           <PhoneInput label="Numéro" labelClassName={LIBELLE_ADMIN} taille="compact" autoComplete="off" required

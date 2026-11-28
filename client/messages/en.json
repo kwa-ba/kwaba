@@ -1301,20 +1301,6 @@
     "vehicule": "Vehicle",
     "choisirPourPrix": "Choose the airport, date and time to check availability and the exact price of each vehicle.",
     "tropTard": "You need to book at least {heures} hours before arrival so we can assign a driver.",
-    "vehicules": {
-      "berline": {
-        "nom": "Saloon car",
-        "description": "Toyota Corolla or similar, air-conditioned"
-      },
-      "confort": {
-        "nom": "Comfort SUV",
-        "description": "Toyota RAV4 or similar, more space"
-      },
-      "van": {
-        "nom": "Minibus",
-        "description": "Toyota Hiace or similar, for groups"
-      }
-    },
     "maxPassagers": "{nombre} passengers max",
     "maxBagages": "{nombre} bags max",
     "aucunVehicule": "No vehicle fits: contact us for a larger group.",

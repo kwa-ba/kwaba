@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Activity, ArrowLeft, CalendarCheck, CalendarCog, CalendarRange, Car, ClipboardCheck, Compass, FileText, HandHeart, Home, Landmark, LayoutDashboard, Menu, Percent, Plane, ShieldAlert, ShieldCheck, Star, Users } from "lucide-react";
+import { Activity, ArrowLeft, CalendarCheck, CalendarCog, CalendarRange, Car, ClipboardCheck, Compass, FileText, HandHeart, Home, Landmark, LayoutDashboard, Menu, Percent, Plane, Route, ShieldAlert, ShieldCheck, Star, Users } from "lucide-react";
 import Logo from "@/components/layout/Logo";
 import MobileDrawer, { DrawerItem } from "@/components/layout/MobileDrawer";
 import ThemeSelector from "@/components/layout/ThemeSelector";
@@ -27,6 +27,7 @@ const NAV: { href: string; label: string; icon: typeof Users; section: string; c
   { href: "/backoffice/activity", label: "Journal d'activité", icon: Activity, section: "", permission: "activity_log" },
   { href: "/backoffice/transferts", label: "Transferts aéroport", icon: Plane, section: "transferts" },
   { href: "/backoffice/location", label: "Location de voiture", icon: Car, section: "location" },
+  { href: "/backoffice/mobilite", label: "Mobilité", icon: Route, section: "mobilite" },
   { href: "/backoffice/experiences", label: "Expériences", icon: Compass, section: "experiences" },
   { href: "/backoffice/give", label: "Kwa-Ba Give", icon: HandHeart, section: "give" },
   { href: "/backoffice/documents", label: "Documents", icon: FileText, section: "documents" },

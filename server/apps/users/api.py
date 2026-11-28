@@ -114,6 +114,12 @@ def compte_demo(email: str, mot_de_passe: str, **champs) -> tuple[Compte, bool]:
     return _compte(u), cree
 
 
+def compte_par_email(email: str) -> Compte | None:
+    """The active account of this email (case ignored), or None."""
+    u = UserModel.objects.filter(email__iexact=(email or '').strip(), is_active=True).first()
+    return _compte(u) if u else None
+
+
 def ids_par_recherche(texte: str) -> list[uuid.UUID]:
     return list(UserModel.objects.filter(
         Q(email__icontains=texte) | Q(first_name__icontains=texte) | Q(last_name__icontains=texte)
