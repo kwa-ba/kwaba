@@ -93,6 +93,21 @@ export async function enregistrerRegles(regles: unknown) {
   await api.put(`${ADMIN}/regles/`, regles);
 }
 
+/** A rate or rule of the mobility offers, read from Finance → Paramètres (the single place where it changes). */
+export interface TarifMobilite {
+  cle: string;
+  valeur: string | number;
+  unite: string;
+  categorie: string;
+  offre: "VOITURE_CH" | "VOITURE_SANS" | "TRANSFERT";
+  libelle: string;
+  source: string | null;
+}
+
+export async function lireTarifsMobilite() {
+  return (await api.get<TarifMobilite[]>(`${ADMIN}/tarifs-mobilite/`)).data;
+}
+
 export async function lireChoixAttribution(locationId: string) {
   return (await api.get<ChoixAttribution>(`${ADMIN}/locations/${locationId}/loueurs/`, { params: { chauffeurs: 1 } })).data;
 }

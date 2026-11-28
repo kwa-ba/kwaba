@@ -12,7 +12,7 @@ from .models import (
 @admin.register(ParametresLocationModel)
 class ParametresAdmin(admin.ModelAdmin):
     """A single row: while it does not exist, rental is not offered."""
-    list_display = ['__str__', 'commission_pourcent', 'delai_min_jours', 'duree_max_jours', 'annulation_gratuite_heures']
+    list_display = ['__str__', 'delai_min_jours', 'duree_max_jours', 'annulation_gratuite_heures']
 
     def has_add_permission(self, request):
         return not ParametresLocationModel.objects.exists()

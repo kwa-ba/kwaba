@@ -1853,6 +1853,7 @@
     "total": "Total",
     "caution": "Deposit to pay the owner when collecting the vehicle: {montant}",
     "cautionLigne": "Deposit, refunded after return",
+    "cautionReduite": "Deposit halved: thank you for your 3 rentals without incident.",
     "cautionEnLigne": "The deposit is paid with the rental and held by Kwa-Ba: you pay nothing to the owner. It is refunded {heures} h after the vehicle is returned, minus any damage found.",
     "calcul": "Calculating the price…",
     "reserver": "Book and pay",

@@ -58,7 +58,8 @@ PART_KWABA_JOUR = 1000
 PART_KWABA_JOUR_REDUITE = 500  # Excellence driver or "My driver": the driver gets 6,500
 PRIME_HORS_LOME = 1500
 PRIME_HORS_PAYS = 2000
-# Owner's commission
+# Owner's commission (the rate of the referential only: T-H10, no mobility value entered twice)
+COMMISSION_VEHICULE = Decimal('15')
 COMMISSION_FONDATEUR = Decimal('10')
 COMMISSION_FIDELE = Decimal('12')
 LOCATIONS_FIDELE = 20
@@ -76,6 +77,11 @@ def _parametre(cle: str, defaut):
         return type(defaut)(finance.parametre(cle))
     except ValueError:
         return defaut
+
+
+def commission_vehicule() -> Decimal:
+    """Owner's commission in %, before the Founders and Loyal rates (Finance → Paramètres, `commission_vehicule`)."""
+    return _parametre('commission_vehicule', COMMISSION_VEHICULE)
 
 
 def chauffeur_jour() -> int:
@@ -108,12 +114,12 @@ def _arrondi(montant) -> int:
 
 
 def categories_proposees():
-    """Active vehicles, with a price, whose insurance and roadworthiness test have not expired."""
+    """Active vehicles of an active owner, with a price, whose insurance and roadworthiness test have not expired.
+    A vehicle without owner (the former Kwa-Ba catalogue) is never offered (T-H13)."""
     aujourd_hui = timezone.localdate()
-    return (CategorieVehiculeModel.objects.filter(actif=True, prix_jour__isnull=False)
+    return (CategorieVehiculeModel.objects.filter(actif=True, prix_jour__isnull=False, proprietaire__actif=True)
             .filter(Q(sans_chauffeur=True) | Q(avec_chauffeur=True))
             .exclude(assurance_fin__lt=aujourd_hui).exclude(visite_technique_fin__lt=aujourd_hui)
-            .exclude(proprietaire__actif=False)
             .prefetch_related('photos'))
 
 
@@ -135,9 +141,10 @@ def nombre_de_jours(debut: datetime, fin: datetime) -> int:
 
 # --- Taux -------------------------------------------------------------------------------------------
 
-def taux_commission(params: ParametresLocationModel, partenaire: PartenaireLocationModel | None, jour=None) -> Decimal:
-    """Owner's commission in %: 15 (settings), 10 during the Founders Programme, 12 with the Loyal status."""
-    taux = Decimal(params.commission_pourcent)
+def taux_commission(partenaire: PartenaireLocationModel | None, jour=None) -> Decimal:
+    """Owner's commission in %: 15, 10 during the Founders Programme, 12 with the Loyal status (all three read from
+    the referential of the finance module)."""
+    taux = commission_vehicule()
     if partenaire is None:
         return taux
     jour = jour or timezone.localdate()
@@ -177,6 +184,8 @@ class Devis:
     commission: int
     part_kwaba_chauffeur: int
     caution: int
+    # Deposit halved for a loyal customer (3 rentals without incident, terms of sale art. 14.3; T-H16)
+    caution_reduite: bool = False
 
 
 def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel | None, formule: str,
@@ -189,6 +198,7 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
         # Hors de l'offre de lancement (interrupteur MODULE_LOCATION_SANS_CHAUFFEUR)
         raise LocationErreur(t('locations.self_drive_not_offered'))
     avec_chauffeur = formule in ('avec_chauffeur', 'chauffeur_seul')
+    caution_reduite = False
     if formule == 'chauffeur_seul':
         prix_jour, frais, caution, commission = 0, 0, 0, 0
     else:
@@ -196,11 +206,11 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
             raise LocationErreur(t('locations.option_not_for_vehicle'))
         prix_jour = categorie.prix_jour
         frais = lieu_prise.frais + lieu_retour.frais
-        taux = taux_commission(params, categorie.proprietaire)
+        taux = taux_commission(categorie.proprietaire)
         commission = _arrondi(Decimal(prix_jour * jours) * taux / 100)
         caution = categorie.caution if formule == 'sans_chauffeur' else 0
         if caution and client_sans_incident(voyageur):
-            caution = _arrondi(Decimal(caution) / 2)
+            caution, caution_reduite = _arrondi(Decimal(caution) / 2), True
     if not avec_chauffeur:
         jours_hors_lome = jours_hors_pays = 0
     if jours_hors_lome < 0 or jours_hors_pays < 0 or jours_hors_lome + jours_hors_pays > jours:
@@ -211,6 +221,7 @@ def chiffrer(params: ParametresLocationModel, categorie: CategorieVehiculeModel 
         jours=jours, prix_jour=prix_jour, frais_lieux=frais, prix_chauffeur=prix_chauffeur, primes=primes,
         prix=prix_jour * jours + frais + prix_chauffeur + primes, commission=commission,
         part_kwaba_chauffeur=part_kwaba_jour() * jours if avec_chauffeur else 0, caution=caution,
+        caution_reduite=caution_reduite,
     )
 
 
@@ -260,7 +271,7 @@ def creer(*, voyageur, categorie: CategorieVehiculeModel | None, formule: str, l
         debut=debut, fin=fin, passagers=passagers, jours=devis.jours, prix_jour=devis.prix_jour,
         frais_lieux=devis.frais_lieux, prix_chauffeur=devis.prix_chauffeur, primes=devis.primes, prix=devis.prix,
         commission=devis.commission, part_kwaba_chauffeur=devis.part_kwaba_chauffeur, caution=devis.caution,
-        caution_en_ligne=params.caution_en_ligne and devis.caution > 0,
+        caution_reduite=devis.caution_reduite, caution_en_ligne=params.caution_en_ligne and devis.caution > 0,
         jours_hors_lome=jours_hors_lome if devis.prix_chauffeur else 0,
         jours_hors_pays=jours_hors_pays if devis.prix_chauffeur else 0, chauffeur_demande_id=chauffeur_demande_id,
         statut='en_attente_paiement' if en_ligne else 'confirmee',

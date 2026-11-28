@@ -186,6 +186,7 @@ function LocationDetail() {
                 </p>
               )
             ) : l.caution > 0 && <p className="text-xs text-gray-500">{t("caution", { montant: formatPrice(l.caution) })}</p>}
+            {l.caution_reduite && <p className="text-xs text-green-700">{t("cautionReduite")}</p>}
           </div>
           {l.remboursement && (
             l.remboursement.statut === "attente_numero" ? (

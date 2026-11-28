@@ -23,10 +23,12 @@ CAUTION_MAX = 100_000  # FCFA, deposit cap (terms of sale, art. 14.3)
 
 class ParametresLocationModel(models.Model):
     """Rental rules (a single row): without it, rental is not offered."""
+    # No longer read (T-H10, 28 November 2026): the commission is the parameter `commission_vehicule` of Finance →
+    # Paramètres. Kept so that the migration can be undone; to drop once the harmonisation is in production.
     commission_pourcent = models.DecimalField(
         max_digits=5, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text='Commission de Kwa-Ba sur le prix du véhicule, en % (15 % ; 10 % pour un propriétaire fondateur, '
-                  '12 % pour un Propriétaire Fidèle)',
+        default=15, db_default=15,
+        help_text='Obsolète : la commission se règle dans Finance → Paramètres (commission_vehicule)',
     )
     delai_min_jours = models.PositiveSmallIntegerField(
         default=2, validators=[MinValueValidator(1)],
@@ -248,6 +250,10 @@ class LocationModel(models.Model):
     commission = models.PositiveIntegerField(help_text='Commission de Kwa-Ba sur le prix du véhicule (payée par le propriétaire)')
     part_kwaba_chauffeur = models.PositiveIntegerField(default=0, db_default=0, help_text='1 000 FCFA par jour, 500 en Excellence ou en « Mon chauffeur »')
     caution = models.PositiveIntegerField(default=0)
+    caution_reduite = models.BooleanField(
+        default=False, db_default=False,
+        help_text='Caution divisée par deux : client fidèle, 3 locations sans incident (CGV art. 14.3)',
+    )
     # Deposit paid online with the rental (frozen at booking): Kwa-Ba keeps it until the return, then refunds it
     # to the traveller minus the withheld amount (damage reported by the owner, paid to them). Otherwise, paid to
     # the owner at the vehicle handover (rentals booked before the online deposit).

@@ -191,7 +191,8 @@ export interface AdminReviewReport {
 // --- Location de voiture (back-office) ---------------------------------------------------------
 
 export interface ReglesLocation {
-  commission_pourcent: string;
+  /** Read only: the parameter `commission_vehicule` of Finance → Paramètres (T-H10). */
+  commission_pourcent: number;
   delai_min_jours: number;
   duree_max_jours: number;
   annulation_gratuite_heures: number;
@@ -322,6 +323,8 @@ export interface AdminLocation {
   passagers: number;
   prix: number;
   caution: number;
+  /** Deposit halved for a loyal customer (frozen at booking). */
+  caution_reduite: boolean;
   caution_en_ligne: boolean;
   caution_retenue: number;
   caution_motif: string;

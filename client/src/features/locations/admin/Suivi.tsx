@@ -98,9 +98,11 @@ export default function Suivi() {
   };
 
   const etatCaution = (l: AdminLocation) => {
-    if (!l.caution_en_ligne) return l.caution ? `Caution ${formatPrice(l.caution)} réglée au propriétaire` : "";
+    // T-H16: a loyal customer (3 rentals without incident) pays half the deposit chosen by the owner
+    const reduite = l.caution_reduite ? " (divisée par deux : client fidèle)" : "";
+    if (!l.caution_en_ligne) return l.caution ? `Caution ${formatPrice(l.caution)}${reduite} réglée au propriétaire` : "";
     const retenueTexte = l.caution_retenue ? `, retenue ${formatPrice(l.caution_retenue)}` : "";
-    return `Caution ${formatPrice(l.caution)} ${l.caution_restituee_le ? "réglée" : "gardée"}${retenueTexte}`;
+    return `Caution ${formatPrice(l.caution)}${reduite} ${l.caution_restituee_le ? "réglée" : "gardée"}${retenueTexte}`;
   };
 
   const colonnes: Colonne<AdminLocation>[] = [

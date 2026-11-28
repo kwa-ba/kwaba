@@ -65,6 +65,8 @@ export interface DevisLocation {
   primes: number;
   prix: number;
   caution: number;
+  /** Deposit halved for a loyal customer (3 rentals without incident, terms of sale art. 14.3). */
+  caution_reduite: boolean;
   /** Deposit paid with the rental and kept by Kwa-Ba (otherwise paid to the owner at handover). */
   caution_en_ligne: boolean;
   /** Amount paid online: the rental and, where applicable, the deposit. */
@@ -99,6 +101,8 @@ export interface Location {
   chauffeur_demande: number | null;
   prix: number;
   caution: number;
+  /** Deposit halved for a loyal customer (frozen at booking). */
+  caution_reduite: boolean;
   caution_en_ligne: boolean;
   a_payer: number;
   /** Deposit kept by Kwa-Ba: refunded `restitution_heures` after the return, minus the withheld amount. */
