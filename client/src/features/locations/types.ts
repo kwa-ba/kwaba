@@ -110,7 +110,7 @@ export interface Location {
   vehicule_attribue: {
     vehicule: string; immatriculation: string;
     /** The partner driver's level and photo (never their name nor phone on the site) */
-    chauffeur?: { photo: string | null; niveau: "standard" | "confirme" | "excellence"; niveau_libelle: string };
+    chauffeur?: { photo: string | null; niveau: "standard" | "excellence"; niveau_libelle: string };
   } | null;
   /** A finished rental with a driver: the traveller may rate the driver once */
   avis_chauffeur?: { donne: boolean } | null;

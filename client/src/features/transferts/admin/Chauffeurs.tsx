@@ -2,7 +2,7 @@
 
 import {
   creerChauffeur, envoyerPhotoChauffeur, lireRevueNiveaux, lireSuiviChauffeur, modifierChauffeur, signalerIncident, validerNiveau,
-  validerPhotoChauffeur, type LigneRevueNiveaux,
+  validerPhotoChauffeur, type LigneRevueNiveaux, type TypeIncident,
 } from "../api";
 import { clesTransferts, useAeroportsAdmin, useChauffeurs } from "../hooks";
 import { useState } from "react";
@@ -20,11 +20,18 @@ import { CATEGORIES_TRANSFERT } from "./Aeroports";
 import type { ChauffeurAdmin } from "@/types/api/admin";
 
 type Formulaire = Omit<ChauffeurAdmin, "id" | "nb_transferts" | "niveau" | "niveau_libelle" | "niveau_depuis" | "photo" | "photo_validee">;
-const NIVEAUX: Record<string, { libelle: string; ton: "gris" | "bleu" | "vert" }> = {
-  standard: { libelle: "Standard", ton: "gris" }, confirme: { libelle: "Confirmé", ton: "bleu" }, excellence: { libelle: "Excellence", ton: "vert" },
+// Levels of the project book (charter B6): Standard and Excellence
+const NIVEAUX: Record<"standard" | "excellence", { libelle: string; ton: "gris" | "vert" }> = {
+  standard: { libelle: "Standard", ton: "gris" }, excellence: { libelle: "Excellence", ton: "vert" },
+};
+// The history may hold the intermediate level removed on 26 November 2026
+const libelleHistorique = (n: string) => NIVEAUX[n as keyof typeof NIVEAUX]?.libelle ?? "Ancien niveau intermédiaire (retiré)";
+const INCIDENTS: Record<TypeIncident, string> = {
+  retard: "Retard de plus de 15 min", absence: "Absence", plainte: "Plainte fondée", accident: "Accident responsable",
+  grave: "Incident grave", autre: "Autre",
 };
 const VIDE: Formulaire = { prenom: "", nom: "", telephone: "", email: "", aeroports: [], categorie: "berline", vehicule: "", immatriculation: "",
-  actif: true, excellence: false, pays_versement: "TG", operateur_versement: "", numero_versement: "" };
+  actif: true, excellence: false, fondateur_debut: null, fondateur_fin: null, pays_versement: "TG", operateur_versement: "", numero_versement: "" };
 
 export default function Chauffeurs() {
   const queryClient = useQueryClient();
@@ -45,9 +52,9 @@ export default function Chauffeurs() {
     if (c === "nouveau") setForm(VIDE);
     else {
       const { prenom, nom, telephone, email, aeroports, categorie, vehicule, immatriculation, actif, excellence, pays_versement,
-        operateur_versement, numero_versement } = c;
+        operateur_versement, numero_versement, fondateur_debut = null, fondateur_fin = null } = c;
       setForm({ prenom, nom, telephone, email, aeroports, categorie, vehicule, immatriculation, actif, excellence, pays_versement,
-        operateur_versement, numero_versement });
+        operateur_versement, numero_versement, fondateur_debut, fondateur_fin });
     }
     setErreurs({});
   };
@@ -142,10 +149,18 @@ export default function Chauffeurs() {
             onChange={(e) => setForm({ ...form, operateur_versement: e.target.value })}
             options={[{ value: "", label: "Choisir" }, ...operateurs.map((o) => ({ value: o.code, label: o.nom }))]} /></Champ>
         </div>
+        <p className="text-xs font-bold text-dark uppercase tracking-wide pt-2">Programme Fondateurs</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Champ label="Premier jour" erreur={erreurs.fondateur_debut}><Saisie type="date" value={form.fondateur_debut ?? ""}
+            onChange={(e) => setForm({ ...form, fondateur_debut: e.target.value || null })} /></Champ>
+          <Champ label="Dernier jour (6 mois)" erreur={erreurs.fondateur_fin}><Saisie type="date" value={form.fondateur_fin ?? ""}
+            onChange={(e) => setForm({ ...form, fondateur_fin: e.target.value || null })} /></Champ>
+        </div>
+        <p className="text-xs text-muted">Les 10 premiers chauffeurs, pendant 6 mois : niveau Excellence dès 10 missions au lieu de 20. Laissez vide hors programme.</p>
         <Interrupteur label="Actif (reçoit des courses et des missions)" checked={form.actif} onChange={(v) => setForm({ ...form, actif: v })} />
         {edition && edition !== "nouveau" && <Photo chauffeur={edition} onChange={() => queryClient.invalidateQueries({ queryKey: clesTransferts.admin })} />}
         {edition === "nouveau" && <p className="text-xs text-muted">Enregistrez le chauffeur, puis ajoutez sa photo de profil : il ne reçoit aucune course sans photo validée.</p>}
-        <p className="text-xs text-muted">Niveau : il se fixe dans la revue trimestrielle ci-dessous (Excellence : 6 500 FCFA par jour au lieu de 6 000).</p>
+        <p className="text-xs text-muted">Niveau : il se fixe dans la revue trimestrielle ci-dessous (Excellence : 6 500 FCFA par jour au lieu de 6 000). Un incident grave retire l&apos;Excellence immédiatement.</p>
       </Panneau>
     </div>
   );
@@ -192,7 +207,8 @@ function Photo({ chauffeur, onChange }: { chauffeur: ChauffeurAdmin; onChange: (
 /** The ratings, incidents and level history of a driver; an incident is recorded here. */
 function Suivi({ chauffeur, onFermer }: { chauffeur: ChauffeurAdmin; onFermer: () => void }) {
   const { data, refetch } = useQuery({ queryKey: [...clesTransferts.admin, "suivi", chauffeur.id], queryFn: () => lireSuiviChauffeur(chauffeur.id) });
-  const [incident, setIncident] = useState({ type: "retard", date: new Date().toISOString().slice(0, 10), description: "", reference: "" });
+  const [incident, setIncident] = useState<{ type: TypeIncident; date: string; description: string; reference: string }>(
+    { type: "retard", date: new Date().toISOString().slice(0, 10), description: "", reference: "" });
   const signaler = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -217,13 +233,13 @@ function Suivi({ chauffeur, onFermer }: { chauffeur: ChauffeurAdmin; onFermer: (
           </ul></div>
         <div><h3 className="font-semibold text-dark mb-1">Incidents</h3>
           <ul className="divide-y divide-gray-50">
-            {data?.incidents.map((x) => <li key={x.id} className="py-1.5"><Pill ton={x.type === "grave" ? "rouge" : "orange"}>{x.type}</Pill> <span className="text-muted">{x.date}{x.reference && ` · ${x.reference}`}</span>
+            {data?.incidents.map((x) => <li key={x.id} className="py-1.5"><Pill ton={x.type === "grave" || x.type === "accident" ? "rouge" : x.type === "autre" ? "gris" : "orange"}>{INCIDENTS[x.type] ?? x.type}</Pill> <span className="text-muted">{x.date}{x.reference && ` · ${x.reference}`}</span>
               <span className="block text-xs">{x.description}</span></li>)}
             {data?.incidents.length === 0 && <li className="py-1.5 text-muted">Aucun incident.</li>}
           </ul>
           <form onSubmit={signaler} className="grid grid-cols-2 gap-2 mt-2">
-            <Liste value={incident.type} onChange={(e) => setIncident({ ...incident, type: e.target.value })}
-              options={[{ value: "retard", label: "Retard" }, { value: "absence", label: "Absence" }, { value: "grave", label: "Incident grave" }, { value: "autre", label: "Autre" }]} />
+            <Liste value={incident.type} onChange={(e) => setIncident({ ...incident, type: e.target.value as TypeIncident })}
+              options={(Object.keys(INCIDENTS) as TypeIncident[]).map((value) => ({ value, label: INCIDENTS[value] }))} />
             <Saisie type="date" value={incident.date} onChange={(e) => setIncident({ ...incident, date: e.target.value })} />
             <Saisie placeholder="Ce qui s'est passé" value={incident.description} onChange={(e) => setIncident({ ...incident, description: e.target.value })} />
             <Saisie placeholder="Transfert ou location (facultatif)" value={incident.reference} onChange={(e) => setIncident({ ...incident, reference: e.target.value })} />
@@ -232,7 +248,7 @@ function Suivi({ chauffeur, onFermer }: { chauffeur: ChauffeurAdmin; onFermer: (
       </div>
       {!!data?.niveaux.length && (
         <div className="text-sm"><h3 className="font-semibold text-dark mb-1">Historique des niveaux</h3>
-          <ul className="divide-y divide-gray-50">{data.niveaux.map((n, i) => <li key={i} className="py-1.5">{n.le.slice(0, 10)} · {NIVEAUX[n.avant]?.libelle} → <strong>{NIVEAUX[n.apres]?.libelle}</strong> <span className="text-muted">(proposé : {NIVEAUX[n.propose]?.libelle}){n.motif && ` · ${n.motif}`}</span></li>)}</ul></div>
+          <ul className="divide-y divide-gray-50">{data.niveaux.map((n, i) => <li key={i} className="py-1.5">{n.le.slice(0, 10)} · {libelleHistorique(n.avant)} → <strong>{libelleHistorique(n.apres)}</strong> <span className="text-muted">(proposé : {libelleHistorique(n.propose)}){n.motif && ` · ${n.motif}`}</span></li>)}</ul></div>
       )}
     </section>
   );
@@ -242,7 +258,7 @@ function Suivi({ chauffeur, onFermer }: { chauffeur: ChauffeurAdmin; onFermer: (
 function RevueNiveaux() {
   const queryClient = useQueryClient();
   const { data, refetch } = useQuery({ queryKey: [...clesTransferts.admin, "niveaux"], queryFn: lireRevueNiveaux });
-  const garder = async (l: LigneRevueNiveaux, niveau: string) => {
+  const garder = async (l: LigneRevueNiveaux, niveau: keyof typeof NIVEAUX) => {
     let motif = "";
     if (niveau !== l.propose) {
       motif = window.prompt(`Le niveau proposé est ${NIVEAUX[l.propose].libelle}. Pourquoi garder ${NIVEAUX[niveau].libelle} pour ${l.nom} ?`) ?? "";
@@ -259,21 +275,26 @@ function RevueNiveaux() {
   };
   const colonnes: Colonne<LigneRevueNiveaux>[] = [
     { titre: "Chauffeur", masquerMobile: true, cellule: (l) => <strong>{l.nom}</strong> },
-    { titre: "Courses", cellule: (l) => <span className="tabular-nums">{l.chiffres.courses}</span> },
+    { titre: "Missions", cellule: (l) => <span className="tabular-nums">{l.chiffres.courses} / {l.courses_requises}{l.fondateur && <> <Pill ton="bleu">Fondateur</Pill></>}</span> },
     { titre: "Note", cellule: (l) => <span className="tabular-nums">{l.chiffres.note === null ? "—" : `${Number(l.chiffres.note).toLocaleString("fr-FR")} (${l.chiffres.avis} avis)`}</span> },
-    { titre: "Incidents", cellule: (l) => <span className="text-xs">{l.chiffres.graves} grave · {l.chiffres.retards} retard · {l.chiffres.absences} absence</span> },
+    { titre: "Incidents", cellule: (l) => {
+      const liste = ([["graves", "grave"], ["retards", "retard > 15 min"], ["absences", "absence"], ["plaintes", "plainte fondée"], ["accidents", "accident responsable"]] as const)
+        .filter(([cle]) => l.chiffres[cle] > 0).map(([cle, nom]) => `${l.chiffres[cle]} ${nom}`);
+      return <span className="text-xs">{liste.length ? liste.join(" · ") : "Aucun"}</span>;
+    } },
     { titre: "Actuel → proposé", cellule: (l) => <span className="flex gap-1"><Pill ton={NIVEAUX[l.niveau].ton}>{NIVEAUX[l.niveau].libelle}</Pill>→<Pill ton={NIVEAUX[l.propose].ton}>{NIVEAUX[l.propose].libelle}</Pill></span> },
   ];
   return (
     <section className="space-y-2 pt-4" aria-label="Revue des niveaux">
       <h2 className="font-heading font-bold text-dark">Revue des niveaux du trimestre</h2>
-      <p className="text-xs text-muted">Chiffres depuis le {data?.depuis.slice(0, 10)} : Confirmé à partir de {data?.seuils.chauffeur_confirme_courses} courses et une note de {data?.seuils.chauffeur_confirme_note} ;
-        Excellence à partir de {data?.seuils.chauffeur_excellence_courses} courses, {data?.seuils.chauffeur_excellence_note} et ni retard ni absence ; un incident grave fait descendre d&apos;un niveau. Les seuils se modifient dans Finance → Paramètres.</p>
+      <p className="text-xs text-muted">Chiffres depuis le {data?.depuis.slice(0, 10)} (charte B6) : Excellence à partir de {data?.seuils.chauffeur_excellence_courses} missions
+        ({data?.seuils.chauffeur_excellence_courses_fondateur} pour un chauffeur du Programme Fondateurs), une note de {data?.seuils.chauffeur_excellence_note} au moins,
+        et sur la période ni retard de plus de 15 min, ni absence, ni plainte fondée, ni accident responsable, ni incident grave ; sinon Standard. Les seuils se modifient dans Finance → Paramètres.</p>
       <AdminTable colonnes={colonnes} lignes={data?.chauffeurs} cle={(l) => String(l.chauffeur_id)} titreMobile={(l) => <strong>{l.nom}</strong>}
         actions={(l) => (
           <>
             <ActionButton onClick={() => garder(l, l.propose)}>Valider {NIVEAUX[l.propose].libelle}</ActionButton>
-            {(["standard", "confirme", "excellence"] as const).filter((n) => n !== l.propose).map((n) => (
+            {(["standard", "excellence"] as const).filter((n) => n !== l.propose).map((n) => (
               <ActionButton key={n} onClick={() => garder(l, n)}>{NIVEAUX[n].libelle}</ActionButton>
             ))}
           </>

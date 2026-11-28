@@ -35,6 +35,5 @@
   "push_driver_assigned_body": "{name} vous attendra à l'aéroport de {city}.",
   "reminder_what": "votre transfert depuis l'aéroport de {city} ({date})",
   "driver_level_standard": "Standard",
-  "driver_level_confirme": "Confirmé",
   "driver_level_excellence": "Excellence"
 }

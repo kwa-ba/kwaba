@@ -88,8 +88,9 @@ class ChauffeurSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChauffeurModel
         fields = ['id', 'prenom', 'nom', 'telephone', 'email', 'aeroports', 'categorie', 'vehicule', 'immatriculation',
-                  'actif', 'excellence', 'niveau', 'niveau_libelle', 'niveau_depuis', 'photo', 'photo_validee',
-                  'pays_versement', 'operateur_versement', 'numero_versement', 'nb_transferts']
+                  'actif', 'excellence', 'niveau', 'niveau_libelle', 'niveau_depuis', 'fondateur_debut', 'fondateur_fin',
+                  'photo', 'photo_validee', 'pays_versement', 'operateur_versement', 'numero_versement',
+                  'nb_transferts']
         # The level (and the Excellence pay that follows it) changes through the quarterly review only
         read_only_fields = ['excellence', 'niveau', 'niveau_depuis', 'photo_validee']
 
@@ -101,6 +102,11 @@ class ChauffeurSerializer(serializers.ModelSerializer):
         operateur = data.get('operateur_versement', getattr(self.instance, 'operateur_versement', ''))
         if operateur not in operateurs_du_pays(pays):
             raise serializers.ValidationError({'operateur_versement': ["Cet opérateur n'existe pas dans ce pays."]})
+        debut = data.get('fondateur_debut', getattr(self.instance, 'fondateur_debut', None))
+        fin = data.get('fondateur_fin', getattr(self.instance, 'fondateur_fin', None))
+        if (debut is None) != (fin is None) or (debut and fin < debut):
+            raise serializers.ValidationError({'fondateur_fin': [
+                'Programme Fondateurs : indiquez les deux dates, la fin après le début (ou aucune).']})
         return data
 
 

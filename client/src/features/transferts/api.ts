@@ -81,11 +81,19 @@ export async function noterChauffeurTransfert(id: string, avis: unknown) {
 export interface LigneRevueNiveaux {
   chauffeur_id: number;
   nom: string;
-  niveau: "standard" | "confirme" | "excellence";
-  propose: "standard" | "confirme" | "excellence";
+  niveau: "standard" | "excellence";
+  propose: "standard" | "excellence";
   photo_validee: boolean;
-  chiffres: { courses: number; avis: number; note: number | string | null; graves: number; retards: number; absences: number };
+  /** Founders Programme in force: Excellence from `courses_requises` missions (10 instead of 20) */
+  fondateur: boolean;
+  courses_requises: number;
+  chiffres: {
+    courses: number; avis: number; note: number | string | null;
+    graves: number; retards: number; absences: number; plaintes: number; accidents: number;
+  };
 }
+
+export type TypeIncident = "grave" | "retard" | "absence" | "plainte" | "accident" | "autre";
 
 export interface RevueNiveaux {
   depuis: string;
@@ -96,7 +104,7 @@ export interface RevueNiveaux {
 
 export interface SuiviChauffeur {
   avis: { objet_type: string; note: number; ponctualite: number; conduite: number; amabilite: number; commentaire: string; cree_le: string }[];
-  incidents: { id: number; type: "grave" | "retard" | "absence" | "autre"; date: string; description: string; reference: string }[];
+  incidents: { id: number; type: TypeIncident; date: string; description: string; reference: string }[];
   niveaux: { avant: string; apres: string; propose: string; motif: string; le: string }[];
 }
 

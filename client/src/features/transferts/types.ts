@@ -71,4 +71,4 @@ export interface Transfert {
   cree_le: string;
 }
 
-export type NiveauChauffeur = "standard" | "confirme" | "excellence";
+export type NiveauChauffeur = "standard" | "excellence";
