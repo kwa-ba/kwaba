@@ -142,7 +142,8 @@ export interface AdminReservationDetail extends AdminReservation {
   caution: AdminStayDeposit;
 }
 
-/** Deposit of a stay (ADR-036, ADR-038): escrowed deposit or enhanced guarantee, withholding and settlement */
+/** Deposit of a stay (ADR-036, ADR-038, ADR-048): escrowed deposit or enhanced guarantee, damage claim, decision
+ * and settlement */
 export interface AdminStayDeposit {
   option: "none" | "enhanced_guarantee" | "escrow";
   montant: number;
@@ -155,6 +156,15 @@ export interface AdminStayDeposit {
   date_limite: string | null;
   document: string;
   justificatifs: number;
+  /** Amount the host claims for a damage, held while it is decided */
+  reclame: number;
+  reclamation_motif: string;
+  reclamation_avant: string | null;
+  /** Given back before the settlement: the part not claimed, then what the decision set aside */
+  deja_rendu: number;
+  part_rendue_le: string | null;
+  decidee_le: string | null;
+  contestation_avant: string | null;
 }
 
 export interface AdminAvis {

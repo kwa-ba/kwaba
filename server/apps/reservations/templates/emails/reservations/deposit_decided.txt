@@ -1,0 +1,15 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+L'équipe Kwa-Ba a examiné le dommage signalé par l'hôte pour votre séjour {{ reference }}.
+
+  Caution payée : {{ caution }}
+  Montant réclamé par l'hôte : {{ reclame }}
+{% if retenue_nulle %}  Décision : aucune retenue. La part encore gardée vous est rendue.
+{% else %}  Décision : retenue de {{ retenue }}{% if motif %} ({{ motif }}){% endif %}
+{% endif %}
+{% if not retenue_nulle %}Vous pouvez contester cette décision par la messagerie de Kwa-Ba jusqu'au {{ contestation }} : l'équipe réexamine alors le dossier sur pièces. Passé ce délai, la retenue est versée à l'hôte et vous recevez l'avis de retenue.
+
+{% endif %}Une question ? Assistance Kwa-Ba : {{ assistance }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}

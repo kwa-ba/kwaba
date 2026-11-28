@@ -53,7 +53,8 @@ __all__ = [
     'ValidationRefusee', 'declarer_operation', 'seuil_double_validation', 'validation_requise', 'demander_validation',
     'approuver_validation', 'refuser_validation', 'statut_validation', 'validations', 'libelle_operation',
     # Register of the deposits (GL-13)
-    'CautionRefusee', 'enregistrer_caution', 'decider_retenue', 'solder_caution', 'caution', 'registre_cautions',
+    'CautionRefusee', 'enregistrer_caution', 'declarer_litige_caution', 'rendre_caution_en_partie', 'decider_retenue',
+    'solder_caution', 'caution', 'registre_cautions',
     # Reconciliation with the payment provider (GL-12)
     'OperationExterne', 'RapprochementRefuse', 'importer_rapprochement', 'aligner_frais_paiement',
     'echec_rapprochement', 'rapprochement_du_jour', 'rapprochements_du_mois', 'detail_rapprochement', 'regulariser',
@@ -339,7 +340,7 @@ def _caution_simple(c) -> dict:
             'statut': c.statut, 'montant_retenu': c.montant_retenu, 'montant_rendu': c.montant_rendu,
             'motif_retenue': c.motif_retenue, 'cgv_article': c.cgv_article, 'decision_par_id': c.decision_par_id,
             'decision_le': c.decision_le, 'soldee_le': c.soldee_le, 'mode_restitution': c.mode_restitution,
-            'document_numero': c.document_numero}
+            'document_numero': c.document_numero, 'montant_conteste': c.montant_conteste}
 
 
 def enregistrer_caution(objet_type: str, objet_id, *, reference: str, offre: str, montant: int, recue_le,
@@ -348,6 +349,16 @@ def enregistrer_caution(objet_type: str, objet_id, *, reference: str, offre: str
     return _caution_simple(caution_service().enregistrer(Caution(
         objet_type=objet_type, objet_id=str(objet_id), reference=reference, offre=offre, montant=montant,
         recue_le=recue_le, date_limite=date_limite, voyageur_id=voyageur_id)))
+
+
+def declarer_litige_caution(objet_type: str, objet_id, *, montant: int) -> dict:
+    """Amount claimed for a damage, still held while it is decided (0 withdraws it); raises CautionRefusee."""
+    return _caution_simple(caution_service().declarer_litige(objet_type, objet_id, montant=montant))
+
+
+def rendre_caution_en_partie(objet_type: str, objet_id, *, montant: int) -> dict:
+    """Part of a disputed deposit given back before its settlement (ADR-048); raises CautionRefusee."""
+    return _caution_simple(caution_service().rendre_en_partie(objet_type, objet_id, montant=montant))
 
 
 def decider_retenue(objet_type: str, objet_id, *, montant: int, motif: str, cgv_article: str,

@@ -33,14 +33,27 @@ export async function lireReservationAdmin(id: string) {
 
 /** Withholding on the escrowed deposit of a stay for a damage (ADR-038): its reason, the article of the terms of sale
  * and the evidence, sent as multipart. 0 cancels it. */
-export async function withholdStayDeposit(id: string, withholding: { montant: number; motif: string; cgv_article: string; justificatifs: File[] }) {
-  const body = new FormData();
-  body.append("montant", String(withholding.montant));
-  body.append("motif", withholding.motif);
-  body.append("cgv_article", withholding.cgv_article);
-  for (const f of withholding.justificatifs) body.append("justificatifs", f);
-  return (await api.post<AdminStayDeposit>(`/v1/admin/reservations/${id}/caution/`, body)).data;
+export interface StayDepositAction {
+  montant: number;
+  motif: string;
+  cgv_article?: string;
+  justificatifs: File[];
 }
+
+async function postStayDeposit(id: string, chemin: string, action: StayDepositAction) {
+  const body = new FormData();
+  body.append("montant", String(action.montant));
+  body.append("motif", action.motif);
+  if (action.cgv_article !== undefined) body.append("cgv_article", action.cgv_article);
+  for (const f of action.justificatifs) body.append("justificatifs", f);
+  return (await api.post<AdminStayDeposit>(`/v1/admin/reservations/${id}/caution/${chemin}`, body)).data;
+}
+
+/** Amount the host claims for a damage (ADR-048): held while the team decides; 0 withdraws it. */
+export const claimStayDeposit = (id: string, action: StayDepositAction) => postStayDeposit(id, "reclamation/", action);
+
+/** The team's decision on the claim: the amount withheld, paid to the host after the contestation period. */
+export const decideStayDeposit = (id: string, action: StayDepositAction) => postStayDeposit(id, "", action);
 
 /** Cancellation by Kwa-Ba. From the double validation threshold, the refund waits for a second person: the answer
  * then carries `validation` and a message, and the booking stays as it is until it is approved. */

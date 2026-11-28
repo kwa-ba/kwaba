@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ prenom }},
+
+L'équipe Kwa-Ba a examiné le dommage que vous avez signalé pour le séjour {{ reference }} (montant réclamé : {{ reclame }}).
+
+{% if retenue_nulle %}Décision : aucune retenue sur la caution du voyageur.
+{% else %}Décision : retenue de {{ retenue }}{% if motif %} ({{ motif }}){% endif %}. Le voyageur peut la contester jusqu'au {{ contestation }} ; passé ce délai, cette somme vous est versée par un versement séparé de celui du séjour.
+{% endif %}
+Une question ? Assistance Kwa-Ba : {{ assistance }}
+
+L'équipe Kwa-Ba
+{% endautoescape %}

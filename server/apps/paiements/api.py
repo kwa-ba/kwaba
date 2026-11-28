@@ -29,7 +29,7 @@ __all__ = [
     'indiquer_numero_remboursement', 'moyens_actifs', 'paiement_actif', 'paiement_reussi', 'recu_pdf', 'rembourser',
     'reservation_possible', 'synchroniser_paiement', 'synchroniser_payout', 'texte_politique', 'total_sejour',
     'devis_sejour', 'frais_reduits', 'frais_reduits_sejour', 'montants_de', 'hotes_deja_visites', 'rembourser_en_partie',
-    'paye_par_un_tiers', 'statut_paiement_de', 'settle_stay_deposit',
+    'paye_par_un_tiers', 'statut_paiement_de', 'settle_stay_deposit', 'give_back_stay_deposit_part',
     # Payouts page (GL-11): a failed payout row of a product planned again
     'VersementErreur', 'remettre_en_route', 'ligne_a_verser',
     # Ledger of the finance module (grand_livre.py)
@@ -155,19 +155,31 @@ def apercu_annulation_sejour(reservation) -> dict | None:
             'plateforme': montants.total}
 
 
-def settle_stay_deposit(reservation, *, withheld: int = 0, reason: str = '') -> bool:
+def settle_stay_deposit(reservation, *, withheld: int = 0, reason: str = '', already_given_back: int = 0) -> bool:
     """The escrowed deposit of a paid stay settled after the stay (ADR-036, ADR-038): the ledger, the refund of what is
-    given back, and the payout to the host of what is withheld for a damage. False if never paid."""
+    given back, and the payout to the host of what is withheld for a damage. `already_given_back`: what a dispute gave
+    back before (ADR-048). False if never paid."""
     paiement = _paiement_reussi('reservation', reservation.pk)
     if not paiement:
         return False
-    returned = reservation.deposit_amount - withheld
+    returned = reservation.deposit_amount - withheld - already_given_back
     grand_livre.stay_deposit_settled(reservation, paiement, returned=returned, withheld=withheld,
                                      motif=f'{reason} (décision {reservation.reference})' if withheld else '')
     if returned:
         rembourser(paiement, returned, 'Restitution de la caution')
     if withheld:
         damage_payouts.schedule(reservation, amount=withheld, reason=reason)
+    return True
+
+
+def give_back_stay_deposit_part(reservation, *, amount: int, step: str) -> bool:
+    """Part of a disputed stay deposit given back before its settlement (ADR-048): the ledger and the refund. False if
+    the stay was never paid."""
+    paiement = _paiement_reussi('reservation', reservation.pk)
+    if not paiement:
+        return False
+    grand_livre.stay_deposit_part_given_back(reservation, paiement, amount=amount, step=step)
+    rembourser(paiement, amount, 'Restitution de la part non contestée de la caution')
     return True
 
 

@@ -18,7 +18,7 @@ class CautionsView(VueAdmin):
 
     def get(self, request):
         statut = request.query_params.get('statut') or None
-        if statut not in (None, 'detenue', 'restituee', 'retenue'):
+        if statut not in (None, 'detenue', 'litige', 'restituee', 'retenue'):
             return _refus('Statut inconnu.')
         r = finance.registre_cautions(statut, en_retard=request.query_params.get('retard') == '1')
         noms = _noms({c['voyageur_id'] for c in r['cautions']} | {c['decision_par_id'] for c in r['cautions']})

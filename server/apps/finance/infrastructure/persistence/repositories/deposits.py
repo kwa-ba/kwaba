@@ -1,14 +1,14 @@
 """Register of the deposits."""
 
-from django.db.models import Sum
+from django.db.models import F, Sum
 
 from apps.finance.application.ports import Cautions
-from apps.finance.domain.entities import Caution
+from apps.finance.domain.entities import ETATS_CAUTION_EN_COURS, Caution
 from apps.finance.infrastructure.persistence.models import CautionModel
 
 CHAMPS_CAUTION = ('reference', 'offre', 'montant', 'recue_le', 'date_limite', 'voyageur_id', 'statut', 'montant_retenu',
                   'montant_rendu', 'motif_retenue', 'cgv_article', 'decision_par_id', 'decision_le', 'soldee_le',
-                  'mode_restitution', 'document_numero')
+                  'mode_restitution', 'document_numero', 'montant_conteste')
 
 
 def _caution(m: CautionModel) -> Caution:
@@ -45,4 +45,6 @@ class DjangoCautions(Cautions):
         return [_caution(m) for m in qs[:limite]]
 
     def total_detenu(self) -> int:
-        return CautionModel.objects.filter(statut='detenue').aggregate(t=Sum('montant'))['t'] or 0
+        # What was already given back during a dispute is no longer held
+        return (CautionModel.objects.filter(statut__in=ETATS_CAUTION_EN_COURS)
+                .aggregate(t=Sum(F('montant') - F('montant_rendu')))['t'] or 0)
