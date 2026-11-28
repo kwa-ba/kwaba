@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'shared.activity.apps.ActivityConfig',
     'apps.verifications.apps.VerificationsConfig',
     'apps.locations.apps.LocationsConfig',
+    'apps.mobilite.apps.MobiliteConfig',
     'apps.documents.apps.DocumentsConfig',
     'apps.contrats.apps.ContratsConfig',
     'apps.experiences.apps.ExperiencesConfig',

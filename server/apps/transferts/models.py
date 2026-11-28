@@ -6,7 +6,6 @@ from django.db import models
 
 from apps.paiements.api import OPERATEUR_CHOICES, PAYS_CHOICES
 
-from .tarifs import CATEGORIE_CHOICES
 
 
 class AeroportModel(models.Model):
@@ -29,7 +28,7 @@ class AeroportModel(models.Model):
 class TarifTransfertModel(models.Model):
     """Base price of a transfer from the airport to the city, per vehicle category."""
     aeroport = models.ForeignKey(AeroportModel, on_delete=models.CASCADE, related_name='tarifs')
-    categorie = models.CharField(max_length=20, choices=CATEGORIE_CHOICES)
+    categorie = models.CharField(max_length=20, help_text='Gamme du référentiel mobilité (code)')
     prix = models.PositiveIntegerField(help_text='En FCFA, hors majoration de nuit')
     actif = models.BooleanField(default=True)
 
@@ -39,7 +38,7 @@ class TarifTransfertModel(models.Model):
         constraints = [models.UniqueConstraint(fields=['aeroport', 'categorie'], name='tarif_unique_par_categorie')]
 
     def __str__(self):
-        return f"{self.aeroport_id} · {self.get_categorie_display()} : {self.prix} FCFA"
+        return f"{self.aeroport_id} · {self.categorie} : {self.prix} FCFA"
 
 
 NIVEAUX = [('standard', 'Standard'), ('excellence', 'Excellence')]
@@ -55,7 +54,13 @@ class ChauffeurModel(models.Model):
     telephone = models.CharField(max_length=20, help_text='Avec l\'indicatif, par ex. +228 90 00 00 00')
     email = models.EmailField(blank=True, help_text='Facultatif : reçoit le détail des courses attribuées')
     aeroports = models.ManyToManyField(AeroportModel, related_name='chauffeurs')
-    categorie = models.CharField(max_length=20, choices=CATEGORIE_CHOICES)
+    # Kwa-Ba account of the driver (registry shared by transfers and rentals, T-H2): the same account may also be an
+    # owner (module locations), the roles add up (decision 3 of 26 November 2026)
+    compte_id = models.UUIDField(null=True, blank=True, unique=True)
+    # The vehicle they drive, a vehicle record of the module locations (their own or an owner's): the range, the name
+    # and the plate below follow it. Without it (drivers registered before the harmonisation), they are typed here.
+    vehicule_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+    categorie = models.CharField(max_length=20, help_text='Gamme du référentiel mobilité (code)')
     vehicule = models.CharField(max_length=120, help_text='Marque, modèle et couleur')
     immatriculation = models.CharField(max_length=20)
     actif = models.BooleanField(default=True)
@@ -88,7 +93,7 @@ class ChauffeurModel(models.Model):
         verbose_name_plural = 'Chauffeurs partenaires'
 
     def __str__(self):
-        return f"{self.prenom} {self.nom} · {self.vehicule} ({self.get_categorie_display()})"
+        return f"{self.prenom} {self.nom} · {self.vehicule} ({self.categorie})"
 
     def est_fondateur(self, jour=None) -> bool:
         from django.utils import timezone
@@ -120,7 +125,7 @@ class TransfertModel(models.Model):
     numero_vol = models.CharField(max_length=10)
     passagers = models.PositiveSmallIntegerField()
     bagages = models.PositiveSmallIntegerField()
-    categorie = models.CharField(max_length=20, choices=CATEGORIE_CHOICES)
+    categorie = models.CharField(max_length=20, help_text='Gamme du référentiel mobilité (code)')
     destination = models.CharField(max_length=255, help_text='Adresse de dépose')
     telephone = models.CharField(max_length=20, help_text='Numéro du voyageur, joignable à l\'arrivée (WhatsApp)')
     message = models.TextField(blank=True)

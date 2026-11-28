@@ -18,7 +18,8 @@ import FormField from "@/components/ui/FormField";
 import PhoneInput, { useErreurTelephone } from "@/components/ui/PhoneInput";
 import { MontantDebite } from "@/components/layout/Devise";
 import type { MoyenPaiement } from "@/types/api/paiement";
-import type { CategorieVehicule } from "./types";
+import { normaliserGamme, type CategorieVehicule } from "./types";
+import { useGammes } from "@/features/mobilite";
 import { useTranslations } from "next-intl";
 import PageHero from "@/components/layout/PageHero";
 import { useFormat } from "@/lib/format";
@@ -29,7 +30,6 @@ const MOYENS: { id: MoyenPaiement; label: string; icon: typeof Smartphone }[] = 
   { id: "paypal", label: "paypal", icon: Wallet },
 ];
 
-const CATEGORIES: CategorieVehicule[] = ["berline", "confort", "van"];
 // Input kept while signing in (session storage, cleared when the tab is closed)
 const BROUILLON = "kwaba_transfert_brouillon";
 // The draft holds a phone number: a tab left open does not keep it for long
@@ -75,11 +75,13 @@ function TransfertContent() {
       const b = JSON.parse(brouillon);
       if (!(Date.now() - b.enregistreLe < DUREE_BROUILLON_MS)) return;
       setAeroport(b.aeroport ?? ""); setDate(b.date ?? ""); setHeure(b.heure ?? ""); setVol(b.vol ?? "");
-      setPassagers(b.passagers ?? 1); setBagages(b.bagages ?? 1); setCategorie(b.categorie ?? null);
+      setPassagers(b.passagers ?? 1); setBagages(b.bagages ?? 1); setCategorie(b.categorie ? normaliserGamme(b.categorie) : null);
       setDestination(b.destination ?? ""); setTelephone(b.telephone ?? ""); setMessage(b.message ?? "");
     } catch { /* storage unavailable or unreadable draft: empty form */ }
   }, []);
 
+  // Ranges offered in transfer (shared mobility referential): names and descriptions in the language of the page
+  const { data: gammes = [] } = useGammes("transfert");
   const { data: aeroports = [] } = useQuery({
     queryKey: [...clesTransferts.tous, "aeroports"],
     queryFn: listerAeroports,
@@ -222,16 +224,16 @@ function TransfertContent() {
             {!aeroport || !arrivee ? (
               <>
                 <ul className="space-y-3 mt-4">
-                  {CATEGORIES.filter((c) => prixAPartir(c) !== null).map((c) => (
-                    <li key={c} className="flex items-center gap-4 rounded-2xl p-4 border border-gray-100">
+                  {gammes.filter((g) => prixAPartir(g.code) !== null).map((g) => (
+                    <li key={g.code} className="flex items-center gap-4 rounded-2xl p-4 border border-gray-100">
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-gray-100 text-gray-600"><Car size={22} /></div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-dark">{t(`vehicules.${c}.nom`)}</p>
-                        <p className="text-xs text-gray-600">{t(`vehicules.${c}.description`)}</p>
+                        <p className="font-bold text-sm text-dark">{g.nom}</p>
+                        <p className="text-xs text-gray-600">{g.description}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[11px] text-gray-500">{t("aPartirDe")}</p>
-                        <p className="font-heading font-bold text-dark whitespace-nowrap">{formatPrice(prixAPartir(c)!)}</p>
+                        <p className="font-heading font-bold text-dark whitespace-nowrap">{formatPrice(prixAPartir(g.code)!)}</p>
                       </div>
                     </li>
                   ))}
@@ -257,8 +259,8 @@ function TransfertContent() {
                         <Car size={22} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={cn("font-bold text-sm", actif ? "text-brand" : "text-dark")}>{t(`vehicules.${o.categorie}.nom`)}</p>
-                        <p className="text-xs text-gray-600">{t(`vehicules.${o.categorie}.description`)}</p>
+                        <p className={cn("font-bold text-sm", actif ? "text-brand" : "text-dark")}>{o.nom}</p>
+                        <p className="text-xs text-gray-600">{o.description}</p>
                         <p className="flex items-center gap-3 text-xs text-gray-600 mt-1">
                           <span className="flex items-center gap-1"><Users size={12} /> {o.passagers}</span>
                           <span className="flex items-center gap-1"><Luggage size={12} /> {o.bagages}</span>
@@ -296,7 +298,7 @@ function TransfertContent() {
             <h2 className="font-heading font-bold text-dark text-lg">{t("recapitulatif")}</h2>
             {choix ? (
               <dl className="text-sm space-y-2">
-                <div className="flex justify-between gap-3"><dt className="text-gray-600">{t("vehicule")}</dt><dd className="font-medium text-dark">{t(`vehicules.${choix.categorie}.nom`)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-gray-600">{t("vehicule")}</dt><dd className="font-medium text-dark">{choix.nom}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-gray-600">{t("passagersBagages")}</dt><dd className="font-medium text-dark">{passagers} · {bagages}</dd></div>
                 <div className="flex justify-between items-center gap-3 pt-3 border-t border-gray-100">
                   <dt className="font-heading font-bold text-dark text-base">{t("total")}</dt>

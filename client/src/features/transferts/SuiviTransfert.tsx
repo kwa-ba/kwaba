@@ -173,7 +173,7 @@ function TransfertDetail() {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div className="flex gap-3"><Plane size={18} className="text-brand shrink-0 mt-0.5" /><div><dt className="text-gray-600">{tr("arrivee")}</dt><dd className="font-semibold text-dark">{dateVol(t.arrivee_locale)}</dd><dd className="text-gray-600">{tr("vol", { numero: t.numero_vol })} · {t.aeroport_detail.nom}</dd></div></div>
             <div className="flex gap-3"><MapPin size={18} className="text-brand shrink-0 mt-0.5" /><div><dt className="text-gray-600">{tr("destination")}</dt><dd className="font-semibold text-dark">{t.destination}</dd></div></div>
-            <div className="flex gap-3"><Car size={18} className="text-brand shrink-0 mt-0.5" /><div><dt className="text-gray-600">{tr("vehicule")}</dt><dd className="font-semibold text-dark">{tT(`vehicules.${t.categorie}.nom`)}</dd></div></div>
+            <div className="flex gap-3"><Car size={18} className="text-brand shrink-0 mt-0.5" /><div><dt className="text-gray-600">{tr("vehicule")}</dt><dd className="font-semibold text-dark">{t.vehicule.nom}</dd></div></div>
             <div className="flex gap-3"><Users size={18} className="text-brand shrink-0 mt-0.5" /><div><dt className="text-gray-600">{tT("passagersBagages")}</dt><dd className="font-semibold text-dark flex items-center gap-2">{t.passagers} <Luggage size={13} className="text-gray-500" /> {t.bagages}</dd></div></div>
           </dl>
           <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">

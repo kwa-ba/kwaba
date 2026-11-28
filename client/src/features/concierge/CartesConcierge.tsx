@@ -40,7 +40,6 @@ function Transfert({ c }: { c: CarteTransfert }) {
   const { formatDate, formatPrice } = useFormat();
   const t = useTranslations("conciergeCartes");
   const locale = useLocale();
-  const tT = useTranslations("transfert");
   const [jour, heure] = c.arrivee.split("T");
   const lien = `/transfert?aeroport=${c.aeroport}&date=${jour}&heure=${heure}&passagers=${c.passagers}&bagages=${c.bagages}`;
   return (
@@ -49,7 +48,7 @@ function Transfert({ c }: { c: CarteTransfert }) {
       <p className="text-xs text-white/75 mt-1">{t("detailVol", { date: formatDate(jour), heure: locale === "en" ? heure : heure.replace(":", " h "), passagers: c.passagers, bagages: c.bagages })}</p>
       <ul className="mt-3 space-y-1.5 text-sm">
         {c.options.filter((o) => o.disponible).map((o) => (
-          <li key={o.categorie} className="flex justify-between gap-3"><span>{tT(`vehicules.${o.categorie}.nom`)}</span><strong>{formatPrice(o.prix)}</strong></li>
+          <li key={o.categorie} className="flex justify-between gap-3"><span>{o.nom}</span><strong>{formatPrice(o.prix)}</strong></li>
         ))}
       </ul>
       {c.trop_tard ? (

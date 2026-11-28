@@ -60,6 +60,11 @@ export async function modifierChauffeur(id: ChauffeurAdmin["id"], chauffeur: unk
   await api.patch(`${ADMIN}/chauffeurs/${id}/`, chauffeur);
 }
 
+/** The driver owns the car they drive: it becomes their vehicle record (T-H2). Returns the updated driver. */
+export async function creerVehiculeChauffeur(id: ChauffeurAdmin["id"]) {
+  return (await api.post<ChauffeurAdmin>(`${ADMIN}/chauffeurs/${id}/vehicule/`, {})).data;
+}
+
 export async function listerChauffeursDisponibles(transfertId: string) {
   return (await api.get<{ id: number; nom: string; telephone: string; vehicule: string }[]>(`${ADMIN}/transferts/${transfertId}/chauffeurs/`)).data;
 }

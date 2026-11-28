@@ -11,9 +11,9 @@ import { formatDate, formatPrice, isoDate } from "@/lib/utils";
 import { Pill } from "@/components/backoffice/AdminTable";
 import Panneau, { Champ, Interrupteur, Liste, Saisie, Zone, erreursApi } from "@/components/backoffice/Panneau";
 import PhotosVehicule, { envoyerPhotoVehicule, liberer, type FichierEnAttente } from "./PhotosVehicule";
+import { useGammes } from "@/features/mobilite";
 import type { CategorieVehicule, PhotoVehicule } from "@/types/api/admin";
 
-const GAMMES = [["citadine", "Citadine"], ["berline", "Berline"], ["suv", "SUV"], ["4x4", "4x4 tout-terrain"], ["minibus", "Minibus"], ["utilitaire", "Utilitaire"]];
 const BOITES = [["manuelle", "Manuelle"], ["automatique", "Automatique"]];
 const CARBURANTS = [["essence", "Essence"], ["diesel", "Diesel"], ["hybride", "Hybride"], ["electrique", "Électrique"]];
 const CAUTIONS = [["0", "Sans caution (badge « Sans caution »)"], ["1", "Une journée de location"], ["2", "Deux journées de location"]];
@@ -21,13 +21,13 @@ const opts = (l: string[][]) => l.map(([value, label]) => ({ value, label }));
 const CAUTION_MAX = 100000;
 
 type Texte = "prix_jour" | "places" | "bagages" | "ordre" | "annee" | "proprietaire" | "caution_jours" | "assurance_fin" | "visite_technique_fin";
-type Formulaire = Omit<CategorieVehicule, "id" | "photos" | "caution" | Texte> & Record<Texte, string>;
+type Formulaire = Omit<CategorieVehicule, "id" | "photos" | "caution" | "gamme_libelle" | "proprietaire_nom" | "chauffeurs" | Texte> & Record<Texte, string>;
 const VIDE: Formulaire = {
   nom: "", gamme: "berline", exemple_modele: "", description: "", places: "5", bagages: "2", boite: "manuelle", carburant: "essence",
   climatisation: true, proprietaire: "", prix_jour: "", sans_chauffeur: true, avec_chauffeur: true, caution_jours: "0",
   immatriculation: "", annee: "", assurance_fin: "", visite_technique_fin: "", actif: false, ordre: "0",
 };
-const versFormulaire = (c: CategorieVehicule): Formulaire => ({
+const versFormulaire = ({ gamme_libelle: _g, proprietaire_nom: _p, chauffeurs: _c, ...c }: CategorieVehicule): Formulaire => ({
   ...c, places: String(c.places), bagages: String(c.bagages), ordre: String(c.ordre), caution_jours: String(c.caution_jours),
   prix_jour: c.prix_jour ? String(c.prix_jour) : "", proprietaire: c.proprietaire ? String(c.proprietaire) : "",
   annee: c.annee ? String(c.annee) : "", assurance_fin: c.assurance_fin ?? "", visite_technique_fin: c.visite_technique_fin ?? "",
@@ -38,11 +38,17 @@ function expire(date: string | null) {
   return !!date && date < isoDate();
 }
 
-/** Partner owners' vehicles: their price, deposit, options and papers. */
+/** The vehicle records (T-H3: one per real vehicle, the range is an attribute): owner, price, deposit, options and
+ * papers; filtered by range, owner and status. */
 export default function Categories() {
   const queryClient = useQueryClient();
-  const { data: categories, isLoading } = useCategoriesAdmin();
+  const { data: toutes, isLoading } = useCategoriesAdmin();
   const { data: proprietaires } = useLoueursAdmin();
+  const { data: gammes = [] } = useGammes();
+  const [filtre, setFiltre] = useState({ gamme: "", proprietaire: "", statut: "" });
+  const categories = toutes?.filter((c) => (!filtre.gamme || c.gamme === filtre.gamme)
+    && (!filtre.proprietaire || (filtre.proprietaire === "aucun" ? c.proprietaire === null : String(c.proprietaire) === filtre.proprietaire))
+    && (!filtre.statut || c.actif === (filtre.statut === "actif")));
   const [edition, setEdition] = useState<CategorieVehicule | "nouvelle" | null>(null);
   const [form, setForm] = useState<Formulaire>(VIDE);
   const [photos, setPhotos] = useState<PhotoVehicule[]>([]);
@@ -119,6 +125,14 @@ export default function Categories() {
         </p>
         <button onClick={() => ouvrir("nouvelle")} className="shrink-0 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold">Nouveau véhicule</button>
       </div>
+      <div className="grid sm:grid-cols-3 gap-3 max-w-3xl" role="search" aria-label="Filtrer les véhicules">
+        <Liste aria-label="Gamme" value={filtre.gamme} onChange={(e) => setFiltre({ ...filtre, gamme: e.target.value })}
+          options={[{ value: "", label: "Toutes les gammes" }, ...gammes.map((g) => ({ value: g.code, label: g.nom }))]} />
+        <Liste aria-label="Propriétaire" value={filtre.proprietaire} onChange={(e) => setFiltre({ ...filtre, proprietaire: e.target.value })}
+          options={[{ value: "", label: "Tous les propriétaires" }, { value: "aucun", label: "Sans propriétaire" }, ...(proprietaires ?? []).map((p) => ({ value: String(p.id), label: p.nom }))]} />
+        <Liste aria-label="Statut" value={filtre.statut} onChange={(e) => setFiltre({ ...filtre, statut: e.target.value })}
+          options={[{ value: "", label: "Tous les statuts" }, { value: "actif", label: "Proposés" }, { value: "inactif", label: "Désactivés" }]} />
+      </div>
       {isLoading ? <div className="h-40 skeleton rounded-2xl" /> : (
         <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {categories?.map((c) => {
@@ -142,7 +156,8 @@ export default function Categories() {
                       <p className="font-heading font-bold text-dark">{c.nom}</p>
                       <Pill ton={papiersExpires ? "rouge" : c.actif ? "vert" : "gris"}>{papiersExpires ? "Papiers expirés" : c.actif ? "Proposé" : "Désactivé"}</Pill>
                     </div>
-                    <p className="text-xs text-muted mt-0.5">{c.exemple_modele || "-"} · {c.places} places · {nomProprietaire(c.proprietaire) ?? "sans propriétaire"}</p>
+                    <p className="text-xs text-muted mt-0.5">{c.gamme_libelle ?? c.gamme} · {c.exemple_modele || "-"} · {c.places} places · {nomProprietaire(c.proprietaire) ?? "sans propriétaire"}{c.immatriculation && ` · ${c.immatriculation}`}</p>
+                    {!!c.chauffeurs?.length && <p className="text-xs text-muted">Conduit par {c.chauffeurs.join(", ")}</p>}
                     <p className="text-sm text-dark mt-2 tabular-nums">
                       {c.prix_jour ? `${formatPrice(c.prix_jour)} / jour` : "Prix à renseigner"} · {c.caution ? `caution ${formatPrice(c.caution)}` : "sans caution"}
                     </p>
@@ -162,10 +177,10 @@ export default function Categories() {
         </Champ>
         <Champ label="Nom affiché" erreur={erreurs.nom}><Saisie value={form.nom} onChange={(e) => champ("nom")(e.target.value)} required maxLength={80} placeholder="Toyota RAV4 2019" /></Champ>
         <div className="grid grid-cols-2 gap-3">
-          <Champ label="Gamme"><Liste value={form.gamme} onChange={(e) => champ("gamme")(e.target.value as Formulaire["gamme"])} options={opts(GAMMES)} /></Champ>
+          <Champ label="Gamme" erreur={erreurs.gamme}><Liste value={form.gamme} onChange={(e) => champ("gamme")(e.target.value)} options={gammes.map((g) => ({ value: g.code, label: g.nom }))} /></Champ>
           <Champ label="Marque et modèle"><Saisie value={form.exemple_modele} onChange={(e) => champ("exemple_modele")(e.target.value)} placeholder="Toyota RAV4" /></Champ>
           <Champ label="Année"><Saisie type="number" min={1980} max={2100} value={form.annee} onChange={(e) => champ("annee")(e.target.value)} /></Champ>
-          <Champ label="Immatriculation"><Saisie value={form.immatriculation} onChange={(e) => champ("immatriculation")(e.target.value)} maxLength={20} placeholder="TG 1234 AB" /></Champ>
+          <Champ label="Immatriculation" erreur={erreurs.immatriculation}><Saisie value={form.immatriculation} onChange={(e) => champ("immatriculation")(e.target.value)} maxLength={20} placeholder="TG 1234 AB" /></Champ>
           <Champ label="Places" erreur={erreurs.places}><Saisie type="number" min={1} value={form.places} onChange={(e) => champ("places")(e.target.value)} required /></Champ>
           <Champ label="Valises" erreur={erreurs.bagages}><Saisie type="number" min={0} value={form.bagages} onChange={(e) => champ("bagages")(e.target.value)} required /></Champ>
           <Champ label="Boîte"><Liste value={form.boite} onChange={(e) => champ("boite")(e.target.value as Formulaire["boite"])} options={opts(BOITES)} /></Champ>

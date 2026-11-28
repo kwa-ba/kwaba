@@ -235,7 +235,9 @@ export interface PhotoVehicule {
 export interface CategorieVehicule {
   id: number;
   nom: string;
-  gamme: "citadine" | "berline" | "suv" | "4x4" | "minibus" | "utilitaire";
+  /** Range of the shared mobility referential (T-H1). */
+  gamme: string;
+  gamme_libelle?: string;
   exemple_modele: string;
   description: string;
   places: number;
@@ -246,6 +248,9 @@ export interface CategorieVehicule {
   /** The first one is the main photo. */
   photos: PhotoVehicule[];
   proprietaire: number | null;
+  proprietaire_nom?: string;
+  /** Partner drivers who drive this vehicle for the transfers (T-H2). */
+  chauffeurs?: string[];
   /** Vehicle price per day, set by the owner (without the driver). */
   prix_jour: number | null;
   sans_chauffeur: boolean;
@@ -279,6 +284,10 @@ export interface Loueur {
   contact: string;
   telephone: string;
   email: string;
+  /** Their Kwa-Ba account (decision 3: the same account may be a partner driver). Written through `compte_email`. */
+  compte?: import("@/features/mobilite").CompteLie | null;
+  compte_email?: string;
+  aussi_chauffeur?: boolean;
   categories: number[];
   lieux: number[];
   actif: boolean;
@@ -343,7 +352,8 @@ export interface AdminLocation {
 
 // --- Airport transfers (back-office) ---------------------------------------------------------
 
-export type CategorieTransfert = "berline" | "confort" | "van";
+/** A range of the shared mobility referential (T-H1): berline, suv, minibus… */
+export type CategorieTransfert = string;
 
 export interface AeroportAdmin {
   code: string;
@@ -363,8 +373,15 @@ export interface ChauffeurAdmin {
   email: string;
   aeroports: string[];
   categorie: CategorieTransfert;
+  categorie_libelle?: string;
   vehicule: string;
   immatriculation: string;
+  /** The vehicle record they drive (module locations): it gives the range, the name and the plate (T-H2). */
+  vehicule_id?: number | null;
+  vehicule_fiche?: import("@/features/mobilite").VehiculeFiche | null;
+  /** Their Kwa-Ba account: the same account may be an owner (decision 3). Written through `compte_email`. */
+  compte?: import("@/features/mobilite").CompteLie | null;
+  compte_email?: string;
   actif: boolean;
   /** "Excellence Driver" status: 6,500 FCFA per day instead of 6,000; follows the level, set by the quarterly review. */
   excellence: boolean;

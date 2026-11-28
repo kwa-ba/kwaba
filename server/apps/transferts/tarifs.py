@@ -1,25 +1,37 @@
-"""Vehicle categories, transfer price computation and timing rules.
+"""Vehicle ranges of the transfers, transfer price computation and timing rules.
 
-Base prices per airport and per category are in TarifTransfertModel (editable
-in the Django admin); this module applies the shared rules.
+The ranges are those of the mobility referential offered in transfer (T-H1: one word for a range, transfer and rental
+alike); base prices per airport and per range are in TarifTransfertModel. This module applies the shared rules.
 """
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
+
+from apps.mobilite import api as mobilite
 from shared.language.api import t
 
-CATEGORIES = {
-    'berline': {'nom': 'Berline', 'description': 'Toyota Corolla ou similaire, climatisée', 'passagers': 3, 'bagages': 3},
-    'confort': {'nom': 'SUV confort', 'description': 'Toyota RAV4 ou similaire, plus d\'espace', 'passagers': 4, 'bagages': 4},
-    'van': {'nom': 'Minibus', 'description': 'Toyota Hiace ou similaire, pour les groupes', 'passagers': 7, 'bagages': 8},
-}
-CATEGORIE_CHOICES = [(code, c['nom']) for code, c in CATEGORIES.items()]
+
+def categories() -> list[str]:
+    """Codes of the ranges offered in transfer, in their order."""
+    return mobilite.codes(transfert=True)
 
 
 def vehicle(code: str) -> dict:
-    """A category as shown to the traveller: its name and description in the language of the request."""
-    return {**CATEGORIES[code], 'nom': t(f'transferts.vehicle_{code}'),
-            'description': t(f'transferts.vehicle_{code}_description')}
+    """A range as shown to the traveller: its name and description in the language of the request, its capacity."""
+    g = mobilite.gamme(code) or {'nom': code, 'description': '', 'places': 0, 'bagages': 0}
+    return {'nom': g['nom'], 'description': g['description'], 'passagers': g['places'], 'bagages': g['bagages']}
+
+
+def nom(code: str) -> str:
+    return mobilite.nom(code)
+
+
+def gammes_assez_grandes(code: str) -> list[str]:
+    """Ranges of a vehicle able to do a transfer booked in `code` (as many seats and cases, or more): a driver
+    with a larger vehicle can take a smaller booking."""
+    voulu = vehicle(code)
+    return [g['code'] for g in mobilite.gammes(actives=False)
+            if g['places'] >= voulu['passagers'] and g['bagages'] >= voulu['bagages']]
 
 # Share of the price kept by Kwa-Ba, the rest goes to the partner driver (grid of 18 October 2026)
 COMMISSION_CHAUFFEUR = Decimal('0.15')  # default: the rate in force is set by the team (commission_chauffeur())
@@ -59,7 +71,7 @@ def calculer(prix_base: int) -> Prix:
 
 def capacite_suffisante(categorie: str, passagers: int, bagages: int) -> str | None:
     """Explains why the vehicle does not fit, or None."""
-    c = CATEGORIES[categorie]
+    c = vehicle(categorie)
     if passagers > c['passagers']:
         return t('transferts.max_passengers', count=c['passagers'])
     if bagages > c['bagages']:

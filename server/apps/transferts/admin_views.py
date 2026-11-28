@@ -6,6 +6,8 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.locations import api as locations
+from apps.mobilite import api as mobilite
 from apps.paiements.api import operateurs_du_pays
 from shared.activity import api as activity
 from shared.backoffice_kit.views import ChampPhoto, FicheAdmin, ListeAdmin
@@ -14,7 +16,7 @@ from apps.users import api as users
 
 from shared.backoffice_kit.views import motif as _motif, nom as _nom, paginer as _paginer
 
-from . import services
+from . import services, tarifs
 from .models import AeroportModel, ChauffeurModel, TarifTransfertModel, TransfertModel
 
 
@@ -24,6 +26,13 @@ class TarifSerializer(serializers.ModelSerializer):
     class Meta:
         model = TarifTransfertModel
         fields = ['categorie', 'prix', 'actif']
+
+    def validate_categorie(self, valeur):
+        # A fare for any range of the referential offered in transfer (T-H1)
+        code = mobilite.normaliser(valeur)
+        if code not in tarifs.categories():
+            raise serializers.ValidationError("Gamme non proposée en transfert (Mobilité → Gammes).")
+        return code
 
 
 class AeroportSerializer(serializers.ModelSerializer):
@@ -66,14 +75,14 @@ class TarifsView(APIView):
         aeroport = AeroportModel.objects.filter(pk=code).first()
         if not aeroport:
             return Response({'detail': 'Aéroport introuvable.'}, status=status.HTTP_404_NOT_FOUND)
-        tarifs = TarifSerializer(data=request.data, many=True)
-        tarifs.is_valid(raise_exception=True)
+        lignes = TarifSerializer(data=request.data, many=True)
+        lignes.is_valid(raise_exception=True)
         with transaction.atomic():
-            for t in tarifs.validated_data:
+            for t in lignes.validated_data:
                 TarifTransfertModel.objects.update_or_create(aeroport=aeroport, categorie=t['categorie'],
                                                              defaults={'prix': t['prix'], 'actif': t['actif']})
         activity.record("backoffice_modification", request, actor=request.user, objet="tarifs_transfert", id=code,
-                        tarifs={t['categorie']: t['prix'] for t in tarifs.validated_data})
+                        tarifs={t['categorie']: t['prix'] for t in lignes.validated_data})
         return Response(AeroportSerializer(AeroportModel.objects.prefetch_related('tarifs').get(pk=code)).data)
 
 
@@ -83,21 +92,74 @@ class ChauffeurSerializer(serializers.ModelSerializer):
     aeroports = serializers.PrimaryKeyRelatedField(many=True, queryset=AeroportModel.objects.all())
     nb_transferts = serializers.IntegerField(source='transferts.count', read_only=True)
     niveau_libelle = serializers.CharField(source='get_niveau_display', read_only=True)
+    categorie_libelle = serializers.SerializerMethodField()
     photo = serializers.SerializerMethodField()
+    # Shared registry (T-H2): the driver's account (the same account may be an owner) and the vehicle record they drive
+    compte = serializers.SerializerMethodField()
+    compte_email = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    vehicule_fiche = serializers.SerializerMethodField()
 
     class Meta:
         model = ChauffeurModel
-        fields = ['id', 'prenom', 'nom', 'telephone', 'email', 'aeroports', 'categorie', 'vehicule', 'immatriculation',
+        fields = ['id', 'prenom', 'nom', 'telephone', 'email', 'aeroports', 'categorie', 'categorie_libelle',
+                  'vehicule', 'immatriculation', 'vehicule_id', 'vehicule_fiche', 'compte', 'compte_email',
                   'actif', 'excellence', 'niveau', 'niveau_libelle', 'niveau_depuis', 'fondateur_debut', 'fondateur_fin',
                   'photo', 'photo_validee', 'pays_versement', 'operateur_versement', 'numero_versement',
                   'nb_transferts']
         # The level (and the Excellence pay that follows it) changes through the quarterly review only
         read_only_fields = ['excellence', 'niveau', 'niveau_depuis', 'photo_validee']
+        extra_kwargs = {'vehicule': {'required': False}, 'immatriculation': {'required': False},
+                        'categorie': {'required': False}}
 
     def get_photo(self, obj):
         return obj.photo.url if obj.photo else None
 
+    def get_categorie_libelle(self, obj):
+        return mobilite.nom(obj.categorie)
+
+    def get_compte(self, obj):
+        return mobilite.compte_affiche(obj.compte_id) if obj.compte_id else None
+
+    def get_vehicule_fiche(self, obj):
+        return locations.vehicule(obj.vehicule_id) if obj.vehicule_id else None
+
+    def validate_categorie(self, valeur):
+        code = mobilite.normaliser(valeur)
+        if not mobilite.existe(code):
+            raise serializers.ValidationError('Gamme inconnue (Mobilité → Gammes).')
+        return code
+
+    def _lier_compte(self, data):
+        if 'compte_email' not in data:
+            return
+        try:
+            compte = mobilite.compte_par_email(data.pop('compte_email'))
+        except ValueError as exc:
+            raise serializers.ValidationError({'compte_email': [str(exc)]}) from exc
+        autre = ChauffeurModel.objects.filter(compte_id=compte.id if compte else None).exclude(
+            pk=getattr(self.instance, 'pk', None)) if compte else None
+        if autre is not None and autre.exists():
+            raise serializers.ValidationError({'compte_email': ['Ce compte est déjà celui d\'un autre chauffeur.']})
+        data['compte_id'] = compte.id if compte else None
+
+    def _suivre_vehicule(self, data):
+        """A linked vehicle record gives the range, the name and the plate; without it, they are typed."""
+        vehicule_id = data.get('vehicule_id', getattr(self.instance, 'vehicule_id', None))
+        if vehicule_id:
+            v = locations.vehicule(vehicule_id)
+            if v is None or not v['proprietaire_id']:
+                raise serializers.ValidationError({'vehicule_id': ['Véhicule introuvable ou sans propriétaire.']})
+            data.update(categorie=v['gamme'], vehicule=v['nom'], immatriculation=v['immatriculation'] or '-')
+            return
+        manquants = [c for c in ('categorie', 'vehicule', 'immatriculation')
+                     if not data.get(c, getattr(self.instance, c, ''))]
+        if manquants:
+            raise serializers.ValidationError({c: ['Choisissez la fiche du véhicule, ou indiquez ce champ.']
+                                               for c in manquants})
+
     def validate(self, data):
+        self._lier_compte(data)
+        self._suivre_vehicule(data)
         pays = data.get('pays_versement', getattr(self.instance, 'pays_versement', ''))
         operateur = data.get('operateur_versement', getattr(self.instance, 'operateur_versement', ''))
         if operateur not in operateurs_du_pays(pays):
@@ -122,6 +184,31 @@ class ChauffeurView(FicheAdmin):
     queryset = ChauffeurModel.objects.all()
 
 
+class ChauffeurVehiculeView(APIView):
+    """POST: the driver owns the car they drive (T-H2): it becomes a vehicle record of their owner record (created
+    with the same account and Mobile Money if needed; one record per plate), linked to the driver."""
+    permission_classes = [EstAdministrateur]
+
+    def post(self, request, pk):
+        c = ChauffeurModel.objects.filter(pk=pk).first()
+        if not c:
+            return Response({'detail': 'Chauffeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        if c.vehicule_id:
+            return Response({'detail': 'Ce chauffeur a déjà sa fiche véhicule.'}, status=status.HTTP_400_BAD_REQUEST)
+        gamme = mobilite.gamme(c.categorie) or {'places': 4, 'bagages': 2}
+        with transaction.atomic():
+            v = locations.creer_vehicule_de_chauffeur(
+                compte_id=c.compte_id, nom_proprietaire=f'{c.prenom} {c.nom}', telephone=c.telephone, email=c.email,
+                pays_versement=c.pays_versement, operateur_versement=c.operateur_versement,
+                numero_versement=c.numero_versement, gamme=c.categorie, nom_vehicule=c.vehicule,
+                immatriculation=c.immatriculation, places=gamme['places'], bagages=gamme['bagages'])
+            c.vehicule_id = v['id']
+            c.save(update_fields=['vehicule_id'])
+        activity.record("backoffice_modification", request, actor=request.user, objet="chauffeur", id=str(c.pk),
+                        libelle=f'{c.prenom} {c.nom}', champs=['vehicule_id'], vehicule=v['id'])
+        return Response(ChauffeurSerializer(c).data, status=status.HTTP_201_CREATED)
+
+
 # --- Transfer follow-up ------------------------------------------------------------------------
 
 def _transfert(t: TransfertModel) -> dict:
@@ -130,7 +217,7 @@ def _transfert(t: TransfertModel) -> dict:
         'id': str(t.id), 'reference': t.reference, 'statut': t.statut, 'statut_libelle': t.get_statut_display(),
         'voyageur': {'nom': _nom(t.voyageur), 'email': t.voyageur.email}, 'telephone': t.telephone,
         'aeroport': {'code': t.aeroport_id, 'ville': t.aeroport.ville}, 'arrivee': t.arrivee, 'numero_vol': t.numero_vol,
-        'passagers': t.passagers, 'bagages': t.bagages, 'categorie': t.categorie, 'categorie_libelle': t.get_categorie_display(),
+        'passagers': t.passagers, 'bagages': t.bagages, 'categorie': t.categorie, 'categorie_libelle': tarifs.nom(t.categorie),
         'destination': t.destination, 'message': t.message, 'prix': t.prix, 'majoration_nuit': t.majoration_nuit,
         'chauffeur': {'id': c.id, 'nom': f"{c.prenom} {c.nom}", 'telephone': c.telephone, 'vehicule': c.vehicule} if c else None,
         'cree_le': t.cree_le,

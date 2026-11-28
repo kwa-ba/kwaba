@@ -5,7 +5,7 @@ from datetime import datetime, time
 
 from django.utils import timezone
 
-from .models import TransfertModel
+from .models import ChauffeurModel, TransfertModel
 from shared.language.api import t
 
 NOT_DONE = ('en_attente_paiement', 'confirme', 'chauffeur_assigne')
@@ -20,3 +20,5 @@ def blockers(user_id: uuid.UUID) -> dict[str, str]:
 
 def erase(user_id: uuid.UUID) -> None:
     TransfertModel.objects.filter(voyageur_id=user_id).update(telephone='', message='')
+    # The driver record stays (rides, payouts, ratings): only its link to the deleted account goes
+    ChauffeurModel.objects.filter(compte_id=user_id).update(compte_id=None)

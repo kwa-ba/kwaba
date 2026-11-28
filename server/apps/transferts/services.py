@@ -107,8 +107,7 @@ def paiement_recu(paiement):
 
 def chauffeurs_disponibles(transfert: TransfertModel):
     """Active drivers of this airport, with a large enough vehicle."""
-    rang = list(tarifs.CATEGORIES)
-    adaptees = rang[rang.index(transfert.categorie):]
+    adaptees = tarifs.gammes_assez_grandes(transfert.categorie)
     # Without a profile photo validated by the team, a driver receives no ride (decision of 19 November 2026)
     return ChauffeurModel.objects.filter(actif=True, photo_validee=True, aeroports=transfert.aeroport,
                                          categorie__in=adaptees)

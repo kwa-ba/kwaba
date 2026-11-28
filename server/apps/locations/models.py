@@ -71,24 +71,18 @@ class ParametresLocationModel(models.Model):
 
 
 class CategorieVehiculeModel(models.Model):
-    """Vehicle offered to the traveller: the listing of a partner owner (their price, deposit, options).
+    """A real vehicle of a partner owner (T-H3: one record per vehicle, the range is an attribute): offered to the
+    traveller in rental with their price, deposit and options, and/or driven by a partner driver for the transfers.
 
     Historical technical name ("category"): until 22 October 2026, it was a Kwa-Ba fixed-price category.
     """
-    GAMMES = [
-        ('citadine', 'Citadine'),
-        ('berline', 'Berline'),
-        ('suv', 'SUV'),
-        ('4x4', '4x4 tout-terrain'),
-        ('minibus', 'Minibus'),
-        ('utilitaire', 'Utilitaire'),
-    ]
     BOITES = [('manuelle', 'Manuelle'), ('automatique', 'Automatique')]
     CARBURANTS = [('essence', 'Essence'), ('diesel', 'Diesel'), ('hybride', 'Hybride'), ('electrique', 'Électrique')]
     CAUTIONS = [(0, 'Sans caution'), (1, 'Une journée de location'), (2, 'Deux journées de location')]
 
     nom = models.CharField(max_length=80, help_text='Par ex. « Toyota RAV4 2019 »')
-    gamme = models.CharField(max_length=20, choices=GAMMES, db_index=True)
+    # Range of the mobility referential (T-H1), the same word as for the transfers
+    gamme = models.CharField(max_length=20, db_index=True, help_text='Gamme du référentiel mobilité (code)')
     exemple_modele = models.CharField(max_length=120, blank=True, help_text='Marque et modèle, par ex. « Toyota RAV4 »')
     description = models.TextField(blank=True)
     places = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
@@ -124,7 +118,7 @@ class CategorieVehiculeModel(models.Model):
         verbose_name_plural = 'Véhicules'
 
     def __str__(self):
-        return f"{self.nom} ({self.get_gamme_display()}, {self.places} places)"
+        return f"{self.nom} ({self.gamme}, {self.places} places)"
 
     def save(self, *args, **kwargs):
         self.caution = min(self.caution_jours * (self.prix_jour or 0), CAUTION_MAX)
@@ -178,6 +172,9 @@ class PartenaireLocationModel(models.Model):
     contact = models.CharField(max_length=120, help_text='Personne à contacter')
     telephone = models.CharField(max_length=20, help_text="Avec l'indicatif, par ex. +228 90 00 00 00")
     email = models.EmailField(blank=True, help_text='Facultatif : reçoit le détail des locations attribuées')
+    # Kwa-Ba account of the owner: the same account may also be a partner driver (module transferts), the roles add
+    # up (decision 3 of 26 November 2026)
+    compte_id = models.UUIDField(null=True, blank=True, unique=True)
     categories = models.ManyToManyField(CategorieVehiculeModel, related_name='partenaires', blank=True,
                                         help_text='Ancien catalogue : véhicules sans propriétaire que ce partenaire peut fournir')
     lieux = models.ManyToManyField(LieuRemiseModel, related_name='partenaires', help_text='Lieux où il remet ses véhicules')
